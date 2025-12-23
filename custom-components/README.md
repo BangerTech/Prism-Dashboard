@@ -27,6 +27,14 @@
 
 <img width="386" height="367" alt="prism-calendar" src="https://github.com/user-attachments/assets/d95ac18e-bd1b-4de4-ab78-248ac027bbd9" />
 
+## prism-shutter
+
+<img width="383" height="212" alt="prism-shutter" src="https://github.com/user-attachments/assets/eb905a66-b1be-456d-a729-7d3d24434d48" />
+
+
+## prism-shutter-vertical
+
+<img width="164" height="358" alt="prism-shutter-vertical" src="https://github.com/user-attachments/assets/880b7e46-f150-4b32-b114-651a3f7d4ef6" />
 
 
 
