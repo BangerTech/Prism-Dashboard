@@ -3,12 +3,18 @@ class PrismSidebarLightCard extends HTMLElement {
         super();
         this.attachShadow({ mode: 'open' });
         this.timer = null;
+        this.cameraTimer = null;
         this.hasRendered = false;
+        this.currentCameraIndex = 0;
+        this.cameraEntities = [];
     }
 
     static getStubConfig() {
         return {
             camera_entity: "camera.example",
+            camera_entity_2: "",
+            camera_entity_3: "",
+            rotation_interval: 10,
             weather_entity: "weather.example",
             grid_entity: "sensor.example",
             solar_entity: "sensor.example",
@@ -23,6 +29,19 @@ class PrismSidebarLightCard extends HTMLElement {
                 {
                     name: "camera_entity",
                     selector: { entity: { domain: "camera" } }
+                },
+                {
+                    name: "camera_entity_2",
+                    selector: { entity: { domain: "camera" } }
+                },
+                {
+                    name: "camera_entity_3",
+                    selector: { entity: { domain: "camera" } }
+                },
+                {
+                    name: "rotation_interval",
+                    selector: { number: { min: 3, max: 60, step: 1, unit_of_measurement: "Sekunden" } },
+                    default: 10
                 },
                 {
                     name: "weather_entity",
@@ -51,18 +70,48 @@ class PrismSidebarLightCard extends HTMLElement {
     setConfig(config) {
         this.config = { ...config };
         // Default entities if not provided
-        this.cameraEntity = this.config.camera_entity || 'camera.example';
         this.weatherEntity = this.config.weather_entity || 'weather.example';
         this.gridEntity = this.config.grid_entity || 'sensor.example';
         this.solarEntity = this.config.solar_entity || 'sensor.example';
         this.homeEntity = this.config.home_entity || 'sensor.example';
         this.calendarEntity = this.config.calendar_entity || 'calendar.example';
         
+        // Build camera entities array (only include non-empty entities)
+        this.cameraEntities = [];
+        if (this.config.camera_entity) {
+            this.cameraEntities.push(this.config.camera_entity);
+        }
+        if (this.config.camera_entity_2) {
+            this.cameraEntities.push(this.config.camera_entity_2);
+        }
+        if (this.config.camera_entity_3) {
+            this.cameraEntities.push(this.config.camera_entity_3);
+        }
+        // Fallback to default if no cameras configured
+        if (this.cameraEntities.length === 0) {
+            this.cameraEntities.push('camera.example');
+        }
+        
+        // Get rotation interval (default 10 seconds)
+        this.rotationInterval = (this.config.rotation_interval && this.config.rotation_interval >= 3) 
+            ? this.config.rotation_interval * 1000 
+            : 10000; // Default 10 seconds
+        
+        // Reset camera index
+        this.currentCameraIndex = 0;
+        
+        // Stop existing camera rotation timer
+        if (this.cameraTimer) {
+            clearInterval(this.cameraTimer);
+            this.cameraTimer = null;
+        }
+        
         // Initialize preview values
         if (!this._hass) {
             this.render();
             this.hasRendered = true;
             this.startClock();
+            this.startCameraRotation();
         }
     }
 
@@ -72,6 +121,7 @@ class PrismSidebarLightCard extends HTMLElement {
             this.render();
             this.hasRendered = true;
             this.startClock();
+            this.startCameraRotation();
         } else {
             this.updateValues();
         }
@@ -82,17 +132,70 @@ class PrismSidebarLightCard extends HTMLElement {
             this.render();
             this.hasRendered = true;
             this.startClock();
+            this.startCameraRotation();
         }
     }
 
     disconnectedCallback() {
         if (this.timer) clearInterval(this.timer);
+        if (this.cameraTimer) clearInterval(this.cameraTimer);
     }
 
     startClock() {
         if (this.timer) clearInterval(this.timer);
         this.updateClock(); // Initial
         this.timer = setInterval(() => this.updateClock(), 1000);
+    }
+
+    startCameraRotation() {
+        // Only rotate if we have more than one camera
+        if (this.cameraEntities.length > 1) {
+            if (this.cameraTimer) clearInterval(this.cameraTimer);
+            this.cameraTimer = setInterval(() => {
+                this.currentCameraIndex = (this.currentCameraIndex + 1) % this.cameraEntities.length;
+                this.updateCamera();
+            }, this.rotationInterval);
+        }
+    }
+
+    getCurrentCameraEntity() {
+        if (this.cameraEntities.length === 0) return 'camera.example';
+        return this.cameraEntities[this.currentCameraIndex];
+    }
+
+    updateCamera() {
+        if (!this._hass) return;
+        
+        const cameraEntity = this.getCurrentCameraEntity();
+        const cameraState = this._hass.states[cameraEntity];
+        
+        const camImgEl = this.shadowRoot?.querySelector('.camera-img');
+        const camNameEl = this.shadowRoot?.getElementById('cam-name');
+        const cameraBox = this.shadowRoot?.getElementById('camera-box');
+        
+        if (camImgEl && cameraState) {
+            const entityPicture = cameraState.attributes.entity_picture;
+            if (entityPicture) {
+                camImgEl.src = entityPicture;
+            }
+        } else if (camImgEl) {
+            // Fallback to default image
+            camImgEl.src = 'https://images.unsplash.com/photo-1558435186-d31d1eb6fa3c?q=80&w=600&auto=format&fit=crop';
+        }
+
+        if (camNameEl && cameraState) {
+            camNameEl.textContent = cameraState.attributes.friendly_name || cameraEntity.split('.')[1];
+        } else if (camNameEl) {
+            camNameEl.textContent = cameraEntity.split('.')[1] || 'Camera';
+        }
+
+        // Update click handler
+        if (cameraBox) {
+            // Remove old listener and add new one
+            const newBox = cameraBox.cloneNode(true);
+            cameraBox.parentNode.replaceChild(newBox, cameraBox);
+            newBox.addEventListener('click', () => this._handleCameraClick());
+        }
     }
 
     updateClock() {
@@ -115,7 +218,8 @@ class PrismSidebarLightCard extends HTMLElement {
         const solarState = this._hass.states[this.solarEntity];
         const homeState = this._hass.states[this.homeEntity];
         const weatherState = this._hass.states[this.weatherEntity];
-        const cameraState = this._hass.states[this.cameraEntity];
+        const cameraEntity = this.getCurrentCameraEntity();
+        const cameraState = this._hass.states[cameraEntity];
         const calendarState = this._hass.states[this.calendarEntity];
 
         const gridEl = this.shadowRoot?.getElementById('val-grid');
@@ -150,7 +254,7 @@ class PrismSidebarLightCard extends HTMLElement {
         }
 
         if (camNameEl && cameraState) {
-            camNameEl.textContent = cameraState.attributes.friendly_name || this.cameraEntity.split('.')[1];
+            camNameEl.textContent = cameraState.attributes.friendly_name || cameraEntity.split('.')[1];
         }
 
         // Update calendar
@@ -225,7 +329,8 @@ class PrismSidebarLightCard extends HTMLElement {
         const graphPath = this.generateGraphPath(weatherData, 280, 60);
 
         // Get entity states for preview/display
-        const cameraState = this._hass?.states[this.cameraEntity];
+        const cameraEntity = this.getCurrentCameraEntity();
+        const cameraState = this._hass?.states[cameraEntity];
         const weatherState = this._hass?.states[this.weatherEntity];
         const calendarState = this._hass?.states[this.calendarEntity];
         const gridState = this._hass?.states[this.gridEntity];
@@ -233,7 +338,7 @@ class PrismSidebarLightCard extends HTMLElement {
         const homeState = this._hass?.states[this.homeEntity];
 
         const cameraImage = cameraState?.attributes?.entity_picture || 'https://images.unsplash.com/photo-1558435186-d31d1eb6fa3c?q=80&w=600&auto=format&fit=crop';
-        const cameraName = cameraState?.attributes?.friendly_name || this.cameraEntity.split('.')[1] || 'Camera';
+        const cameraName = cameraState?.attributes?.friendly_name || cameraEntity.split('.')[1] || 'Camera';
         const currentTemp = weatherState?.attributes?.temperature || '0';
         const calendarTitle = calendarState?.attributes?.message || 'Keine Termine';
         const calendarSub = calendarState?.attributes?.all_day ? 'Ganztägig' : 
@@ -586,11 +691,13 @@ class PrismSidebarLightCard extends HTMLElement {
     }
 
     _handleCameraClick() {
-        if (!this._hass || !this.cameraEntity) return;
+        if (!this._hass) return;
+        const cameraEntity = this.getCurrentCameraEntity();
+        if (!cameraEntity) return;
         const event = new CustomEvent('hass-more-info', {
             bubbles: true,
             composed: true,
-            detail: { entityId: this.cameraEntity }
+            detail: { entityId: cameraEntity }
         });
         this.dispatchEvent(event);
     }
