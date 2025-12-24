@@ -507,12 +507,17 @@ class PrismSidebarCard extends HTMLElement {
             
             .graph-container {
                 height: 64px; width: 100%; margin-bottom: 24px; position: relative;
-                padding: 4px 0;
+                padding: 8px 0;
+                overflow: hidden;
             }
             .graph-container svg {
                 display: block;
                 width: 100%;
                 height: 100%;
+                overflow: visible;
+            }
+            .graph-container svg path {
+                vector-effect: non-scaling-stroke;
             }
             .forecast-grid {
                 display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
@@ -588,12 +593,13 @@ class PrismSidebarCard extends HTMLElement {
                 <div class="graph-container">
                     <svg width="100%" height="100%" viewBox="0 0 280 60" preserveAspectRatio="none">
                         <defs>
-                            <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3" />
+                            <linearGradient id="grad-sidebar" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.4" />
+                                <stop offset="50%" style="stop-color:#3b82f6;stop-opacity:0.2" />
                                 <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0" />
                             </linearGradient>
                         </defs>
-                        <path d="${graphPath}" fill="url(#grad)" stroke="#3b82f6" stroke-width="2" />
+                        <path d="${graphPath}" fill="url(#grad-sidebar)" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                 </div>
 
@@ -722,35 +728,55 @@ class PrismSidebarCard extends HTMLElement {
         this.dispatchEvent(event);
     }
 
-    // Helper to create smooth SVG path from data points
+    // Helper to create smooth SVG path from data points (similar to mini-graph-card)
     generateGraphPath(data, width, height) {
         if (!data || data.length === 0) return '';
         
-        const max = Math.max(...data) + 0.5;
-        const min = Math.min(...data) - 0.5;
+        // Calculate range with padding for better visualization (like mini-graph-card)
+        const dataMax = Math.max(...data);
+        const dataMin = Math.min(...data);
+        const dataRange = dataMax - dataMin;
+        
+        // Add padding: 20% of range, minimum 2 units
+        const padding = Math.max(dataRange * 0.2, 2);
+        const max = dataMax + padding;
+        const min = dataMin - padding;
         const range = max - min;
         
-        const stepX = width / (data.length - 1);
+        // Ensure we have a valid range
+        if (range <= 0) {
+            // Fallback: create a flat line in the middle
+            return `M 0,${height} L 0,${height/2} L ${width},${height/2} L ${width},${height} Z`;
+        }
         
-        let path = `M 0,${height} `; // Start bottom-left
+        const stepX = data.length > 1 ? width / (data.length - 1) : 0;
         
-        // Build line points
+        // Build line points with proper Y scaling (inverted: higher values = lower Y)
         const points = data.map((val, i) => {
             const x = i * stepX;
-            const y = height - ((val - min) / range) * height;
+            // Calculate Y: higher temp = lower Y position (closer to top)
+            const normalized = (val - min) / range;
+            // Add small margin at top and bottom (5% of height)
+            const margin = height * 0.05;
+            const y = margin + (height - 2 * margin) * (1 - normalized);
             return [x, y];
         });
 
-        // Start path at first point
-        path += `L ${points[0][0]},${points[0][1]} `;
-
-        // Simple line segments
-        for (let i = 0; i < points.length - 1; i++) {
-            const [x1, y1] = points[i+1];
-            path += `L ${x1},${y1} `;
+        // Start path from bottom-left corner
+        let path = `M 0,${height} `;
+        
+        // Move to first data point
+        if (points.length > 0) {
+            path += `L ${points[0][0]},${points[0][1]} `;
+        }
+        
+        // Draw smooth lines through all points (similar to mini-graph-card)
+        for (let i = 1; i < points.length; i++) {
+            const [x, y] = points[i];
+            path += `L ${x},${y} `;
         }
 
-        // Close shape for area fill
+        // Close shape: line to bottom-right, then back to start
         path += `L ${width},${height} Z`;
         
         return path;
