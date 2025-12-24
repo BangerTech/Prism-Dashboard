@@ -41,7 +41,8 @@ class PrismHeatLightCard extends HTMLElement {
     if (!config.entity) {
       throw new Error('Please define an entity');
     }
-    this.config = config;
+    // Create a copy to avoid modifying read-only config object
+    this.config = { ...config };
     // Normalize color (convert RGB arrays to hex if needed)
     if (this.config.color) {
       this.config.color = this._normalizeColor(this.config.color);
@@ -455,7 +456,8 @@ class PrismHeatLightCardEditor extends HTMLElement {
   setConfig(config) {
     console.log('[PrismHeatCardEditor] setConfig() called with:', config);
     const oldConfig = this._config;
-    this._config = config || {};
+    // Create a copy to avoid modifying read-only config object
+    this._config = { ...(config || {}) };
     
     // Only render if structure doesn't exist yet, otherwise just update values
     if (this._hass) {

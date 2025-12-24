@@ -42,7 +42,8 @@ class PrismCalendarCard extends HTMLElement {
     if (!config.entity) {
       throw new Error('Please define an entity');
     }
-    this.config = config;
+    // Create a copy to avoid modifying read-only config object
+    this.config = { ...config };
     // Set defaults
     if (!this.config.max_events) {
       this.config.max_events = 3;

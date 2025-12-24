@@ -29,7 +29,8 @@ class PrismMediaCard extends HTMLElement {
     if (!config.entity) {
       throw new Error('Please define an entity');
     }
-    this.config = config;
+    // Create a copy to avoid modifying read-only config object
+    this.config = { ...config };
     // Normalize playing_color (convert RGB arrays to hex if needed)
     if (this.config.playing_color) {
       this.config.playing_color = this._normalizeColor(this.config.playing_color);
