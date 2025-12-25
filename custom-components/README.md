@@ -169,15 +169,29 @@ Eine Bambu Lab 3D-Drucker-Karte mit AMS (Automatic Material System) Support, Gla
 <img width="400" alt="prism-bambu" src="images/prism-bambu.jpg" />
 
 **Verwendung:**
+
+**Basis-Konfiguration (alle Daten aus einer Entity):**
 ```yaml
 - type: custom:prism-bambu
-  entity: sensor.bambu_lab_printer_print_status  # Print Status Entity von ha-bambulab
+  entity: sensor.x1c_1  # Haupt-Printer Entity (wie X1C_1, bambu_lab_printer, etc.)
   name: Bambu Lab Printer
-  camera_entity: camera.bambu_lab_printer_chamber  # Optional: Chamber Camera (P1/A1) oder X1 mit LAN Mode
+  camera_entity: camera.x1c_1  # Optional: Camera Entity
+  image: /local/custom-components/images/prism-bambu-pic.png  # Optional: Drucker-Bild
+```
+
+**Erweiterte Konfiguration (mit zusätzlichen Sensoren):**
+```yaml
+- type: custom:prism-bambu
+  entity: sensor.x1c_1  # Haupt-Printer Entity
+  name: Bambu Lab Printer
+  camera_entity: camera.x1c_1  # Optional: Camera Entity
+  ams_entity: sensor.x1c_1_ams_1  # Optional: Separate AMS Entity (falls nicht in Haupt-Entity)
+  temperature_sensor: sensor.custom_nozzle_temp  # Optional: Custom Temperatur-Sensor
+  humidity_sensor: sensor.custom_humidity  # Optional: Custom Luftfeuchtigkeits-Sensor
   image: /local/custom-components/images/prism-bambu-pic.png
 ```
 
-**Hinweis:** Die Karte arbeitet mit der [ha-bambulab Integration](https://github.com/greghesp/ha-bambulab) und nutzt die `sensor.*_print_status` Entity als Haupt-Entity. Basierend auf dem Device-Namen werden automatisch alle anderen Sensoren gefunden (Temperaturen, Fans, Layer, AMS, etc.). Siehe [ha-bambulab Entities Dokumentation](https://docs.page/greghesp/ha-bambulab/entities) für Details.
+**Hinweis:** Die Karte arbeitet wie die offiziellen [ha-bambulab Cards](https://github.com/greghesp/ha-bambulab-cards) und liest standardmäßig **alle Daten aus den Attributen einer einzelnen Printer-Entity**. Optional können zusätzliche Sensor-Entities konfiguriert werden, z.B. für andere Drucker-Modelle oder Custom-Sensoren.
 
 **Features:**
 - ✅ AMS Support: Zeigt alle 4 AMS-Slots mit Farb-Visualisierung
@@ -189,20 +203,37 @@ Eine Bambu Lab 3D-Drucker-Karte mit AMS (Automatic Material System) Support, Gla
 - ✅ Fan-Geschwindigkeiten (Part & Aux)
 - ✅ Layer-Informationen und Fortschrittsbalken
 
-**Automatisch erkannte Sensoren (basierend auf Device-Name):**
+**Daten aus Printer-Entity Attributen:**
 
-Die Karte findet automatisch alle Sensoren basierend auf dem Device-Namen aus der `print_status` Entity:
+Die Karte liest standardmäßig alle Daten aus den Attributen der Haupt-Printer-Entity:
 
-- **Print Data:** `sensor.{device}_print_progress`, `sensor.{device}_remaining_time`, `sensor.{device}_end_time`
-- **Temperatures:** `sensor.{device}_nozzle`, `sensor.{device}_target_nozzle`, `sensor.{device}_bed`, `sensor.{device}_target_bed`, `sensor.{device}_chamber` (nicht auf A1/A1 Mini)
-- **Fans:** `sensor.{device}_cooling`, `sensor.{device}_aux`, `sensor.{device}_chamber` (nicht auf A1/A1 Mini)
-- **Layer:** `sensor.{device}_current_layer`, `sensor.{device}_total_layer_count`
-- **AMS:** `sensor.{device}_ams_active_tray`, `sensor.{device}_ams_active_tray_index`, `sensor.{device}_ams_tray_1` bis `sensor.{device}_ams_tray_4`
+- **Print Data:** `print_progress` / `progress`, `remaining_time`, `end_time`
+- **Temperatures:** `nozzle_temp` / `nozzle`, `target_nozzle_temp`, `bed_temp` / `bed`, `target_bed_temp`, `chamber_temp` / `chamber`
+- **Fans:** `cooling_fan_speed` / `cooling`, `aux_fan_speed` / `aux`
+- **Layer:** `current_layer`, `total_layer_count` / `total_layers`
+- **AMS:** `ams` / `ams_data` / `ams_slots` - Array mit AMS-Slot-Daten (type, color, remaining, active, empty)
 
-**Beispiel:** Wenn die Entity `sensor.bambu_lab_printer_print_status` ist, werden automatisch `sensor.bambu_lab_printer_nozzle`, `sensor.bambu_lab_printer_bed`, etc. gefunden.
+**Optional: Zusätzliche Sensor-Entities:**
+
+Falls bestimmte Daten nicht in der Haupt-Entity vorhanden sind, können separate Entities konfiguriert werden:
+
+- **`ams_entity`**: Separate AMS-Entity (z.B. `sensor.x1c_1_ams_1`)
+- **`temperature_sensor`**: Custom Temperatur-Sensor (z.B. `sensor.chamber_temperature`)
+- **`humidity_sensor`**: Custom Luftfeuchtigkeits-Sensor (z.B. `sensor.chamber_humidity`)
+
+**Beispiel Entity:** `sensor.x1c_1` (Haupt-Printer-Entity mit allen Daten in den Attributen)
+
+**Bild hochladen:**
+
+Das Drucker-Bild muss manuell in Home Assistant hochgeladen werden:
+1. Kopiere das Bild nach `/config/www/custom-components/images/prism-bambu-pic.png` (oder `.jpg`)
+2. Oder verwende einen anderen Pfad und gib ihn im `image`-Feld an
+3. Die Karte unterstützt sowohl `.png` als auch `.jpg` Formate
+4. Falls das Bild nicht geladen werden kann, versucht die Karte automatisch die andere Endung (.png ↔ .jpg)
+5. Als letzter Fallback wird ein Drucker-Icon angezeigt
 
 **ha-bambulab Integration:**
-Die Karte ist optimiert für die [ha-bambulab Integration](https://github.com/greghesp/ha-bambulab) und nutzt die [standard Sensor-Entities](https://docs.page/greghesp/ha-bambulab/entities) dieser Integration.
+Die Karte ist kompatibel mit der [ha-bambulab Integration](https://github.com/greghesp/ha-bambulab) und arbeitet wie die [offiziellen Bambu Lab Cards](https://github.com/greghesp/ha-bambulab-cards).
 
 ---
 

@@ -8,9 +8,9 @@ class PrismBambuCard extends HTMLElement {
 
   static getStubConfig() {
     return {
-      entity: 'sensor.bambu_lab_printer_print_status',
+      entity: 'sensor.x1c_1',
       name: 'Bambu Lab Printer',
-      camera_entity: 'camera.bambu_lab_printer_chamber',
+      camera_entity: 'camera.x1c_1',
       image: '/local/custom-components/images/prism-bambu-pic.png'
     };
   }
@@ -20,9 +20,9 @@ class PrismBambuCard extends HTMLElement {
       schema: [
         {
           name: 'entity',
-          label: 'Print Status entity (sensor.*_print_status)',
+          label: 'Printer entity (e.g. sensor.x1c_1)',
           required: true,
-          selector: { entity: { domain: 'sensor' } }
+          selector: { entity: {} }
         },
         {
           name: 'name',
@@ -31,12 +31,27 @@ class PrismBambuCard extends HTMLElement {
         },
         {
           name: 'camera_entity',
-          label: 'Camera entity (camera.*_chamber)',
+          label: 'Camera entity (optional)',
           selector: { entity: { domain: 'camera' } }
         },
         {
+          name: 'ams_entity',
+          label: 'AMS entity (optional - if AMS data not in main entity)',
+          selector: { entity: {} }
+        },
+        {
+          name: 'temperature_sensor',
+          label: 'Custom temperature sensor (optional)',
+          selector: { entity: { domain: 'sensor' } }
+        },
+        {
+          name: 'humidity_sensor',
+          label: 'Custom humidity sensor (optional)',
+          selector: { entity: { domain: 'sensor' } }
+        },
+        {
           name: 'image',
-          label: 'Printer image path',
+          label: 'Printer image path (optional)',
           selector: { text: {} }
         }
       ]
@@ -143,65 +158,40 @@ class PrismBambuCard extends HTMLElement {
     const entityId = this.config.entity;
     const state = this._hass.states[entityId];
     const stateStr = state ? state.state : 'unavailable';
+    const attributes = state ? state.attributes : {};
     
-    // Extract device name from entity ID
-    // Supports: sensor.{device}_print_status, sensor.{device}_print_progress, or any sensor.{device}_*
-    let deviceName = '';
-    if (entityId.startsWith('sensor.')) {
-      const parts = entityId.replace('sensor.', '').split('_');
-      // Remove common suffixes to get device name
-      const suffixes = ['print_status', 'print_progress', 'nozzle', 'bed', 'chamber', 'cooling', 'aux'];
-      // Find where the device name ends (before the first known suffix)
-      let deviceParts = [];
-      for (let i = 0; i < parts.length; i++) {
-        if (suffixes.includes(parts[i])) {
-          break;
-        }
-        deviceParts.push(parts[i]);
-      }
-      deviceName = deviceParts.length > 0 ? deviceParts.join('_') : parts.slice(0, -1).join('_');
+    // Read ALL data from printer entity attributes (like official bambu-lab cards)
+    // Entity name format: X1C_1, bambu_lab_printer, etc.
+    
+    const progress = parseFloat(attributes.print_progress || attributes.progress) || 0;
+    const printTimeLeft = attributes.remaining_time || attributes.print_time_left || '0m';
+    const printEndTime = attributes.end_time || attributes.print_end_time || '--:--';
+    
+    // Temperatures - try main entity first, then custom sensor if configured
+    let nozzleTemp, targetNozzleTemp, bedTemp, targetBedTemp, chamberTemp;
+    
+    if (this.config.temperature_sensor) {
+      // Use custom temperature sensor if configured
+      const tempSensor = this._hass.states[this.config.temperature_sensor];
+      nozzleTemp = tempSensor ? parseFloat(tempSensor.state) || 0 : 0;
+      targetNozzleTemp = tempSensor?.attributes?.target || 0;
     } else {
-      // Fallback: try to extract from any entity
-      deviceName = entityId.split('.').pop().split('_').slice(0, -1).join('_');
+      // Use main entity attributes
+      nozzleTemp = parseFloat(attributes.nozzle_temp || attributes.nozzle) || 0;
+      targetNozzleTemp = parseFloat(attributes.target_nozzle_temp || attributes.target_nozzle) || 0;
     }
     
-    // If we couldn't extract, use a default pattern
-    if (!deviceName || deviceName === '') {
-      deviceName = entityId.replace(/^sensor\./, '').replace(/_print_status$/, '').replace(/_print_progress$/, '');
-    }
+    bedTemp = parseFloat(attributes.bed_temp || attributes.bed) || 0;
+    targetBedTemp = parseFloat(attributes.target_bed_temp || attributes.target_bed) || 0;
+    chamberTemp = parseFloat(attributes.chamber_temp || attributes.chamber) || 0;
     
-    // Find related sensor entities based on device name
-    const getSensor = (suffix) => {
-      const sensorId = `sensor.${deviceName}_${suffix}`;
-      const sensorState = this._hass.states[sensorId];
-      return sensorState ? parseFloat(sensorState.state) || 0 : 0;
-    };
+    // Fans
+    const partFanSpeed = parseFloat(attributes.cooling_fan_speed || attributes.cooling || attributes.fan_speed) || 0;
+    const auxFanSpeed = parseFloat(attributes.aux_fan_speed || attributes.aux) || 0;
     
-    const getSensorState = (suffix) => {
-      const sensorId = `sensor.${deviceName}_${suffix}`;
-      const sensorState = this._hass.states[sensorId];
-      return sensorState ? sensorState.state : null;
-    };
-    
-    // Print Data (from ha-bambulab documentation)
-    const progress = getSensor('print_progress');
-    const printTimeLeft = getSensorState('remaining_time') || '0m';
-    const printEndTime = getSensorState('end_time') || '--:--';
-    
-    // Temperatures (from ha-bambulab documentation)
-    const nozzleTemp = getSensor('nozzle');
-    const targetNozzleTemp = getSensor('target_nozzle');
-    const bedTemp = getSensor('bed');
-    const targetBedTemp = getSensor('target_bed');
-    const chamberTemp = getSensor('chamber') || 0; // Not on A1/A1 Mini
-    
-    // Fans (from ha-bambulab documentation)
-    const partFanSpeed = getSensor('cooling') || 0;
-    const auxFanSpeed = getSensor('aux') || 0;
-    
-    // Layer info (from ha-bambulab documentation)
-    const currentLayer = getSensor('current_layer') || 0;
-    const totalLayers = getSensor('total_layer_count') || 0;
+    // Layer
+    const currentLayer = parseInt(attributes.current_layer) || 0;
+    const totalLayers = parseInt(attributes.total_layer_count || attributes.total_layers) || 0;
     
     const name = this.config.name || (state ? state.attributes.friendly_name : null) || 'Bambu Lab Printer';
     
@@ -210,52 +200,49 @@ class PrismBambuCard extends HTMLElement {
     const cameraState = cameraEntity ? this._hass.states[cameraEntity] : null;
     const cameraImage = cameraState?.attributes?.entity_picture || null;
     
-    // Image path - try config first, then fallback to default
+    // Image path - support both .png and .jpg
     let printerImg = this.config.image;
     if (!printerImg) {
-      // Try to get from www path first, then fallback
+      // Try .png first, will have fallback in HTML to try .jpg if .png fails
       printerImg = '/local/custom-components/images/prism-bambu-pic.png';
     }
 
-    // AMS Data - from ha-bambulab sensor entities
-    // Get active tray index
-    const activeTrayIndex = getSensor('ams_active_tray_index') || 0;
-    const activeTray = getSensorState('ams_active_tray') || null;
-    
-    // Get AMS tray data (tray_1, tray_2, tray_3, tray_4)
+    // AMS Data - Read from printer entity attributes OR separate AMS entity
     let amsData = [];
-    for (let i = 1; i <= 4; i++) {
-      const trayId = `sensor.${deviceName}_ams_tray_${i}`;
-      const trayState = this._hass.states[trayId];
-      
-      if (trayState && trayState.attributes) {
-        const attrs = trayState.attributes;
-        const isEmpty = attrs.empty === true || attrs.empty === 'true';
-        const isActive = (activeTrayIndex === i) || (activeTray === `Tray ${i}`);
-        
-        amsData.push({
-          id: i,
-          type: attrs.type || attrs.name || '',
-          color: attrs.color || '#666666',
-          remaining: isEmpty ? 0 : (parseFloat(attrs.remaining_filament) || 0),
-          active: isActive,
-          empty: isEmpty
-        });
-      } else {
-        // Empty slot
-        amsData.push({
-          id: i,
-          type: '',
-          color: '#666666',
-          remaining: 0,
-          active: false,
-          empty: true
-        });
+    
+    // Try different attribute names for AMS data
+    let amsSource = attributes.ams || attributes.ams_data || attributes.ams_slots || [];
+    
+    // If no AMS data in main entity, try separate AMS entity if configured
+    if ((!Array.isArray(amsSource) || amsSource.length === 0) && this.config.ams_entity) {
+      const amsState = this._hass.states[this.config.ams_entity];
+      if (amsState && amsState.attributes) {
+        amsSource = amsState.attributes.ams || amsState.attributes.ams_data || amsState.attributes.ams_slots || [];
       }
     }
     
-    // If no AMS data found, use preview data
-    if (amsData.every(slot => slot.empty)) {
+    if (Array.isArray(amsSource) && amsSource.length > 0) {
+      amsData = amsSource.map((slot, index) => {
+        // Support different attribute formats
+        const type = slot.type || slot.filament_type || slot.name || '';
+        const color = slot.color || slot.filament_color || '#666666';
+        const remaining = parseFloat(slot.remaining || slot.remaining_filament || slot.remain) || 0;
+        const active = slot.active || slot.is_active || slot.tray_active || false;
+        const empty = slot.empty || (!type);
+        
+        return {
+          id: index + 1,
+          type,
+          color,
+          remaining,
+          active,
+          empty
+        };
+      });
+    }
+    
+    // If no AMS data found or all empty, use preview data
+    if (amsData.length === 0 || amsData.every(slot => slot.empty)) {
       amsData = [
         { id: 1, type: 'PLA', color: '#FF4444', remaining: 85, active: false },
         { id: 2, type: 'PETG', color: '#4488FF', remaining: 42, active: true },
@@ -264,10 +251,18 @@ class PrismBambuCard extends HTMLElement {
       ];
     }
 
-    // Ensure we have 4 AMS slots
+    // Ensure we have exactly 4 AMS slots
     while (amsData.length < 4) {
-      amsData.push({ id: amsData.length + 1, type: '', color: '#666666', remaining: 0, active: false, empty: true });
+      amsData.push({ 
+        id: amsData.length + 1, 
+        type: '', 
+        color: '#666666', 
+        remaining: 0, 
+        active: false, 
+        empty: true 
+      });
     }
+    amsData = amsData.slice(0, 4); // Max 4 slots
 
     return {
       stateStr,
@@ -802,7 +797,7 @@ class PrismBambuCard extends HTMLElement {
                 <div class="view-toggle">
                     <ha-icon icon="${data.cameraEntity ? 'mdi:video' : 'mdi:image'}"></ha-icon>
                 </div>
-                <img src="${data.printerImg}" class="printer-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                <img src="${data.printerImg}" class="printer-img" onerror="this.onerror=null; if(this.src.endsWith('.png')) { this.src=this.src.replace('.png', '.jpg'); } else if(this.src.endsWith('.jpg')) { this.src=this.src.replace('.jpg', '.png'); } else { this.style.display='none'; this.nextElementSibling.style.display='flex'; }" />
                 <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; color: rgba(255,255,255,0.3); font-size: 14px;">
                   <ha-icon icon="mdi:printer-3d" style="width: 64px; height: 64px;"></ha-icon>
                 </div>
