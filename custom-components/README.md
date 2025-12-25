@@ -162,6 +162,43 @@ Eine 3D-Drucker-Karte mit Glassmorphism-Design zur Anzeige von Fortschritt, Temp
 
 ---
 
+### prism-bambu
+
+Eine Bambu Lab 3D-Drucker-Karte mit AMS (Automatic Material System) Support, Glassmorphism-Design und vollständiger Anzeige von Druckfortschritt, Temperaturen, Lüfter, Layer-Infos und allen 4 AMS-Slots.
+
+<img width="400" alt="prism-bambu" src="images/prism-bambu.jpg" />
+
+**Verwendung:**
+```yaml
+- type: custom:prism-bambu
+  entity: sensor.bambu_printer           # Sensor/Entität mit Druckerstatus & Attributen
+  name: Bambu Lab Printer
+  camera_entity: camera.bambu_printer    # Optional: Drucker-Kamera
+  image: /local/custom-components/images/prism-bambu-pic.png
+```
+
+**Features:**
+- ✅ AMS Support: Zeigt alle 4 AMS-Slots mit Farb-Visualisierung
+- ✅ Filament-Typ und Restmenge in %
+- ✅ Aktiver Slot wird hervorgehoben
+- ✅ Camera-Toggle zwischen Printer-Image und Live-Feed
+- ✅ Interaktive Buttons für Pause/Stop/Speed
+- ✅ Temperatur-Overlays (Nozzle, Bed, Chamber)
+- ✅ Fan-Geschwindigkeiten (Part & Aux)
+- ✅ Layer-Informationen und Fortschrittsbalken
+
+**Unterstützte Attribute:**
+- `progress` - Druckfortschritt in %
+- `print_time_left` - Verbleibende Zeit
+- `nozzle_temp` / `target_nozzle_temp` - Nozzle Temperaturen
+- `bed_temp` / `target_bed_temp` - Bed Temperaturen
+- `chamber_temp` - Chamber Temperatur
+- `fan_speed` / `aux_fan_speed` - Fan Geschwindigkeiten
+- `current_layer` / `total_layers` - Layer Information
+- `ams` oder `ams_data` - AMS Slot Daten (Array mit `type`, `color`, `remaining`, `active`)
+
+---
+
 ### prism-sidebar
 
 Eine vollflächige Sidebar-Karte mit Kamera, Uhr, Kalender, Wetter-Forecast und Energie-Übersicht – ideal für Grid-Layouts mit eigener `sidebar`-Spalte.
