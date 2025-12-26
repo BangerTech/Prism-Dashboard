@@ -1398,7 +1398,7 @@ class PrismBambuCard extends HTMLElement {
         .cover-image-container {
             position: absolute;
             /* Position on the print bed area - adjust based on printer image */
-            bottom: 28%;
+            bottom: 29%;
             left: 50%;
             transform: translateX(-50%);
             width: 38%;
