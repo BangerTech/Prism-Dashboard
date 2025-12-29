@@ -3,7 +3,7 @@
  * https://github.com/BangerTech/Prism-Dashboard
  * 
  * Version: 1.0.0
- * Build Date: 2025-12-29T17:00:34.925Z
+ * Build Date: 2025-12-29T17:25:12.104Z
  * 
  * This file contains all Prism custom cards bundled together.
  * Just add this single file as a resource in Lovelace:
@@ -20,7 +20,7 @@ console.info(
 // ============================================
 // prism-button.js
 // ============================================
-
+(function() {
 
 class PrismButtonCard extends HTMLElement {
   constructor() {
@@ -336,11 +336,12 @@ window.customCards.push({
   description: "A glassmorphism-styled entity card with neumorphism effects and glowing icon circle"
 });
 
+})();
 
 // ============================================
 // prism-button-light.js
 // ============================================
-
+(function() {
 
 class PrismButtonLightCard extends HTMLElement {
   constructor() {
@@ -656,11 +657,12 @@ window.customCards.push({
   description: "A glassmorphism-styled entity card with neumorphism effects and glowing icon circle"
 });
 
+})();
 
 // ============================================
 // prism-heat.js
 // ============================================
-
+(function() {
 
 class PrismHeatCard extends HTMLElement {
   constructor() {
@@ -1348,11 +1350,12 @@ window.customCards.push({
   description: "A custom thermostat knob card"
 });
 
+})();
 
 // ============================================
 // prism-heat-light.js
 // ============================================
-
+(function() {
 
 class PrismHeatLightCard extends HTMLElement {
   constructor() {
@@ -2040,11 +2043,12 @@ window.customCards.push({
   description: "A custom thermostat knob card (light theme)"
 });
 
+})();
 
 // ============================================
 // prism-heat-small.js
 // ============================================
-
+(function() {
 class PrismHeatSmallCard extends HTMLElement {
   constructor() {
     super();
@@ -2279,11 +2283,12 @@ window.customCards.push({
   description: "A compact heating card with inlet controls"
 });
 
+})();
 
 // ============================================
 // prism-heat-small-light.js
 // ============================================
-
+(function() {
 class PrismHeatSmallLightCard extends HTMLElement {
   constructor() {
     super();
@@ -2518,11 +2523,12 @@ window.customCards.push({
   description: "A compact heating card with inlet controls (light theme)"
 });
 
+})();
 
 // ============================================
 // prism-media.js
 // ============================================
-
+(function() {
 class PrismMediaCard extends HTMLElement {
   constructor() {
     super();
@@ -2849,11 +2855,12 @@ window.customCards.push({
   preview: true,
   description: "A custom media player card with inlet controls"
 });
+})();
 
 // ============================================
 // prism-media-light.js
 // ============================================
-
+(function() {
 class PrismMediaLightCard extends HTMLElement {
   constructor() {
     super();
@@ -3180,11 +3187,12 @@ window.customCards.push({
   preview: true,
   description: "A custom media player card with inlet controls"
 });
+})();
 
 // ============================================
 // prism-calendar.js
 // ============================================
-
+(function() {
 
 class PrismCalendarCard extends HTMLElement {
   constructor() {
@@ -3582,11 +3590,12 @@ window.customCards.push({
   description: "A custom calendar card with configurable events and colors"
 });
 
+})();
 
 // ============================================
 // prism-calendar-light.js
 // ============================================
-
+(function() {
 
 class PrismCalendarLightCard extends HTMLElement {
   constructor() {
@@ -3984,11 +3993,12 @@ window.customCards.push({
   description: "A custom calendar card with configurable events and colors"
 });
 
+})();
 
 // ============================================
 // prism-shutter.js
 // ============================================
-
+(function() {
 
 class PrismShutterCard extends HTMLElement {
   constructor() {
@@ -4271,11 +4281,12 @@ window.customCards.push({
   description: "A custom shutter card with inlet styling"
 });
 
+})();
 
 // ============================================
 // prism-shutter-light.js
 // ============================================
-
+(function() {
 
 class PrismShutterLightCard extends HTMLElement {
   constructor() {
@@ -4558,11 +4569,12 @@ window.customCards.push({
   description: "A custom shutter card with inlet styling"
 });
 
+})();
 
 // ============================================
 // prism-shutter-vertical.js
 // ============================================
-
+(function() {
 class PrismShutterVerticalCard extends HTMLElement {
     constructor() {
       super();
@@ -4900,11 +4912,12 @@ window.customCards.push({
   preview: true,
   description: "A narrow vertical shutter card with inlet styling"
 });
+})();
 
 // ============================================
 // prism-shutter-vertical-light.js
 // ============================================
-
+(function() {
 class PrismShutterVerticalLightCard extends HTMLElement {
     constructor() {
       super();
@@ -5242,11 +5255,12 @@ window.customCards.push({
   preview: true,
   description: "A narrow vertical shutter card with inlet styling"
 });
+})();
 
 // ============================================
 // prism-vacuum.js
 // ============================================
-
+(function() {
 class PrismVacuumCard extends HTMLElement {
     constructor() {
       super();
@@ -5978,11 +5992,12 @@ class PrismVacuumCard extends HTMLElement {
     description: "A robot vacuum card with inlet styling and animation"
   });
 
+})();
 
 // ============================================
 // prism-vacuum-light.js
 // ============================================
-
+(function() {
 class PrismVacuumLightCard extends HTMLElement {
     constructor() {
       super();
@@ -6693,11 +6708,12 @@ class PrismVacuumLightCard extends HTMLElement {
     description: "A robot vacuum card with inlet styling and animation (light theme)"
   });
 
+})();
 
 // ============================================
 // prism-led.js
 // ============================================
-
+(function() {
 class PrismLedCard extends HTMLElement {
     constructor() {
       super();
@@ -7261,11 +7277,12 @@ class PrismLedCard extends HTMLElement {
     description: "A glassmorphism light card with color wheel and inlet controls"
   });
 
+})();
 
 // ============================================
 // prism-led-light.js
 // ============================================
-
+(function() {
 class PrismLedLightCard extends HTMLElement {
     constructor() {
       super();
@@ -7829,11 +7846,12 @@ class PrismLedLightCard extends HTMLElement {
     description: "A glassmorphism light card with color wheel and inlet controls (light theme)"
   });
 
+})();
 
 // ============================================
 // prism-sidebar.js
 // ============================================
-
+(function() {
 class PrismSidebarCard extends HTMLElement {
     constructor() {
         super();
@@ -9114,11 +9132,12 @@ window.customCards.push({
 });
 
 
+})();
 
 // ============================================
 // prism-sidebar-light.js
 // ============================================
-
+(function() {
 class PrismSidebarLightCard extends HTMLElement {
     constructor() {
         super();
@@ -10399,11 +10418,12 @@ window.customCards.push({
 });
 
 
+})();
 
 // ============================================
 // prism-energy.js
 // ============================================
-
+(function() {
 /**
  * Prism Energy Card
  * A glassmorphism energy flow card for Home Assistant
@@ -11516,11 +11536,12 @@ console.info(
 );
 
 
+})();
 
 // ============================================
 // prism-energy-horizontal.js
 // ============================================
-
+(function() {
 /**
  * Prism Energy Horizontal Card
  * A glassmorphism energy flow card for Home Assistant
@@ -12961,11 +12982,12 @@ console.info(
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
 );
 
+})();
 
 // ============================================
 // prism-3dprinter.js
 // ============================================
-
+(function() {
 class Prism3DPrinterCard extends HTMLElement {
   constructor() {
     super();
@@ -13532,11 +13554,12 @@ window.customCards.push({
 
 
 
+})();
 
 // ============================================
 // prism-bambu.js
 // ============================================
-
+(function() {
 // Bambu Lab Manufacturer and Models for device filtering
 // Synchronized with ha-bambulab-cards repository (https://github.com/greghesp/ha-bambulab-cards)
 const BAMBU_MANUFACTURER = 'Bambu Lab';
@@ -16195,11 +16218,12 @@ window.customCards.push({
 });
 
 
+})();
 
 // ============================================
 // prism-creality.js
 // ============================================
-
+(function() {
 // Creality Manufacturer and Models for device filtering
 // Based on Creality-Control integration (https://github.com/SiloCityLabs/Creality-Control)
 const CREALITY_MANUFACTURER = 'Creality';
@@ -17660,3 +17684,4 @@ window.customCards.push({
 });
 
 
+})();
