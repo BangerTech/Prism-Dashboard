@@ -1,20 +1,20 @@
 ## Custom Cards
 
-> **💡 Tipp:** Nach dem Hinzufügen der Karten zu den Resources kannst du sie im Dashboard-Editor (Vorschau-Teil) finden, indem du z.B. "prism" in die Suche eingibst. Alle Prism-Karten werden dann angezeigt.
+> **💡 Tip:** After adding the cards to Resources, you can find them in the Dashboard Editor (preview section) by searching for "prism". All Prism cards will then be displayed.
 
 ---
 
 ### prism-heat
 
-Eine benutzerdefinierte Thermostat-Knob-Karte mit Glassmorphism-Design.
+A custom thermostat knob card with glassmorphism design.
 
 <img width="400" alt="prism-heat" src="https://github.com/user-attachments/assets/5a3a4adb-b228-4696-8dff-768e417fc38f" />
 
-**Verwendung:**
+**Usage:**
 ```yaml
 - type: custom:prism-heat
   entity: climate.living_room
-  name: Wohnzimmer
+  name: Living Room
   color: "#fb923c"
 ```
 
@@ -22,30 +22,30 @@ Eine benutzerdefinierte Thermostat-Knob-Karte mit Glassmorphism-Design.
 
 ### prism-heat-small
 
-Eine kompakte Heizungs-Karte mit Inlet-Styling und einfachen Temperatur-Controls.
+A compact heating card with inlet styling and simple temperature controls.
 
 <img width="400" alt="prism-heat-small" src="https://github.com/user-attachments/assets/992f981e-bbb2-4af8-b41f-06602d49e206" />
 
-**Verwendung:**
+**Usage:**
 ```yaml
 - type: custom:prism-heat-small
   entity: climate.living_room
-  name: Wohnzimmer
+  name: Living Room
 ```
 
 ---
 
 ### prism-button
 
-Eine Glassmorphism-stylisierte Entity-Button-Karte mit Neumorphismus-Effekten und leuchtendem Icon-Kreis.
+A glassmorphism-styled entity button card with neumorphism effects and glowing icon circle.
 
 <img width="400" alt="prism-button" src="https://github.com/user-attachments/assets/f0220fcb-e03b-4278-9baa-1591db9a4137" />
 
-**Verwendung:**
+**Usage:**
 ```yaml
 - type: custom:prism-button
   entity: light.living_room_light
-  name: Wohnzimmer
+  name: Living Room
   icon: mdi:lightbulb
   layout: horizontal
   active_color: "#ffc864"
@@ -55,11 +55,11 @@ Eine Glassmorphism-stylisierte Entity-Button-Karte mit Neumorphismus-Effekten un
 
 ### prism-media
 
-Eine Media-Player-Karte mit Glassmorphism-Design und Inlet-Styling.
+A media player card with glassmorphism design and inlet styling.
 
 <img width="400" alt="prism-media" src="https://github.com/user-attachments/assets/5429e0f0-268f-496e-8ccb-2485fbc9bd30" />
 
-**Verwendung:**
+**Usage:**
 ```yaml
 - type: custom:prism-media
   entity: media_player.living_room_speaker
@@ -70,11 +70,11 @@ Eine Media-Player-Karte mit Glassmorphism-Design und Inlet-Styling.
 
 ### prism-calendar
 
-Eine Kalender-Karte mit Glassmorphism-Design zur Anzeige kommender Termine.
+A calendar card with glassmorphism design for displaying upcoming events.
 
 <img width="400" alt="prism-calendar" src="https://github.com/user-attachments/assets/d95ac18e-bd1b-4de4-ab78-248ac027bbd9" />
 
-**Verwendung:**
+**Usage:**
 ```yaml
 - type: custom:prism-calendar
   entity: calendar.family_shared
@@ -87,76 +87,76 @@ Eine Kalender-Karte mit Glassmorphism-Design zur Anzeige kommender Termine.
 
 ### prism-shutter
 
-Eine horizontale Jalousien-Karte mit Inlet-Slider und Glassmorphism-Design.
+A horizontal shutter card with inlet slider and glassmorphism design.
 
 <img width="400" alt="prism-shutter" src="https://github.com/user-attachments/assets/eb905a66-b1be-456d-a729-7d3d24434d48" />
 
-**Verwendung:**
+**Usage:**
 ```yaml
 - type: custom:prism-shutter
   entity: cover.living_room_shutter
-  name: Wohnzimmer
+  name: Living Room
 ```
 
 ---
 
 ### prism-shutter-vertical
 
-Eine vertikale Jalousien-Karte mit Inlet-Slider und kompaktem Design.
+A vertical shutter card with inlet slider and compact design.
 
 <img width="200" alt="prism-shutter-vertical" src="https://github.com/user-attachments/assets/880b7e46-f150-4b32-b114-651a3f7d4ef6" />
 
-**Verwendung:**
+**Usage:**
 ```yaml
 - type: custom:prism-shutter-vertical
   entity: cover.bedroom_shutter
-  name: Schlafzimmer
+  name: Bedroom
 ```
 
 ---
 
 ### prism-vacuum
 
-Eine Staubsauger-Roboter-Karte mit Inlet-Styling, Animation und Saugleistungssteuerung.
+A vacuum robot card with inlet styling, animation, and suction power control.
 
 <img width="400" alt="prism-vacuum" src="images/prism-vacuum.png" />
 
-**Verwendung:**
+**Usage:**
 ```yaml
 - type: custom:prism-vacuum
   entity: vacuum.robot_vacuum
-  name: Staubsauger
+  name: Vacuum
 ```
 
 ---
 
 ### prism-led
 
-Eine LED-Licht-Karte mit interaktivem Farbrad, Weiß-Temperatur-Steuerung und Helligkeitsregelung.
+An LED light card with interactive color wheel, white temperature control, and brightness adjustment.
 
 <img width="400" alt="prism-led" src="images/prism-led.png" />
 
-**Verwendung:**
+**Usage:**
 ```yaml
 - type: custom:prism-led
   entity: light.living_room_led
-  name: Wohnzimmer LED
+  name: Living Room LED
 ```
 
 ---
 
 ### prism-3dprinter
 
-Eine 3D-Drucker-Karte mit Glassmorphism-Design zur Anzeige von Fortschritt, Temperaturen, Lüfter und Layer-Infos.
+A 3D printer card with glassmorphism design for displaying progress, temperatures, fans, and layer info.
 
 <img width="400" alt="prism-3dprinter" src="images/prism-3dprinter.png" />
 
-**Verwendung:**
+**Usage:**
 ```yaml
 - type: custom:prism-3dprinter
-  entity: sensor.3d_printer_state        # Sensor/Entität mit Druckerstatus & Attributen
+  entity: sensor.3d_printer_state        # Sensor/Entity with printer status & attributes
   name: 3D Printer
-  camera_entity: camera.3d_printer       # Optional: Drucker-Kamera
+  camera_entity: camera.3d_printer       # Optional: Printer camera
   image: /local/custom-components/images/prism-3dprinter.png
 ```
 
@@ -164,278 +164,278 @@ Eine 3D-Drucker-Karte mit Glassmorphism-Design zur Anzeige von Fortschritt, Temp
 
 ### prism-bambu
 
-Eine Bambu Lab 3D-Drucker-Karte mit AMS (Automatic Material System) Support, Glassmorphism-Design und vollständiger Anzeige von Druckfortschritt, Temperaturen, Lüfter, Layer-Infos und allen 4 AMS-Slots.
+A Bambu Lab 3D printer card with AMS (Automatic Material System) support, glassmorphism design, and full display of print progress, temperatures, fans, layer info, and all 4 AMS slots.
 
 <img width="400" alt="prism-bambu" src="images/prism-bambu.jpg" />
 
-**Verwendung:**
+**Usage:**
 
-**Basis-Konfiguration (Visual Editor):**
+**Basic Configuration (Visual Editor):**
 ```yaml
 - type: custom:prism-bambu
-  printer: <device_id>  # Bambu Lab Drucker-Gerät (z.B. aus Device-Registry)
+  printer: <device_id>  # Bambu Lab printer device (e.g., from Device Registry)
   name: Bambu Lab Printer  # Optional: Custom Name
-  image: /local/custom-components/images/prism-bambu-pic.png  # Optional: Drucker-Bild
+  image: /local/custom-components/images/prism-bambu-pic.png  # Optional: Printer image
 ```
 
-**Erweiterte Konfiguration (mit AMS und Kamera):**
+**Advanced Configuration (with AMS and Camera):**
 ```yaml
 - type: custom:prism-bambu
-  printer: <device_id>  # Bambu Lab Drucker-Gerät
-  ams_device: <ams_device_id>  # Optional: AMS-Gerät (falls mehrere AMS vorhanden)
+  printer: <device_id>  # Bambu Lab printer device
+  ams_device: <ams_device_id>  # Optional: AMS device (if multiple AMS present)
   name: Bambu Lab Printer
   camera_entity: camera.x1c_1_kamera  # Optional: Camera Entity
-  image: /local/custom-components/images/prism-bambu-pic.png  # Optional: .png oder .jpg
+  image: /local/custom-components/images/prism-bambu-pic.png  # Optional: .png or .jpg
 ```
 
-**Hinweis:** Die Karte verwendet die **Device-Registry** von Home Assistant und filtert automatisch alle relevanten Entities basierend auf dem ausgewählten Drucker-Gerät. Dies funktioniert genau wie die offiziellen [ha-bambulab Cards](https://github.com/greghesp/ha-bambulab-cards).
+**Note:** The card uses Home Assistant's **Device Registry** and automatically filters all relevant entities based on the selected printer device. This works exactly like the official [ha-bambulab Cards](https://github.com/greghesp/ha-bambulab-cards).
 
 **Features:**
-- ✅ **AMS Support**: Zeigt alle 4 AMS-Slots mit Farb-Visualisierung
-- ✅ **Filament-Typ Erkennung**: Unterstützt PCTG, PETG, PLA, ABS, TPU, ASA, PA-CF, PA, PC, PVA, HIPS, PP
-- ✅ **Restmenge-Anzeige**: Zeigt `?` wenn RFID-Tracking nicht aktiv, sonst Prozent
-- ✅ **Aktiver Slot**: Wird automatisch hervorgehoben
-- ✅ **Live Kamera-Stream**: Toggle zwischen Drucker-Bild und Live-Video-Stream
-- ✅ **Kamera-Popup**: Klick auf Kamera öffnet großes More-Info Fenster
-- ✅ **Chamber Light Control**: Licht-Button zum Ein/Ausschalten der Druckraum-Beleuchtung
-- ✅ **Dynamisches Bild**: Drucker-Bild wird abgedunkelt wenn Licht aus ist
-- ✅ **Interaktive Buttons**: Pause/Stop/Speed mit korrekter State-Logik
-- ✅ **Temperatur-Overlays**: Nozzle, Bed, Chamber mit Ziel-Temperaturen
-- ✅ **Fan-Geschwindigkeiten**: Part & Aux Fan Anzeige
-- ✅ **Layer-Informationen**: Aktuelle Layer / Gesamt-Layer
-- ✅ **Fortschrittsbalken**: Visueller Progress-Bar mit Prozent
-- ✅ **Status-Indikator**: Farbiger Punkt (grün=pulsierend beim Drucken, gelb=pausiert, grau=idle)
+- ✅ **AMS Support**: Shows all 4 AMS slots with color visualization
+- ✅ **Filament Type Detection**: Supports PCTG, PETG, PLA, ABS, TPU, ASA, PA-CF, PA, PC, PVA, HIPS, PP
+- ✅ **Remaining Amount Display**: Shows `?` if RFID tracking is not active, otherwise percentage
+- ✅ **Active Slot**: Automatically highlighted
+- ✅ **Live Camera Stream**: Toggle between printer image and live video stream
+- ✅ **Camera Popup**: Click on camera opens large More-Info window
+- ✅ **Chamber Light Control**: Light button to turn chamber lighting on/off
+- ✅ **Dynamic Image**: Printer image is darkened when light is off
+- ✅ **Interactive Buttons**: Pause/Stop/Speed with correct state logic
+- ✅ **Temperature Overlays**: Nozzle, Bed, Chamber with target temperatures
+- ✅ **Fan Speeds**: Part & Aux Fan display
+- ✅ **Layer Information**: Current Layer / Total Layers
+- ✅ **Progress Bar**: Visual progress bar with percentage
+- ✅ **Status Indicator**: Colored dot (green=pulsing when printing, yellow=paused, gray=idle)
 
-**Konfiguration im Visual Editor:**
+**Configuration in Visual Editor:**
 
-1. **Printer Device**: Wähle dein Bambu Lab Drucker-Gerät aus der Device-Liste
-2. **AMS Device** (optional): Falls mehrere AMS vorhanden, wähle das gewünschte AMS-Gerät
-3. **Name** (optional): Custom Name für die Karte
-4. **Camera Entity** (optional): Camera Entity für Live-Stream
-5. **Image** (optional): Pfad zum Drucker-Bild (`.png` oder `.jpg`)
+1. **Printer Device**: Select your Bambu Lab printer device from the device list
+2. **AMS Device** (optional): If multiple AMS present, select the desired AMS device
+3. **Name** (optional): Custom name for the card
+4. **Camera Entity** (optional): Camera entity for live stream
+5. **Image** (optional): Path to printer image (`.png` or `.jpg`)
 
-**Automatische Entity-Erkennung:**
+**Automatic Entity Detection:**
 
-Die Karte erkennt automatisch alle relevanten Entities basierend auf dem Drucker-Gerät:
+The card automatically detects all relevant entities based on the printer device:
 
 - **Print Status**: `print_status` Entity
-- **Temperatures**: `nozzle_temp`, `bed_temp`, `chamber_temp` mit Ziel-Temperaturen
+- **Temperatures**: `nozzle_temp`, `bed_temp`, `chamber_temp` with target temperatures
 - **Fans**: `cooling_fan_speed` (Part Fan), `aux_fan_speed` (Aux Fan)
 - **Progress**: `print_progress`, `remaining_time`, `current_layer`, `total_layers`
-- **Chamber Light**: `chamber_light` Entity (wird automatisch erkannt)
-- **Camera**: `camera` Entity (wird automatisch erkannt oder kann manuell gesetzt werden)
+- **Chamber Light**: `chamber_light` Entity (automatically detected)
+- **Camera**: `camera` Entity (automatically detected or can be set manually)
 - **AMS Slots**: `tray_1`, `tray_2`, `tray_3`, `tray_4` Entities (via `translation_key`)
 
-**AMS Daten:**
+**AMS Data:**
 
-Die Karte liest AMS-Daten aus den Tray-Entities (`sensor.*_slot_1`, `sensor.*_slot_2`, etc.):
+The card reads AMS data from tray entities (`sensor.*_slot_1`, `sensor.*_slot_2`, etc.):
 
-- **Filament Type**: Wird aus `attributes.name` oder `attributes.type` extrahiert (z.B. "Bambu PCTG Basic" → "PCTG")
-- **Color**: `attributes.color` (wird automatisch von #RRGGBBAA zu #RRGGBB konvertiert)
-- **Remaining**: `attributes.remain` (zeigt `?` wenn `remain_enabled: false`)
-- **Active**: `attributes.active` oder `attributes.in_use`
-- **Empty**: `attributes.empty` oder leere State
+- **Filament Type**: Extracted from `attributes.name` or `attributes.type` (e.g., "Bambu PCTG Basic" → "PCTG")
+- **Color**: `attributes.color` (automatically converted from #RRGGBBAA to #RRGGBB)
+- **Remaining**: `attributes.remain` (shows `?` if `remain_enabled: false`)
+- **Active**: `attributes.active` or `attributes.in_use`
+- **Empty**: `attributes.empty` or empty state
 
-**Bild hochladen:**
+**Upload Image:**
 
-Das Drucker-Bild muss manuell in Home Assistant hochgeladen werden:
-1. Kopiere das Bild nach `/config/www/custom-components/images/prism-bambu-pic.png` (oder `.jpg`)
-2. Oder verwende einen anderen Pfad und gib ihn im `image`-Feld an
-3. Die Karte unterstützt sowohl `.png` als auch `.jpg` Formate
-4. Als letzter Fallback wird ein Drucker-Icon angezeigt
+The printer image must be manually uploaded to Home Assistant:
+1. Copy the image to `/config/www/custom-components/images/prism-bambu-pic.png` (or `.jpg`)
+2. Or use a different path and specify it in the `image` field
+3. The card supports both `.png` and `.jpg` formats
+4. As a last fallback, a printer icon is displayed
 
-**Interaktionen:**
+**Interactions:**
 
-- **Licht-Button**: Toggle Chamber Light an/aus (Button zeigt sofortigen Feedback)
-- **Kamera-Button**: Wechselt zwischen Drucker-Bild und Live-Kamera-Stream
-- **Kamera-Bild klicken**: Öffnet großes More-Info Popup (wie bei HA Bild-Entities)
-- **Pause-Button**: Öffnet More-Info Dialog für Print-Status (nur aktiv wenn Drucker druckt/pausiert)
+- **Light Button**: Toggle Chamber Light on/off (button shows immediate feedback)
+- **Camera Button**: Switches between printer image and live camera stream
+- **Click Camera Image**: Opens large More-Info popup (like HA image entities)
+- **Pause Button**: Opens More-Info dialog for print status (only active when printer is printing/paused)
 
 **ha-bambulab Integration:**
-Die Karte ist kompatibel mit der [ha-bambulab Integration](https://github.com/greghesp/ha-bambulab) und arbeitet wie die [offiziellen Bambu Lab Cards](https://github.com/greghesp/ha-bambulab-cards).
+The card is compatible with the [ha-bambulab Integration](https://github.com/greghesp/ha-bambulab) and works like the [official Bambu Lab Cards](https://github.com/greghesp/ha-bambulab-cards).
 
 ---
 
 ### prism-creality
 
-Eine Creality 3D-Drucker-Karte mit Glassmorphism-Design und vollständiger Anzeige von Druckfortschritt, Temperaturen, Lüfter, Layer-Infos. Unterstützt K1, K1C, K1 Max, K1 SE und weitere Creality Drucker.
+A Creality 3D printer card with glassmorphism design and full display of print progress, temperatures, fans, layer info. Supports K1, K1C, K1 Max, K1 SE and other Creality printers.
 
 <img width="400" alt="prism-creality" src="images/prism-creality.jpg" />
 
-**Verwendung:**
+**Usage:**
 
-**Basis-Konfiguration (Visual Editor):**
+**Basic Configuration (Visual Editor):**
 ```yaml
 - type: custom:prism-creality
-  printer: <device_id>  # Creality Drucker-Gerät (z.B. aus Device-Registry)
+  printer: <device_id>  # Creality printer device (e.g., from Device Registry)
   name: Creality Printer  # Optional: Custom Name
-  image: /local/custom-components/images/prism-creality.webp  # Optional: Drucker-Bild
+  image: /local/custom-components/images/prism-creality.webp  # Optional: Printer image
 ```
 
-**Erweiterte Konfiguration (mit Kamera und Light):**
+**Advanced Configuration (with Camera and Light):**
 ```yaml
 - type: custom:prism-creality
-  printer: <device_id>  # Creality Drucker-Gerät
+  printer: <device_id>  # Creality printer device
   name: Creality K1 SE
   camera_entity: camera.creality_k1_se_camera  # Optional: Camera Entity
   light_switch: switch.creality_light  # Optional: Light Switch Entity
-  image: /local/custom-components/images/prism-creality.webp  # Optional: .webp, .png oder .jpg
+  image: /local/custom-components/images/prism-creality.webp  # Optional: .webp, .png or .jpg
 ```
 
-**Hinweis:** Die Karte verwendet die **Device-Registry** von Home Assistant und filtert automatisch alle relevanten Entities basierend auf dem ausgewählten Drucker-Gerät. Dies funktioniert mit der [Creality-Control Integration](https://github.com/SiloCityLabs/Creality-Control).
+**Note:** The card uses Home Assistant's **Device Registry** and automatically filters all relevant entities based on the selected printer device. This works with the [Creality-Control Integration](https://github.com/SiloCityLabs/Creality-Control).
 
 **Features:**
-- ✅ **Auto-Entity-Erkennung**: Automatische Erkennung von Light Switch und Camera Entities
-- ✅ **Live Kamera-Stream**: Toggle zwischen Drucker-Bild und Live-Video-Stream
-- ✅ **Kamera-Popup**: Klick auf Kamera öffnet großes More-Info Fenster
-- ✅ **Light Control**: Licht-Button zum Ein/Ausschalten der Drucker-Beleuchtung
-- ✅ **Dynamisches Bild**: Drucker-Bild wird abgedunkelt wenn Licht aus ist
-- ✅ **Interaktive Buttons**: Pause/Resume, Stop, Home All Axes mit korrekter State-Logik
-- ✅ **Temperatur-Overlays**: Nozzle, Bed, Box/Chamber mit Ziel-Temperaturen
-- ✅ **Fan-Geschwindigkeiten**: Model Fan, Auxiliary Fan, Case Fan Anzeige
-- ✅ **Layer-Informationen**: Aktuelle Layer / Gesamt-Layer
-- ✅ **Fortschrittsbalken**: Visueller Progress-Bar mit Prozent
-- ✅ **Status-Indikator**: Farbiger Punkt (grün=pulsierend beim Drucken, gelb=pausiert, grau=idle)
-- ✅ **Power Switch**: Optionaler Power-Button (grün=an, grau/rot=aus)
+- ✅ **Auto-Entity Detection**: Automatic detection of Light Switch and Camera entities
+- ✅ **Live Camera Stream**: Toggle between printer image and live video stream
+- ✅ **Camera Popup**: Click on camera opens large More-Info window
+- ✅ **Light Control**: Light button to turn printer lighting on/off
+- ✅ **Dynamic Image**: Printer image is darkened when light is off
+- ✅ **Interactive Buttons**: Pause/Resume, Stop, Home All Axes with correct state logic
+- ✅ **Temperature Overlays**: Nozzle, Bed, Box/Chamber with target temperatures
+- ✅ **Fan Speeds**: Model Fan, Auxiliary Fan, Case Fan display
+- ✅ **Layer Information**: Current Layer / Total Layers
+- ✅ **Progress Bar**: Visual progress bar with percentage
+- ✅ **Status Indicator**: Colored dot (green=pulsing when printing, yellow=paused, gray=idle)
+- ✅ **Power Switch**: Optional power button (green=on, gray/red=off)
 
-**Konfiguration im Visual Editor:**
+**Configuration in Visual Editor:**
 
-1. **Printer Device**: Wähle dein Creality Drucker-Gerät aus der Device-Liste
-2. **Name** (optional): Custom Name für die Karte
-3. **Camera Entity** (optional): Camera Entity für Live-Stream (wird auch auto-erkannt)
-4. **Light Switch** (optional): Light/Switch Entity für Beleuchtung (wird auch auto-erkannt)
-5. **Image** (optional): Pfad zum Drucker-Bild (`.webp`, `.png` oder `.jpg`)
+1. **Printer Device**: Select your Creality printer device from the device list
+2. **Name** (optional): Custom name for the card
+3. **Camera Entity** (optional): Camera entity for live stream (also auto-detected)
+4. **Light Switch** (optional): Light/Switch entity for lighting (also auto-detected)
+5. **Image** (optional): Path to printer image (`.webp`, `.png` or `.jpg`)
 
-**Automatische Entity-Erkennung:**
+**Automatic Entity Detection:**
 
-Die Karte erkennt automatisch alle relevanten Entities basierend auf dem Drucker-Gerät:
+The card automatically detects all relevant entities based on the printer device:
 
-- **Print Status**: `print_state` oder `device_state` Entity
-- **Temperatures**: `nozzle_temp`, `bed_temp`, `box_temp` mit Ziel-Temperaturen
+- **Print Status**: `print_state` or `device_state` Entity
+- **Temperatures**: `nozzle_temp`, `bed_temp`, `box_temp` with target temperatures
 - **Fans**: `model_fan_pct`, `auxiliary_fan_pct`, `case_fan_pct`
 - **Progress**: `print_progress`, `time_left`, `current_layer`, `total_layer`
-- **Light Switch**: `switch.creality_light` (wird automatisch erkannt)
-- **Camera**: `camera.creality_*_camera` (wird automatisch erkannt oder kann manuell gesetzt werden)
+- **Light Switch**: `switch.creality_light` (automatically detected)
+- **Camera**: `camera.creality_*_camera` (automatically detected or can be set manually)
 
-**Unterstützte Drucker-Modelle:**
+**Supported Printer Models:**
 
-- ✅ **K1, K1C, K1 Max, K1 SE** (FDM Drucker)
-- ✅ **K2 Plus, K2 Pro** (FDM Drucker)
-- ✅ **Halot Series** (Resin Drucker)
-- ✅ Weitere Creality Drucker mit WebSocket-Support
+- ✅ **K1, K1C, K1 Max, K1 SE** (FDM printers)
+- ✅ **K2 Plus, K2 Pro** (FDM printers)
+- ✅ **Halot Series** (Resin printers)
+- ✅ Other Creality printers with WebSocket support
 
 **Creality-Control Integration:**
-Die Karte ist kompatibel mit der [Creality-Control Integration](https://github.com/SiloCityLabs/Creality-Control) und nutzt alle verfügbaren Sensoren, Switches, Buttons und Camera Entities.
+The card is compatible with the [Creality-Control Integration](https://github.com/SiloCityLabs/Creality-Control) and uses all available sensors, switches, buttons, and camera entities.
 
-**Bild hochladen:**
+**Upload Image:**
 
-Das Drucker-Bild muss manuell in Home Assistant hochgeladen werden:
-1. Kopiere das Bild nach `/config/www/custom-components/images/prism-creality.webp` (oder `.png`/`.jpg`)
-2. Oder verwende einen anderen Pfad und gib ihn im `image`-Feld an
-3. Die Karte unterstützt `.webp`, `.png` und `.jpg` Formate
-4. Als letzter Fallback wird ein Drucker-Icon angezeigt
+The printer image must be manually uploaded to Home Assistant:
+1. Copy the image to `/config/www/custom-components/images/prism-creality.webp` (or `.png`/`.jpg`)
+2. Or use a different path and specify it in the `image` field
+3. The card supports `.webp`, `.png` and `.jpg` formats
+4. As a last fallback, a printer icon is displayed
 
-**Interaktionen:**
+**Interactions:**
 
-- **Licht-Button**: Toggle Light an/aus (Button zeigt sofortigen Feedback)
-- **Kamera-Button**: Wechselt zwischen Drucker-Bild und Live-Kamera-Stream
-- **Kamera-Bild klicken**: Öffnet großes More-Info Popup (wie bei HA Bild-Entities)
-- **Pause-Button**: Pause/Resume Print (nur aktiv wenn Drucker druckt/pausiert)
-- **Stop-Button**: Stop Print (nur aktiv wenn Drucker druckt/pausiert)
-- **Home-Button**: Home All Axes (nur aktiv wenn Drucker idle ist)
-- **Power-Button**: Toggle Power Switch (wenn konfiguriert)
+- **Light Button**: Toggle Light on/off (button shows immediate feedback)
+- **Camera Button**: Switches between printer image and live camera stream
+- **Click Camera Image**: Opens large More-Info popup (like HA image entities)
+- **Pause Button**: Pause/Resume Print (only active when printer is printing/paused)
+- **Stop Button**: Stop Print (only active when printer is printing/paused)
+- **Home Button**: Home All Axes (only active when printer is idle)
+- **Power Button**: Toggle Power Switch (if configured)
 
 ---
 
 ### prism-energy
 
-Eine Energie-Flow-Karte mit Glassmorphism-Design zur Visualisierung von Solar-Erzeugung, Netz-Bezug/Einspeisung, Batterie-Speicher, Hausverbrauch und E-Auto-Ladung. Optimiert für die [OpenEMS/Fenecon Integration](https://github.com/Lamarqe/ha_openems).
+An energy flow card with glassmorphism design for visualizing solar generation, grid import/export, battery storage, home consumption, and EV charging. Optimized for the [OpenEMS/Fenecon Integration](https://github.com/Lamarqe/ha_openems).
 
 <img width="400" alt="prism-energy" src="images/prism-energy.jpg" />
 
 **Features:**
-- ✅ **Animierte Energieflüsse**: Visualisiert den Energiefluss zwischen allen Komponenten
-- ✅ **Solar-Produktion**: Zeigt aktuelle PV-Leistung mit Animation
-- ✅ **Netz-Integration**: Bezug/Einspeisung mit farblicher Unterscheidung
-- ✅ **Batterie-Speicher**: SOC-Anzeige mit dynamischem Icon und Lade/Entlade-Status
-- ✅ **Hausverbrauch**: Aktuelle Verbrauchsleistung
-- ✅ **E-Auto-Ladung** (optional): EV-Ladeleistung wenn konfiguriert
-- ✅ **Autarkie-Badge** (optional): Zeigt Eigenverbrauchsquote
-- ✅ **Details-Bereich**: Optionaler Statistik-Bereich mit Balken-Visualisierung
-- ✅ **Visual Editor**: Vollständige Konfiguration über den Home Assistant UI Editor
+- ✅ **Animated Energy Flows**: Visualizes energy flow between all components
+- ✅ **Solar Production**: Shows current PV power with animation
+- ✅ **Grid Integration**: Import/export with color distinction
+- ✅ **Battery Storage**: SOC display with dynamic icon and charge/discharge status
+- ✅ **Home Consumption**: Current consumption power
+- ✅ **EV Charging** (optional): EV charging power when configured
+- ✅ **Autarky Badge** (optional): Shows self-consumption rate
+- ✅ **Details Section**: Optional statistics section with bar visualization
+- ✅ **Visual Editor**: Full configuration via Home Assistant UI Editor
 
 ---
 
-#### Voraussetzungen
+#### Prerequisites
 
-Diese Karte ist optimiert für die **[ha_openems Integration](https://github.com/Lamarqe/ha_openems)** (Fenecon FEMS / OpenEMS).
+This card is optimized for the **[ha_openems Integration](https://github.com/Lamarqe/ha_openems)** (Fenecon FEMS / OpenEMS).
 
-1. Installiere die Integration über HACS
-2. Konfiguriere dein FEMS/OpenEMS System
-3. Aktiviere die benötigten Entitäten (siehe unten)
-
----
-
-#### Benötigte Entitäten finden
-
-Nach Installation der ha_openems Integration findest du die Entitäten unter **Einstellungen → Geräte & Dienste → OpenEMS**.
-
-**So findest du deine System-ID:**
-- Deine Entitäten haben das Format: `sensor.<system_id>_sum_<channel>`
-- Beispiel: `sensor.fems79420_sum_productionactivepower`
-- Die System-ID ist der Teil vor `_sum` (z.B. `fems79420`)
-
-**Benötigte Entitäten aktivieren:**
-
-Gehe zu **Einstellungen → Geräte & Dienste → OpenEMS → X Entitäten** und aktiviere:
-
-| Entität | Channel | Beschreibung |
-|---------|---------|--------------|
-| `sensor.<system>_sum_productionactivepower` | ProductionActivePower | ☀️ Solar-Produktion (Watt) |
-| `sensor.<system>_sum_gridactivepower` | GridActivePower | 🔌 Netz-Leistung (Watt) |
-| `sensor.<system>_sum_esssoc` | EssSoc | 🔋 Batterie-Ladezustand (%) |
-| `sensor.<system>_sum_essdischargepower` | EssDischargePower | 🔋 Batterie-Leistung (Watt) |
-| `sensor.<system>_sum_consumptionactivepower` | ConsumptionActivePower | 🏠 Hausverbrauch (Watt) |
-
-**Optionale Entitäten:**
-
-| Entität | Channel | Beschreibung |
-|---------|---------|--------------|
-| `sensor.<system>_evcs0_chargepower` | ChargePower | 🚗 E-Auto Ladeleistung (Watt) |
-
-**Solar-Module (Charger) Entitäten:**
-
-Wenn du mehrere Solar-Charger/Wechselrichter hast, kannst du diese einzeln anzeigen lassen:
-
-| Entität | Channel | Beschreibung |
-|---------|---------|--------------|
-| `sensor.<system>_charger0_actualpower` | ActualPower | ☀️ Charger 0 Leistung (Watt) |
-| `sensor.<system>_charger1_actualpower` | ActualPower | ☀️ Charger 1 Leistung (Watt) |
-| `sensor.<system>_charger2_actualpower` | ActualPower | ☀️ Charger 2 Leistung (Watt) |
-| `sensor.<system>_charger3_actualpower` | ActualPower | ☀️ Charger 3 Leistung (Watt) |
-
-> 💡 **Tipp:** Die Charger-Nummern entsprechen den einzelnen Wechselrichtern/PV-Strings deines Systems. Konfiguriere diese in der Karte unter "Solar Module" und gib jedem einen sprechenden Namen (z.B. "Dach Süd", "Carport", etc.).
+1. Install the integration via HACS
+2. Configure your FEMS/OpenEMS system
+3. Enable the required entities (see below)
 
 ---
 
-#### Autarkie-Sensor erstellen
+#### Finding Required Entities
 
-> ⚠️ **Wichtig:** Die ha_openems Integration bietet **keine direkte Autarkie-Entität**. Du musst einen Template-Sensor erstellen!
+After installing the ha_openems integration, you can find the entities under **Settings → Devices & Services → OpenEMS**.
 
-**Methode 1: Über die Home Assistant UI (empfohlen, ab HA 2023.3)**
+**How to find your System ID:**
+- Your entities have the format: `sensor.<system_id>_sum_<channel>`
+- Example: `sensor.fems79420_sum_productionactivepower`
+- The System ID is the part before `_sum` (e.g., `fems79420`)
 
-1. Gehe zu **Einstellungen → Geräte & Dienste → Helfer**
-2. Klicke auf **Helfer erstellen** (unten rechts)
-3. Wähle **Template** aus der Liste
-4. Fülle die Felder aus:
-   - **Name**: `Energie Autarkie`
-   - **Einheit**: `%`
+**Enable Required Entities:**
+
+Go to **Settings → Devices & Services → OpenEMS → X Entities** and enable:
+
+| Entity | Channel | Description |
+|--------|---------|-------------|
+| `sensor.<system>_sum_productionactivepower` | ProductionActivePower | ☀️ Solar Production (Watt) |
+| `sensor.<system>_sum_gridactivepower` | GridActivePower | 🔌 Grid Power (Watt) |
+| `sensor.<system>_sum_esssoc` | EssSoc | 🔋 Battery State of Charge (%) |
+| `sensor.<system>_sum_essdischargepower` | EssDischargePower | 🔋 Battery Power (Watt) |
+| `sensor.<system>_sum_consumptionactivepower` | ConsumptionActivePower | 🏠 Home Consumption (Watt) |
+
+**Optional Entities:**
+
+| Entity | Channel | Description |
+|--------|---------|-------------|
+| `sensor.<system>_evcs0_chargepower` | ChargePower | 🚗 EV Charging Power (Watt) |
+
+**Solar Module (Charger) Entities:**
+
+If you have multiple solar chargers/inverters, you can display them individually:
+
+| Entity | Channel | Description |
+|--------|---------|-------------|
+| `sensor.<system>_charger0_actualpower` | ActualPower | ☀️ Charger 0 Power (Watt) |
+| `sensor.<system>_charger1_actualpower` | ActualPower | ☀️ Charger 1 Power (Watt) |
+| `sensor.<system>_charger2_actualpower` | ActualPower | ☀️ Charger 2 Power (Watt) |
+| `sensor.<system>_charger3_actualpower` | ActualPower | ☀️ Charger 3 Power (Watt) |
+
+> 💡 **Tip:** The charger numbers correspond to the individual inverters/PV strings of your system. Configure these in the card under "Solar Module" and give each one a descriptive name (e.g., "South Roof", "Carport", etc.).
+
+---
+
+#### Create Autarky Sensor
+
+> ⚠️ **Important:** The ha_openems integration does **not provide a direct autarky entity**. You must create a template sensor!
+
+**Method 1: Via Home Assistant UI (recommended, from HA 2023.3)**
+
+1. Go to **Settings → Devices & Services → Helpers**
+2. Click **Create Helper** (bottom right)
+3. Select **Template** from the list
+4. Fill in the fields:
+   - **Name**: `Energy Autarky`
+   - **Unit**: `%`
    - **Icon**: `mdi:leaf`
-   - **Template**: Kopiere den folgenden Code (ersetze `DEINE_SYSTEM_ID` mit deiner System-ID):
+   - **Template**: Copy the following code (replace `YOUR_SYSTEM_ID` with your system ID):
 
 ```jinja2
-{% set consumption = states('sensor.DEINE_SYSTEM_ID_sum_consumptionactivepower') | float(0) %}
-{% set grid_import = states('sensor.DEINE_SYSTEM_ID_sum_gridactivepower') | float(0) %}
+{% set consumption = states('sensor.YOUR_SYSTEM_ID_sum_consumptionactivepower') | float(0) %}
+{% set grid_import = states('sensor.YOUR_SYSTEM_ID_sum_gridactivepower') | float(0) %}
 {% if consumption > 0 %}
   {% set grid_used = [grid_import, 0] | max %}
   {{ ((1 - (grid_used / consumption)) * 100) | round(0) }}
@@ -444,25 +444,25 @@ Wenn du mehrere Solar-Charger/Wechselrichter hast, kannst du diese einzeln anzei
 {% endif %}
 ```
 
-5. Klicke auf **Erstellen**
+5. Click **Create**
 
-**Beispiel:** Wenn deine Entität `sensor.fems79420_sum_consumptionactivepower` heißt, dann ist deine System-ID `fems79420`. Ersetze also `DEINE_SYSTEM_ID` mit `fems79420`.
+**Example:** If your entity is `sensor.fems79420_sum_consumptionactivepower`, then your System ID is `fems79420`. So replace `YOUR_SYSTEM_ID` with `fems79420`.
 
-**Methode 2: Über configuration.yaml (für erfahrene Nutzer)**
+**Method 2: Via configuration.yaml (for advanced users)**
 
-Falls du lieber YAML verwendest, füge folgenden Code zu deiner `configuration.yaml` hinzu:
+If you prefer YAML, add the following code to your `configuration.yaml`:
 
 ```yaml
 template:
   - sensor:
-      - name: "Energie Autarkie"
+      - name: "Energy Autarky"
         unique_id: energy_autarky_percentage
         unit_of_measurement: "%"
         state_class: measurement
         icon: mdi:leaf
         state: >
-          {% set consumption = states('sensor.DEINE_SYSTEM_ID_sum_consumptionactivepower') | float(0) %}
-          {% set grid_import = states('sensor.DEINE_SYSTEM_ID_sum_gridactivepower') | float(0) %}
+          {% set consumption = states('sensor.YOUR_SYSTEM_ID_sum_consumptionactivepower') | float(0) %}
+          {% set grid_import = states('sensor.YOUR_SYSTEM_ID_sum_gridactivepower') | float(0) %}
           {% if consumption > 0 %}
             {% set grid_used = [grid_import, 0] | max %}
             {{ ((1 - (grid_used / consumption)) * 100) | round(0) }}
@@ -471,29 +471,29 @@ template:
           {% endif %}
 ```
 
-**Ersetze `DEINE_SYSTEM_ID` mit deiner tatsächlichen System-ID!**
+**Replace `YOUR_SYSTEM_ID` with your actual System ID!**
 
-Nach dem Neustart von Home Assistant hast du `sensor.energie_autarkie` zur Verfügung.
+After restarting Home Assistant, you will have `sensor.energy_autarky` available.
 
-**Autarkie-Formel:**
+**Autarky Formula:**
 ```
-Autarkie = (1 - (Netzbezug / Verbrauch)) × 100%
+Autarky = (1 - (Grid Import / Consumption)) × 100%
 
-Beispiele:
-- Verbrauch 1000W, Netzbezug 200W → Autarkie = 80%
-- Verbrauch 1000W, Netzbezug 0W   → Autarkie = 100%
-- Bei Einspeisung (negativ)       → Autarkie = 100%
+Examples:
+- Consumption 1000W, Grid Import 200W → Autarky = 80%
+- Consumption 1000W, Grid Import 0W   → Autarky = 100%
+- During Export (negative)           → Autarky = 100%
 ```
 
 ---
 
-#### Karten-Konfiguration
+#### Card Configuration
 
-**Verwendung (Visual Editor empfohlen):**
+**Usage (Visual Editor recommended):**
 
-Die Karte kann vollständig über den Visual Editor konfiguriert werden. Suche einfach nach "Prism Energy" im Karten-Auswahl-Dialog.
+The card can be fully configured via the Visual Editor. Simply search for "Prism Energy" in the card selection dialog.
 
-**YAML-Konfiguration:**
+**YAML Configuration:**
 ```yaml
 type: custom:prism-energy
 name: Energy Monitor
@@ -502,13 +502,13 @@ grid_power: sensor.fems79420_sum_gridactivepower
 battery_soc: sensor.fems79420_sum_esssoc
 battery_power: sensor.fems79420_sum_essdischargepower
 home_consumption: sensor.fems79420_sum_consumptionactivepower
-ev_power: sensor.fems79420_evcs0_chargepower  # Optional - nur wenn E-Auto vorhanden
-autarky: sensor.energie_autarkie  # Optional - Template-Sensor von oben
+ev_power: sensor.fems79420_evcs0_chargepower  # Optional - only if EV present
+autarky: sensor.energy_autarky  # Optional - template sensor from above
 image: /hacsfiles/images/prism-energy-home.png
 show_details: true
 ```
 
-**Erweiterte Konfiguration mit Solar-Modulen:**
+**Advanced Configuration with Solar Modules:**
 ```yaml
 type: custom:prism-energy
 name: Energy Monitor
@@ -518,105 +518,105 @@ battery_soc: sensor.fems79420_sum_esssoc
 battery_power: sensor.fems79420_sum_essdischargepower
 home_consumption: sensor.fems79420_sum_consumptionactivepower
 show_details: true
-# Solar Module einzeln anzeigen (optional)
+# Display solar modules individually (optional)
 solar_module1: sensor.fems79420_charger0_actualpower
-solar_module1_name: "Büro links"
+solar_module1_name: "Office Left"
 solar_module2: sensor.fems79420_charger1_actualpower
-solar_module2_name: "Büro rechts"
+solar_module2_name: "Office Right"
 solar_module3: sensor.fems79420_charger2_actualpower
-solar_module3_name: "Wohnhaus"
+solar_module3_name: "House"
 ```
 
 ---
 
-#### Konfigurationsoptionen
+#### Configuration Options
 
-| Option | Typ | Pflicht | Beschreibung |
-|--------|-----|---------|--------------|
-| `name` | string | Nein | Kartenname (Standard: "Energy Monitor") |
-| `solar_power` | entity | Ja | Solar-Produktions-Sensor (Gesamt) |
-| `grid_power` | entity | Ja | Netz-Leistungs-Sensor (positiv=Bezug, negativ=Einspeisung) |
-| `battery_soc` | entity | Ja | Batterie-Ladezustand in % |
-| `battery_power` | entity | Ja | Batterie-Leistung (positiv=Entladung, negativ=Ladung) |
-| `home_consumption` | entity | Ja | Hausverbrauchs-Sensor |
-| `ev_power` | entity | Nein | E-Auto Ladeleistung (wenn nicht gesetzt, wird EV nicht angezeigt) |
-| `autarky` | entity | Nein | Autarkie-Prozent (wenn nicht gesetzt, wird Badge nicht angezeigt) |
-| `image` | string | Nein | Pfad zum Haus-Bild (Standard: prism-energy-home.png) |
-| `show_details` | boolean | Nein | Details-Bereich unten anzeigen (Standard: true) |
-| **Solar Module** | | | *Optionale Einzelanzeige der Solar-Charger im Detail-Bereich* |
-| `solar_module1` | entity | Nein | Solar Charger 1 Entity (z.B. `charger0_actualpower`) |
-| `solar_module1_name` | string | Nein | Name für Modul 1 (z.B. "Büro links") |
-| `solar_module2` | entity | Nein | Solar Charger 2 Entity |
-| `solar_module2_name` | string | Nein | Name für Modul 2 (z.B. "Büro rechts") |
-| `solar_module3` | entity | Nein | Solar Charger 3 Entity |
-| `solar_module3_name` | string | Nein | Name für Modul 3 (z.B. "Wohnhaus") |
-| `solar_module4` | entity | Nein | Solar Charger 4 Entity |
-| `solar_module4_name` | string | Nein | Name für Modul 4 |
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `name` | string | No | Card name (default: "Energy Monitor") |
+| `solar_power` | entity | Yes | Solar production sensor (total) |
+| `grid_power` | entity | Yes | Grid power sensor (positive=import, negative=export) |
+| `battery_soc` | entity | Yes | Battery state of charge in % |
+| `battery_power` | entity | Yes | Battery power (positive=discharge, negative=charge) |
+| `home_consumption` | entity | Yes | Home consumption sensor |
+| `ev_power` | entity | No | EV charging power (if not set, EV is not displayed) |
+| `autarky` | entity | No | Autarky percentage (if not set, badge is not displayed) |
+| `image` | string | No | Path to house image (default: prism-energy-home.png) |
+| `show_details` | boolean | No | Show details section at bottom (default: true) |
+| **Solar Module** | | | *Optional individual display of solar chargers in detail section* |
+| `solar_module1` | entity | No | Solar Charger 1 Entity (e.g., `charger0_actualpower`) |
+| `solar_module1_name` | string | No | Name for module 1 (e.g., "Office Left") |
+| `solar_module2` | entity | No | Solar Charger 2 Entity |
+| `solar_module2_name` | string | No | Name for module 2 (e.g., "Office Right") |
+| `solar_module3` | entity | No | Solar Charger 3 Entity |
+| `solar_module3_name` | string | No | Name for module 3 (e.g., "House") |
+| `solar_module4` | entity | No | Solar Charger 4 Entity |
+| `solar_module4_name` | string | No | Name for module 4 |
 
 ---
 
-#### Energiefluss-Logik
+#### Energy Flow Logic
 
-Die animierten Linien werden basierend auf folgenden Bedingungen angezeigt:
+The animated lines are displayed based on the following conditions:
 
-| Flow | Bedingung | Farbe |
+| Flow | Condition | Color |
 |------|-----------|-------|
-| Solar → Haus | Solar > 50W UND Verbrauch > 0 | 🟡 Gelb/Orange |
-| Solar → Batterie | Solar > 50W UND Batterie lädt | 🟡 Gelb/Orange |
-| Solar → Netz | Solar > 50W UND Einspeisung | 🟡 Gelb/Orange |
-| Netz → Haus | Netzbezug > 50W | 🔵 Blau |
-| Netz → Batterie | Netzbezug > 50W UND Batterie lädt | 🔵 Blau |
-| Batterie → Haus | Batterie entlädt > 50W | 🟢 Grün |
-| Batterie → Netz | Batterie entlädt UND Einspeisung | 🟢 Grün |
+| Solar → Home | Solar > 50W AND Consumption > 0 | 🟡 Yellow/Orange |
+| Solar → Battery | Solar > 50W AND Battery charging | 🟡 Yellow/Orange |
+| Solar → Grid | Solar > 50W AND Export | 🟡 Yellow/Orange |
+| Grid → Home | Grid Import > 50W | 🔵 Blue |
+| Grid → Battery | Grid Import > 50W AND Battery charging | 🔵 Blue |
+| Battery → Home | Battery discharging > 50W | 🟢 Green |
+| Battery → Grid | Battery discharging AND Export | 🟢 Green |
 
 ---
 
-#### Bild anpassen
+#### Customize Image
 
-Das Standard-Bild ist bereits enthalten. Du kannst aber auch ein eigenes Bild verwenden:
+The default image is already included. However, you can also use your own image:
 
-**HACS-Installation:**
+**HACS Installation:**
 ```
 /hacsfiles/images/prism-energy-home.png
 ```
 
-**Manuelle Installation:**
+**Manual Installation:**
 ```
 /local/custom-components/images/prism-energy-home.png
 ```
 
-**Eigenes Bild:**
-1. Lade dein Bild nach `/config/www/` hoch
-2. Verwende den Pfad `/local/dein-bild.png` in der Konfiguration
+**Custom Image:**
+1. Upload your image to `/config/www/`
+2. Use the path `/local/your-image.png` in the configuration
 
 ---
 
 ### prism-energy-horizontal
 
-Eine horizontale Variante der Energie-Flow-Karte, optimiert für größere Bildschirme (z.B. Tablets, iPads). Die Haus-Visualisierung und Details werden nebeneinander angezeigt, wodurch alle Elemente größer dargestellt werden können. Ideal für Panel-Views oder breite Dashboard-Layouts.
+A horizontal variant of the energy flow card, optimized for larger screens (e.g., tablets, iPads). The house visualization and details are displayed side by side, allowing all elements to be displayed larger. Ideal for panel views or wide dashboard layouts.
 
 <img width="800" alt="prism-energy-horizontal" src="images/prism-energy-horizontal.png" />
 
 **Features:**
-- ✅ **Horizontales Layout**: Haus-Visualisierung links, Details-Panel rechts
-- ✅ **Größere Darstellung**: Optimiert für Tablets und große Bildschirme
-- ✅ **Responsive Design**: Passt sich automatisch der Bildschirmgröße an
-- ✅ **Runde Gauges**: Details-Panel verwendet runde Inlet-Gauges (wie prism-heat)
-- ✅ **Batterie-Symbol**: Batterie wird als Icon mit SOC, Leistung und Status angezeigt
-- ✅ **Autarkie-Pill**: Vollständige Autarkie-Anzeige mit Icon und Label
-- ✅ **Feste Pill-Positionen**: Pills sind relativ zum Haus-Bild positioniert und skalieren mit
-- ✅ **Dynamische Haus-Größe**: Haus wird größer wenn Details-Panel ausgeblendet ist
-- ✅ **Alle Features von prism-energy**: Gleiche Funktionalität wie die Standard-Version
+- ✅ **Horizontal Layout**: House visualization left, details panel right
+- ✅ **Larger Display**: Optimized for tablets and large screens
+- ✅ **Responsive Design**: Automatically adapts to screen size
+- ✅ **Round Gauges**: Details panel uses round inlet gauges (like prism-heat)
+- ✅ **Battery Symbol**: Battery displayed as icon with SOC, power, and status
+- ✅ **Autarky Pill**: Full autarky display with icon and label
+- ✅ **Fixed Pill Positions**: Pills are positioned relative to house image and scale with it
+- ✅ **Dynamic House Size**: House becomes larger when details panel is hidden
+- ✅ **All Features from prism-energy**: Same functionality as standard version
 
-**Unterschiede zur Standard-Version:**
-- **Layout**: Horizontal statt vertikal
-- **Details-Panel**: Rechts statt unten, mit runden Gauges statt Balken
-- **Batterie-Anzeige**: Icon-basiert statt Gauge
-- **Größe**: Größere Elemente für bessere Lesbarkeit auf Tablets
+**Differences from Standard Version:**
+- **Layout**: Horizontal instead of vertical
+- **Details Panel**: Right instead of bottom, with round gauges instead of bars
+- **Battery Display**: Icon-based instead of gauge
+- **Size**: Larger elements for better readability on tablets
 
-**Verwendung:**
+**Usage:**
 
-**YAML-Konfiguration:**
+**YAML Configuration:**
 ```yaml
 type: custom:prism-energy-horizontal
 name: Energy Monitor
@@ -626,12 +626,12 @@ battery_soc: sensor.fems79420_sum_esssoc
 battery_power: sensor.fems79420_sum_essdischargepower
 home_consumption: sensor.fems79420_sum_consumptionactivepower
 ev_power: sensor.fems79420_evcs0_chargepower  # Optional
-autarky: sensor.energie_autarkie  # Optional
+autarky: sensor.energy_autarky  # Optional
 image: /hacsfiles/images/prism-energy-home.png
-show_details: true  # Details-Panel rechts anzeigen
+show_details: true  # Show details panel on right
 ```
 
-**Erweiterte Konfiguration mit Solar-Modulen:**
+**Advanced Configuration with Solar Modules:**
 ```yaml
 type: custom:prism-energy-horizontal
 name: Energy Monitor
@@ -641,87 +641,87 @@ battery_soc: sensor.fems79420_sum_esssoc
 battery_power: sensor.fems79420_sum_essdischargepower
 home_consumption: sensor.fems79420_sum_consumptionactivepower
 show_details: true
-# Solar Module einzeln anzeigen (optional)
+# Display solar modules individually (optional)
 solar_module1: sensor.fems79420_charger0_actualpower
-solar_module1_name: "Büro links"
+solar_module1_name: "Office Left"
 solar_module2: sensor.fems79420_charger1_actualpower
-solar_module2_name: "Büro rechts"
+solar_module2_name: "Office Right"
 solar_module3: sensor.fems79420_charger2_actualpower
-solar_module3_name: "Wohnhaus"
+solar_module3_name: "House"
 ```
 
-**Konfigurationsoptionen:**
+**Configuration Options:**
 
-Identisch zur Standard-Version `prism-energy` (siehe oben). Die Karte verwendet die gleichen Entitäten und Konfigurationsoptionen.
+Identical to the standard version `prism-energy` (see above). The card uses the same entities and configuration options.
 
-**Layout-Empfehlungen:**
+**Layout Recommendations:**
 
-Für optimale Darstellung wird empfohlen:
-- **Panel View**: Verwende die Karte in einer Panel-View für volle Breite
-- **Grid Layout**: Mindestens 4 Spalten für horizontales Layout
-- **Tablet/iPad**: Ideal für große Bildschirme (iPad Pro, etc.)
+For optimal display, it is recommended:
+- **Panel View**: Use the card in a panel view for full width
+- **Grid Layout**: At least 4 columns for horizontal layout
+- **Tablet/iPad**: Ideal for large screens (iPad Pro, etc.)
 
-**Responsive Verhalten:**
+**Responsive Behavior:**
 
-- **Große Bildschirme (>1200px)**: Horizontales Layout mit Details-Panel rechts
-- **Mittlere Bildschirme (900-1200px)**: Skaliert automatisch, bleibt horizontal
-- **Kleine Bildschirme (<900px)**: Wechselt automatisch zu vertikalem Layout (Haus oben, Details unten)
+- **Large Screens (>1200px)**: Horizontal layout with details panel on right
+- **Medium Screens (900-1200px)**: Automatically scales, remains horizontal
+- **Small Screens (<900px)**: Automatically switches to vertical layout (house top, details bottom)
 
-**Details-Panel Layout:**
+**Details Panel Layout:**
 
-Das Details-Panel zeigt (von oben nach unten):
-1. **Solar-Gauge** (oben, zentriert)
-2. **Solar-Module** (Liste der einzelnen Charger, falls konfiguriert)
-3. **Grid & Consumption Gauges** (nebeneinander: links Grid, rechts Consumption)
-4. **Batterie-Sektion** (unten, zentriert): Icon, SOC, Leistung, Status
+The details panel shows (from top to bottom):
+1. **Solar Gauge** (top, centered)
+2. **Solar Modules** (list of individual chargers, if configured)
+3. **Grid & Consumption Gauges** (side by side: left Grid, right Consumption)
+4. **Battery Section** (bottom, centered): Icon, SOC, Power, Status
 
 ---
 
 ### prism-sidebar
 
-Eine vollflächige Sidebar-Karte mit Kamera, Uhr, Kalender, Wetter-Forecast und Energie-Übersicht – ideal für Grid-Layouts mit eigener `sidebar`-Spalte.
+A full-width sidebar card with camera, clock, calendar, weather forecast, and energy overview – ideal for grid layouts with a dedicated `sidebar` column.
 
 <img width="300" alt="prism-sidebar" src="images/prism-sidebar.png" />
 
-**Verwendung (Beispiel mit Grid-Layout):**
+**Usage (Example with Grid Layout):**
 ```yaml
 type: custom:prism-sidebar
 camera_entity: camera.garden_main
-camera_entity_2: camera.front_door  # Optional: Zweite Kamera
-camera_entity_3: camera.backyard    # Optional: Dritte Kamera
-rotation_interval: 10               # Optional: Rotationsintervall in Sekunden (3-60, Standard: 10)
+camera_entity_2: camera.front_door  # Optional: Second camera
+camera_entity_3: camera.backyard    # Optional: Third camera
+rotation_interval: 10               # Optional: Rotation interval in seconds (3-60, default: 10)
 weather_entity: weather.home
 grid_entity: sensor.power_grid
 solar_entity: sensor.power_solar
 home_entity: sensor.power_home
-calendar_entity: calendar.termine
+calendar_entity: calendar.events
 ```
 
-**Hinweis:** Wenn mehrere Kameras konfiguriert sind, rotieren sie automatisch durch. Das Rotationsintervall kann zwischen 3 und 60 Sekunden eingestellt werden.
+**Note:** If multiple cameras are configured, they automatically rotate. The rotation interval can be set between 3 and 60 seconds.
 
 ---
 
 ### prism-sidebar-light
 
-Light Theme Version der Sidebar-Karte mit hellem Glassmorphism-Design.
+Light theme version of the sidebar card with bright glassmorphism design.
 
 <img width="300" alt="prism-sidebar-light" src="images/prism-sidebar.png" />
 
-**Verwendung:**
+**Usage:**
 ```yaml
 type: custom:prism-sidebar-light
 camera_entity: camera.garden_main
-camera_entity_2: camera.front_door  # Optional: Zweite Kamera
-camera_entity_3: camera.backyard    # Optional: Dritte Kamera
-rotation_interval: 10               # Optional: Rotationsintervall in Sekunden (3-60, Standard: 10)
+camera_entity_2: camera.front_door  # Optional: Second camera
+camera_entity_3: camera.backyard    # Optional: Third camera
+rotation_interval: 10               # Optional: Rotation interval in seconds (3-60, default: 10)
 weather_entity: weather.home
 grid_entity: sensor.power_grid
 solar_entity: sensor.power_solar
 home_entity: sensor.power_home
-calendar_entity: calendar.termine
+calendar_entity: calendar.events
 ```
 
-**Hinweis:** Wenn mehrere Kameras konfiguriert sind, rotieren sie automatisch durch. Das Rotationsintervall kann zwischen 3 und 60 Sekunden eingestellt werden.
+**Note:** If multiple cameras are configured, they automatically rotate. The rotation interval can be set between 3 and 60 seconds.
 
 ---
 

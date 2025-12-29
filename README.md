@@ -1,12 +1,12 @@
 ## Prism-Dashboard
 
-💎 Ein modernes, glassmorphism-inspiriertes Dashboard für Home Assistant, aufgebaut auf den beliebten Mushroom Cards.
+💎 A modern, glassmorphism-inspired dashboard for Home Assistant, built on the popular Mushroom Cards.
 
 ---
 
 <p align="center">
-  <strong>Dashboard Konfiguration</strong><br>
-  <img src="https://github.com/user-attachments/assets/6048858f-4ba0-40a8-95b8-7787cde1d8ab" alt="Prism Dashboard - Dashboard Konfiguration" width="85%">
+  <strong>Dashboard Configuration</strong><br>
+  <img src="https://github.com/user-attachments/assets/6048858f-4ba0-40a8-95b8-7787cde1d8ab" alt="Prism Dashboard - Dashboard Configuration" width="85%">
 </p>
 
 <p align="center">
@@ -16,16 +16,16 @@
 
 ---
 
-### Inhaltsverzeichnis
+### Table of Contents
 
-- [Was ist Prism?](#was-ist-prism)
+- [What is Prism?](#what-is-prism)
 - [Features](#features)
 - [Requirements](#requirements)
 - [Installation](#installation)
-  - [1. Dateien vorbereiten](#1-dateien-vorbereiten)
-  - [2. Dashboard anlegen](#2-dashboard-anlegen)
-  - [3. Custom Cards registrieren](#3-custom-cards-registrieren)
-- [Dashboard-Konfiguration](#dashboard-konfiguration)
+  - [1. Prepare Files](#1-prepare-files)
+  - [2. Create Dashboard](#2-create-dashboard)
+  - [3. Register Custom Cards](#3-register-custom-cards)
+- [Dashboard Configuration](#dashboard-configuration)
 - [Support / Feedback](#support--feedback)
 - [Contributing](#contributing)
 - [Sponsorship](#sponsorship)
@@ -33,12 +33,12 @@
 
 ---
 
-## Was ist Prism?
+## What is Prism?
 
-Prism ist ein modernes, responsives Home Assistant Dashboard im Glassmorphism-Design.  
-Es kombiniert halbtransparente „frosted glass“-Oberflächen mit Neumorphismus-Elementen für haptisches Feedback und nutzt intelligente YAML-Anker, um den Code schlank, einheitlich und leicht wartbar zu halten.
+Prism is a modern, responsive Home Assistant dashboard with a glassmorphism design.  
+It combines semi-transparent "frosted glass" surfaces with neumorphism elements for haptic feedback and uses smart YAML anchors to keep the code lean, consistent, and easy to maintain.
 
-Prism ist optimiert für Wandtablets und Smartphones und eignet sich ideal als zentraler Smart-Home-Hub im Alltag.
+Prism is optimized for wall tablets and smartphones and is ideal as a central smart home hub for everyday use.
 
 
 <p align="center">
@@ -52,64 +52,64 @@ Prism ist optimiert für Wandtablets und Smartphones und eignet sich ideal als z
 ## Features
 
 - **💎 Glassmorphism UI**  
-  Halbtransparente „Frosted Glass“-Karten mit Unschärfe-Effekten für einen modernen, hochwertigen Look.
+  Semi-transparent "Frosted Glass" cards with blur effects for a modern, premium look.
 
-- **👆 Haptisches Feedback (Neumorphismus)**  
-  Aktive Buttons wirken „eingedrückt“ und geben visuelles Feedback bei Interaktionen.
+- **👆 Haptic Feedback (Neumorphism)**  
+  Active buttons appear "pressed" and provide visual feedback on interactions.
 
 - **🧭 Smart Navigation**  
-  Animierte Navigationsleiste, die den aktuellen Raum bzw. die aktive Ansicht automatisch hervorhebt.
+  Animated navigation bar that automatically highlights the current room or active view.
 
 - **🌈 Status Glow**  
-  Icons leuchten je nach Zustand in passenden Farben (z. B. Grün für Sicherheit, Orange für Heizung).
+  Icons glow in appropriate colors depending on state (e.g., green for security, orange for heating).
 
-- **📱 Responsives Grid**  
-  Layout passt sich nahtlos an verschiedene Geräte an (Tablet an der Wand, Smartphone in der Hand).
+- **📱 Responsive Grid**  
+  Layout seamlessly adapts to different devices (tablet on the wall, smartphone in hand).
 
-- **🧹 Clean Code mit YAML-Ankern**  
-  Nutzt YAML-Anker (`&` und `*`), um Wiederholungen zu vermeiden und globale Style-Änderungen zentral zu halten.
+- **🧹 Clean Code with YAML Anchors**  
+  Uses YAML anchors (`&` and `*`) to avoid repetition and keep global style changes centralized.
 
 ---
 
 ## Requirements
 
-Damit dieses Dashboard funktioniert, müssen folgende Frontend-Integrationen über **HACS (Home Assistant Community Store)** installiert sein:
+For this dashboard to work, the following frontend integrations must be installed via **HACS (Home Assistant Community Store)**:
 
 - **Mushroom Cards**  
-  Basis für fast alle Karten im Dashboard.
+  Base for almost all cards in the dashboard.
 
 - **card-mod**  
-  Essenziell für das CSS- und Glassmorphism-Styling.
+  Essential for CSS and glassmorphism styling.
 
 - **layout-card**  
-  Ermöglicht das responsive Grid-Layout (Sidebar + Main-Bereich).
+  Enables the responsive grid layout (sidebar + main area).
 
 - **kiosk-mode**  
-  Versteckt Header und Sidebar von Home Assistant für einen cleanen Fullscreen-Look.
+  Hides Home Assistant header and sidebar for a clean fullscreen look.
 
 - **mini-graph-card**  
-  Für Temperatur- und Verlaufsdiagramme.
+  For temperature and trend graphs.
 
 - **browser_mod**  
-  Wichtig für Popups (z. B. Kalender, Staubsauger-Steuerung).
+  Important for popups (e.g., calendar, vacuum control).
 
 ---
 
 ## Installation
 
-### Option 1: Installation über HACS (Empfohlen)
+### Option 1: Installation via HACS (Recommended)
 
-1. Stelle sicher, dass [HACS](https://hacs.xyz) installiert ist.
-2. Gehe zu **HACS → Frontend** (3-Punkte-Menü oben rechts) → **Benutzerdefinierte Repositories**
-3. Füge dieses Repository hinzu:
+1. Make sure [HACS](https://hacs.xyz) is installed.
+2. Go to **HACS → Frontend** (three-dot menu top right) → **Custom Repositories**
+3. Add this repository:
    - **Repository:** `https://github.com/BangerTech/Prism-Dashboard`
-   - **Typ:** `Dashboard`
-4. Suche nach "Prism Dashboard" und klicke auf **"Herunterladen"**
-5. **WICHTIG:** Nach der Installation müssen die Custom Cards manuell zu den Dashboard-Ressourcen hinzugefügt werden (HACS lädt die Dateien herunter, registriert sie aber nicht automatisch).
-6. Gehe zu **Einstellungen → Dashboards** → **Ressourcen** (oben rechts)
-7. Klicke auf **"Ressource hinzufügen"** und füge die gewünschten Custom Cards hinzu:
+   - **Type:** `Dashboard`
+4. Search for "Prism Dashboard" and click **"Download"**
+5. **IMPORTANT:** After installation, the custom cards must be manually added to the dashboard resources (HACS downloads the files but does not automatically register them).
+6. Go to **Settings → Dashboards** → **Resources** (top right)
+7. Click **"Add Resource"** and add the desired custom cards:
    
-   **Dark Theme Karten:**
+   **Dark Theme Cards:**
    - `/hacsfiles/Prism-Dashboard/prism-heat.js`
    - `/hacsfiles/Prism-Dashboard/prism-heat-small.js`
    - `/hacsfiles/Prism-Dashboard/prism-button.js`
@@ -123,9 +123,10 @@ Damit dieses Dashboard funktioniert, müssen folgende Frontend-Integrationen üb
    - `/hacsfiles/Prism-Dashboard/prism-bambu.js`
    - `/hacsfiles/Prism-Dashboard/prism-creality.js`
    - `/hacsfiles/Prism-Dashboard/prism-energy.js`
+   - `/hacsfiles/Prism-Dashboard/prism-energy-horizontal.js`
    - `/hacsfiles/Prism-Dashboard/prism-sidebar.js`
    
-   **Light Theme Karten (optional):**
+   **Light Theme Cards (optional):**
    - `/hacsfiles/Prism-Dashboard/prism-heat-light.js`
    - `/hacsfiles/Prism-Dashboard/prism-heat-small-light.js`
    - `/hacsfiles/Prism-Dashboard/prism-button-light.js`
@@ -137,176 +138,176 @@ Damit dieses Dashboard funktioniert, müssen folgende Frontend-Integrationen üb
    - `/hacsfiles/Prism-Dashboard/prism-led-light.js`
    - `/hacsfiles/Prism-Dashboard/prism-sidebar-light.js`
    
-   > **Hinweis:** Du musst nur die Karten hinzufügen, die du auch tatsächlich verwenden möchtest. Du kannst Dark und Light Theme Karten auch parallel verwenden.
-8. Wähle für alle den Typ **"JavaScript-Modul"**
-9. Starte Home Assistant neu
+   > **Note:** You only need to add the cards you actually want to use. You can use dark and light theme cards in parallel.
+8. Select **"JavaScript Module"** as the type for all
+9. Restart Home Assistant
 
-### Option 2: Manuelle Installation
+### Option 2: Manual Installation
 
-1. Dieses Repository herunterladen oder clonen.  
-2. Den Inhalt des Ordners `www` in deinen Home Assistant Konfigurationsordner unter  
-   `/config/www/` kopieren.  
-3. Das Hintergrundbild sollte anschließend unter  
-   `/local/background/background.png`  
-   erreichbar sein.  
-4. **Hinweis:** Starte Home Assistant neu, falls der `www`-Ordner neu erstellt oder neu hinzugefügt wurde.
+1. Download or clone this repository.  
+2. Copy the contents of the `www` folder to your Home Assistant configuration folder under  
+   `/config/www/`.  
+3. The background image should then be accessible at  
+   `/local/background/background.png`.  
+4. **Note:** Restart Home Assistant if the `www` folder was newly created or newly added.
 
-### 2. Dashboard anlegen
+### 2. Create Dashboard
 
-1. In Home Assistant zu **Einstellungen → Dashboards** navigieren.  
-2. Auf **„Dashboard hinzufügen"** klicken → **„Neues Dashboard von Grund auf"** wählen.  
-3. Folgende Einstellungen vornehmen:
-   - **Titel:** `Prism` (oder ein Titel deiner Wahl)
-   - **Ansichtstyp:** `Grid (layout-card)` (falls verfügbar, ansonsten später im Code definieren)
+1. Navigate to **Settings → Dashboards** in Home Assistant.  
+2. Click **"Add Dashboard"** → Select **"New Dashboard from Scratch"**.  
+3. Make the following settings:
+   - **Title:** `Prism` (or a title of your choice)
+   - **View Type:** `Grid (layout-card)` (if available, otherwise define it later in the code)
 
-> **Hinweis:** Für die Dashboard-Konfiguration und Anpassungen siehe [Dashboard-Konfiguration](#dashboard-konfiguration) und [Dashboard-README](dashboard/README.md).
+> **Note:** For dashboard configuration and adjustments, see [Dashboard Configuration](#dashboard-configuration) and [Dashboard README](dashboard/README.md).
 
-### 3. Custom Cards registrieren (nur bei manueller Installation)
+### 3. Register Custom Cards (Manual Installation Only)
 
-Falls du Option 2 (manuelle Installation) gewählt hast, müssen die Custom Cards manuell registriert werden:
+If you chose Option 2 (manual installation), the custom cards must be registered manually:
 
-1. In Home Assistant zu **Einstellungen → Dashboards** navigieren.  
-2. Auf **„Ressourcen"** (oben rechts) klicken.  
-3. Auf **„Ressource hinzufügen"** klicken.  
-4. Folgende Ressourcen hinzufügen:
+1. Navigate to **Settings → Dashboards** in Home Assistant.  
+2. Click **"Resources"** (top right).  
+3. Click **"Add Resource"**.  
+4. Add the following resources:
    - **URL:** `/local/custom-components/prism-heat.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-heat-small.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-button.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-media.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-calendar.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-shutter.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-shutter-vertical.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-vacuum.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-led.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-3dprinter.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-bambu.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-creality.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-energy.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
+   - **URL:** `/local/custom-components/prism-energy-horizontal.js`  
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-sidebar.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    
-   **Light Theme Karten (optional):**
+   **Light Theme Cards (optional):**
    - **URL:** `/local/custom-components/prism-heat-light.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-heat-small-light.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-button-light.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-media-light.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-calendar-light.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-shutter-light.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-shutter-vertical-light.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-vacuum-light.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-led-light.js`  
-     **Typ:** `JavaScript-Modul`
+     **Type:** `JavaScript Module`
    - **URL:** `/local/custom-components/prism-sidebar-light.js`  
-     **Typ:** `JavaScript-Modul`
-5. Home Assistant neu starten, damit die Custom Cards geladen werden.
+     **Type:** `JavaScript Module`
+5. Restart Home Assistant so the custom cards are loaded.
 
-> **Hinweis:** Bei Installation über HACS werden die Ressourcen automatisch unter `/hacsfiles/` bereitgestellt (siehe Option 1).
+> **Note:** When installing via HACS, resources are automatically provided under `/hacsfiles/` (see Option 1).
 
 ---
 
-## Projektstruktur
+## Project Structure
 
 ```
 Prism-Dashboard/
 ├── custom-components/          # JavaScript Custom Cards (prism-heat.js, prism-button.js, etc.)
-│   ├── images/                  # Bilder für die Custom Cards
-│   └── README.md                # Dokumentation der Custom Cards
-├── dashboard/                   # Dashboard-Konfiguration
-│   ├── prism-dashboard.yml      # Hauptdashboard-Konfiguration
-│   ├── components/              # Wiederverwendbare YAML-Komponenten
-│   │   ├── custom-card.yml      # Template für Standard-Karten
-│   │   ├── navigation-bar.yml   # Navigationsleiste
-│   │   └── sidebar.yml          # Sidebar-Komponente
-│   └── README.md                # Dokumentation der Dashboard-Komponenten
-├── www/                         # Statische Dateien für Home Assistant
-│   ├── background/               # Hintergrundbilder
-│   └── custom-components/        # Kompilierte Custom Cards
-└── README.md                    # Diese Datei
+│   ├── images/                  # Images for Custom Cards
+│   └── README.md                # Custom Cards Documentation
+├── dashboard/                   # Dashboard Configuration
+│   ├── prism-dashboard.yml      # Main Dashboard Configuration
+│   ├── components/              # Reusable YAML Components
+│   │   ├── custom-card.yml      # Template for Standard Cards
+│   │   ├── navigation-bar.yml   # Navigation Bar
+│   │   └── sidebar.yml          # Sidebar Component
+│   └── README.md                # Dashboard Components Documentation
+├── www/                         # Static Files for Home Assistant
+│   ├── background/               # Background Images
+│   └── custom-components/        # Compiled Custom Cards
+└── README.md                    # This File
 ```
 
-> **Hinweis:** Die Dashboard-Komponenten im `dashboard/components/`-Ordner sind wiederverwendbare YAML-Vorlagen. Siehe [Dashboard-README](dashboard/README.md) für Details zur Verwendung.
+> **Note:** The dashboard components in the `dashboard/components/` folder are reusable YAML templates. See [Dashboard README](dashboard/README.md) for details on usage.
 
 ---
 
-## Dashboard-Konfiguration
+## Dashboard Configuration
 
-Die Dashboard-Konfiguration befindet sich im Ordner `dashboard/`. Dort findest du:
+The dashboard configuration is located in the `dashboard/` folder. There you will find:
 
-- **`prism-dashboard.yml`** – Die komplette Dashboard-Konfiguration
-- **`components/`** – Wiederverwendbare YAML-Komponenten (Sidebar, Navigation, etc.)
+- **`prism-dashboard.yml`** – The complete dashboard configuration
+- **`components/`** – Reusable YAML components (Sidebar, Navigation, etc.)
 
-### Dashboard einrichten
+### Setup Dashboard
 
-1. Öffne dein Dashboard in Home Assistant
-2. Gehe zu **Bearbeiten** → **Raw-Konfigurationseditor**
-3. Kopiere den Inhalt von `dashboard/prism-dashboard.yml` hinein
-4. **WICHTIG:** Passe alle Entitäten an deine Hardware an (siehe [Dashboard-README](dashboard/README.md))
-5. Speichere die Änderungen
+1. Open your dashboard in Home Assistant
+2. Go to **Edit** → **Raw Configuration Editor**
+3. Copy the contents of `dashboard/prism-dashboard.yml` into it
+4. **IMPORTANT:** Adjust all entities to your hardware (see [Dashboard README](dashboard/README.md))
+5. Save the changes
 
-### Anpassungen
+### Customization
 
-Für detaillierte Informationen zur:
-- **Anpassung von Entitäten** – Siehe [Dashboard-README](dashboard/README.md#anpassungen)
-- **Verwendung der Komponenten** – Siehe [Dashboard-README](dashboard/README.md#wiederverwendbare-komponenten)
-- **Anpassung von Styles** – Siehe [Dashboard-README](dashboard/README.md#anpassungen)
-- **Custom Cards konfigurieren** – Siehe [Custom Components README](custom-components/README.md)
+For detailed information on:
+- **Adjusting entities** – See [Dashboard README](dashboard/README.md#customization)
+- **Using components** – See [Dashboard README](dashboard/README.md#reusable-components)
+- **Adjusting styles** – See [Dashboard README](dashboard/README.md#customization)
+- **Configuring custom cards** – See [Custom Components README](custom-components/README.md)
 
 ---
 
 ## Support / Feedback
 
-Bei Bugs, Fragen oder Feature Requests:
+For bugs, questions, or feature requests:
 
-- **GitHub Issues:** Bitte das „Issues“-Tab dieses Repositories verwenden.  
-- Alternativ: Kontaktiere mich direkt (z. B. über dein bevorzugtes Profil, falls hier verlinkt).
+- **GitHub Issues:** Please use the "Issues" tab of this repository.  
+- Alternatively: Contact me directly (e.g., via your preferred profile, if linked here).
 
-Feedback, Vorschläge und Screenshots deiner eigenen Setups sind jederzeit willkommen!
+Feedback, suggestions, and screenshots of your own setups are always welcome!
 
 ---
 
 ## Contributing
 
-Beiträge sind ausdrücklich erwünscht:
+Contributions are explicitly welcome:
 
-1. Repository forken.  
-2. Eigenen Branch erstellen (`feature/...` oder `fix/...`).  
-3. Änderungen vornehmen und testen.  
-4. Pull Request eröffnen und kurz beschreiben, was geändert wurde.
+1. Fork the repository.  
+2. Create your own branch (`feature/...` or `fix/...`).  
+3. Make changes and test them.  
+4. Open a pull request and briefly describe what was changed.
 
 ---
 
 ## Sponsorship
 
-Wenn dir Prism gefällt und du die Weiterentwicklung unterstützen möchtest:
+If you like Prism and want to support further development:
 
-Nutze gerne den **Support-Button oben** 
+Feel free to use the **Support button above** 
 
-Vielen Dank für deine Unterstützung! 💙
+Thank you for your support! 💙
 
 ---
 
 ## Keywords
 
 `home-assistant`, `dashboard`, `glassmorphism`, `lovelace`, `mushroom-cards`, `yaml`, `smart-home`, `ui-design`, `hacs`, `minimalist`
-

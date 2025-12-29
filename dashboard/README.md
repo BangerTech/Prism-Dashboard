@@ -1,145 +1,144 @@
-# Dashboard-Konfiguration
+# Dashboard Configuration
 
-Dieser Ordner enthält die Dashboard-Konfiguration und wiederverwendbare YAML-Komponenten für das Prism-Dashboard.
+This folder contains the dashboard configuration and reusable YAML components for the Prism Dashboard.
 
-## Struktur
+## Structure
 
 ```
 dashboard/
-├── prism-dashboard.yml      # Hauptdashboard-Konfiguration
-└── components/              # Wiederverwendbare YAML-Komponenten
-    ├── custom-card.yml      # Template für Standard-Karten
-    ├── navigation-bar.yml   # Navigationsleiste
-    └── sidebar.yml          # Sidebar-Komponente
+├── prism-dashboard.yml      # Main dashboard configuration
+└── components/              # Reusable YAML components
+    ├── custom-card.yml      # Template for standard cards
+    ├── navigation-bar.yml   # Navigation bar
+    └── sidebar.yml          # Sidebar component
 ```
 
-## Hauptdashboard
+## Main Dashboard
 
-Die Datei `prism-dashboard.yml` enthält die komplette Dashboard-Konfiguration mit allen Views (Erdgeschoss, Obergeschoss, Büro, etc.). Diese Datei kann direkt in den Raw-Konfigurationseditor von Home Assistant kopiert werden.
+The file `prism-dashboard.yml` contains the complete dashboard configuration with all views (Ground Floor, Upper Floor, Office, etc.). This file can be directly copied into Home Assistant's Raw Configuration Editor.
 
-### Verwendung
+### Usage
 
-1. Öffne dein Dashboard in Home Assistant
-2. Gehe zu **Bearbeiten** → **Raw-Konfigurationseditor**
-3. Kopiere den Inhalt von `prism-dashboard.yml` hinein
-4. Passe die Entitäten an deine Hardware an
-5. Speichere die Änderungen
+1. Open your dashboard in Home Assistant
+2. Go to **Edit** → **Raw Configuration Editor**
+3. Copy the contents of `prism-dashboard.yml` into it
+4. Adjust the entities to your hardware
+5. Save the changes
 
-## Wiederverwendbare Komponenten
+## Reusable Components
 
-Die Komponenten im `components/`-Ordner sind als Vorlagen gedacht und können in dein Dashboard integriert werden.
+The components in the `components/` folder are intended as templates and can be integrated into your dashboard.
 
 ### custom-card.yml
 
-Ein Template für Standard-Karten mit Glassmorphism-Design. Enthält:
-- Glassmorphism-Styling (halbtransparent mit Blur-Effekt)
-- Neumorphismus-Effekte (eingedrückt bei Aktivität)
-- Icon Glow-Effekte (farbiges Leuchten je nach Entitätstyp)
+A template for standard cards with glassmorphism design. Contains:
+- Glassmorphism styling (semi-transparent with blur effect)
+- Neumorphism effects (pressed when active)
+- Icon glow effects (colored glow depending on entity type)
 
-**Verwendung:**
+**Usage:**
 ```yaml
-# Kopiere den Inhalt von custom-card.yml und passe die Entität an:
-entity: light.dein_licht  # <-- Deine Entität hier
-name: Dein Name
+# Copy the contents of custom-card.yml and adjust the entity:
+entity: light.your_light  # <-- Your entity here
+name: Your Name
 icon: mdi:lightbulb
 ```
 
 ### navigation-bar.yml
 
-Die Navigationsleiste mit Glassmorphism-Design. Nutzt `mushroom-chips-card` für die Navigation zwischen verschiedenen Views.
+The navigation bar with glassmorphism design. Uses `mushroom-chips-card` for navigation between different views.
 
-**Verwendung:**
+**Usage:**
 ```yaml
-# Kopiere den Inhalt von navigation-bar.yml
-# Passe die navigation_path-Werte an deine View-Pfade an
+# Copy the contents of navigation-bar.yml
+# Adjust the navigation_path values to your view paths
 ```
 
-**Anpassungen:**
-- Ändere die `navigation_path`-Werte zu deinen View-Pfaden
-- Passe die Chip-Texte an (z.B. "ERDGESCHOSS", "OBERGESCHOSS")
-- Füge weitere Navigation-Items hinzu oder entferne welche
+**Customization:**
+- Change the `navigation_path` values to your view paths
+- Adjust the chip texts (e.g., "GROUND FLOOR", "UPPER FLOOR")
+- Add more navigation items or remove some
 
 ### sidebar.yml
 
-Die linke Sidebar-Komponente mit:
-- Kamerabild
-- Datum & Uhrzeit
-- Kalender (nächste Termine)
-- Wetter & Temperatur-Graph
-- Stromverbrauchsanzeige
+The left sidebar component with:
+- Camera image
+- Date & time
+- Calendar (upcoming events)
+- Weather & temperature graph
+- Power consumption display
 
-**Verwendung:**
+**Usage:**
 ```yaml
-# Kopiere den Inhalt von sidebar.yml
-# Passe die Entitäten an:
-# - camera.garden_main → deine Kamera
-# - calendar.family_shared → dein Kalender
-# - weather.home → dein Wetter
-# - sensor.outdoor_temperature → dein Temperatursensor
-# - sensor.power_* → deine Stromverbrauchs-Sensoren
+# Copy the contents of sidebar.yml
+# Adjust the entities:
+# - camera.garden_main → your camera
+# - calendar.family_shared → your calendar
+# - weather.home → your weather
+# - sensor.outdoor_temperature → your temperature sensor
+# - sensor.power_* → your power consumption sensors
 ```
 
-**Anpassungen:**
-- Ersetze alle Platzhalter-Entitäten durch deine echten Entitäten
-- Passe die Styles an, falls gewünscht
-- Füge weitere Elemente hinzu oder entferne welche
+**Customization:**
+- Replace all placeholder entities with your real entities
+- Adjust the styles if desired
+- Add more elements or remove some
 
-## Integration in das Hauptdashboard
+## Integration into Main Dashboard
 
-Das Hauptdashboard (`prism-dashboard.yml`) nutzt YAML-Anker (`&` und `*`), um die Komponenten zu referenzieren:
+The main dashboard (`prism-dashboard.yml`) uses YAML anchors (`&` and `*`) to reference the components:
 
 ```yaml
-# Definition mit Anker
+# Definition with anchor
 cards: &sidebar_content
   - type: vertical-stack
     cards:
-      # ... Sidebar-Inhalt ...
+      # ... Sidebar content ...
 
-# Verwendung mit Referenz
+# Usage with reference
 cards: *sidebar_content
 ```
 
-Dies ermöglicht:
-- **DRY-Prinzip:** Code wird nicht wiederholt
-- **Zentrale Wartung:** Änderungen an einer Stelle wirken sich auf alle Referenzen aus
-- **Sauberer Code:** Weniger Redundanz, bessere Lesbarkeit
+This enables:
+- **DRY Principle:** Code is not repeated
+- **Central Maintenance:** Changes in one place affect all references
+- **Clean Code:** Less redundancy, better readability
 
-## Anpassungen
+## Customization
 
-### Entitäten ersetzen
+### Replace Entities
 
-Alle Platzhalter-Entitäten müssen durch deine echten Entitäten ersetzt werden. Nutze die Suche (`Strg+F` / `Cmd+F`), um alle Vorkommen zu finden:
+All placeholder entities must be replaced with your real entities. Use search (`Ctrl+F` / `Cmd+F`) to find all occurrences:
 
-- `camera.garden_main` → deine Kamera
-- `light.living_room_light` → deine Lichter
-- `switch.pond_pump` → deine Schalter
-- `climate.living_room` → deine Klima-Entitäten
-- `sensor.outdoor_temperature` → deine Sensoren
-- `calendar.family_shared` → dein Kalender
-- `weather.home` → dein Wetter
+- `camera.garden_main` → your camera
+- `light.living_room_light` → your lights
+- `switch.pond_pump` → your switches
+- `climate.living_room` → your climate entities
+- `sensor.outdoor_temperature` → your sensors
+- `calendar.family_shared` → your calendar
+- `weather.home` → your weather
 - etc.
 
-### Styles anpassen
+### Adjust Styles
 
-Die Styles sind in den YAML-Ankern definiert:
+The styles are defined in YAML anchors:
 
-- **`&mush_card_style`** – Haupt-Style für Glassmorphism-Karten
-- **`&active_chip_style`** – Style für aktive Navigation-Chips
-- **`&inactive_chip_style`** – Style für inaktive Navigation-Chips
-- **`&sidebar_content`** – Kompletter Sidebar-Inhalt
+- **`&mush_card_style`** – Main style for glassmorphism cards
+- **`&active_chip_style`** – Style for active navigation chips
+- **`&inactive_chip_style`** – Style for inactive navigation chips
+- **`&sidebar_content`** – Complete sidebar content
 
-Ändere diese Anker-Definitionen, um das Aussehen global anzupassen.
+Change these anchor definitions to adjust the appearance globally.
 
-## Tipps
+## Tips
 
-1. **Backup erstellen:** Bevor du Änderungen machst, erstelle ein Backup deiner Dashboard-Konfiguration
-2. **Schrittweise testen:** Teste Änderungen in kleinen Schritten
-3. **YAML-Validierung:** Nutze einen YAML-Validator, um Syntaxfehler zu vermeiden
-4. **Kommentare nutzen:** Die YAML-Dateien enthalten Kommentare, die bei der Anpassung helfen
+1. **Create Backup:** Before making changes, create a backup of your dashboard configuration
+2. **Test Step by Step:** Test changes in small steps
+3. **YAML Validation:** Use a YAML validator to avoid syntax errors
+4. **Use Comments:** The YAML files contain comments that help with customization
 
 ## Support
 
-Bei Fragen oder Problemen:
-- Siehe die [Haupt-README](../README.md) für allgemeine Informationen
-- Öffne ein [GitHub Issue](https://github.com/BangerTech/Prism-Dashboard/issues) für Bugs oder Feature-Requests
-
+For questions or problems:
+- See the [Main README](../README.md) for general information
+- Open a [GitHub Issue](https://github.com/BangerTech/Prism-Dashboard/issues) for bugs or feature requests
