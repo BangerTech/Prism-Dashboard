@@ -4,6 +4,9 @@ class PrismButtonCard extends HTMLElement {
     super();
     this._hass = null;
     this._config = null;
+    this._isDragging = false;
+    this._dragStartX = 0;
+    this._dragStartBrightness = 0;
   }
 
   static getStubConfig() {
@@ -37,6 +40,14 @@ class PrismButtonCard extends HTMLElement {
         {
           name: "active_color",
           selector: { color_rgb: {} }
+        },
+        {
+          name: "show_brightness_slider",
+          selector: { boolean: {} }
+        },
+        {
+          name: "slider_entity",
+          selector: { entity: {} }
         }
       ]
     };
@@ -53,6 +64,10 @@ class PrismButtonCard extends HTMLElement {
     }
     if (!this._config.layout) {
       this._config.layout = "horizontal";
+    }
+    // Default show_brightness_slider to true for lights
+    if (this._config.show_brightness_slider === undefined) {
+      this._config.show_brightness_slider = true;
     }
     // Normalize active_color (convert RGB arrays to hex if needed)
     if (this._config.active_color) {
@@ -141,6 +156,50 @@ class PrismButtonCard extends HTMLElement {
     return null;
   }
 
+  _hasBrightnessControl() {
+    if (!this._hass || !this._config.entity) return false;
+    if (!this._config.show_brightness_slider) return false;
+    
+    // Use slider_entity if configured, otherwise use main entity
+    const entityId = this._config.slider_entity || this._config.entity;
+    const entity = this._hass.states[entityId];
+    if (!entity) return false;
+    
+    // Only lights have brightness control
+    if (!entityId.startsWith('light.')) return false;
+    
+    // Check if brightness is supported
+    const supportedModes = entity.attributes.supported_color_modes || [];
+    return supportedModes.some(mode => 
+      ['brightness', 'color_temp', 'hs', 'rgb', 'rgbw', 'rgbww', 'xy', 'white'].includes(mode)
+    );
+  }
+
+  _getBrightness() {
+    if (!this._hass || !this._config.entity) return 0;
+    
+    // Use slider_entity if configured, otherwise use main entity
+    const entityId = this._config.slider_entity || this._config.entity;
+    const entity = this._hass.states[entityId];
+    if (!entity || entity.state !== 'on') return 0;
+    if (!entity.attributes.brightness) return 100; // If on but no brightness attr, assume 100%
+    // brightness is 0-255, convert to percentage
+    return Math.round((entity.attributes.brightness / 255) * 100);
+  }
+
+  _setBrightness(percent) {
+    if (!this._hass || !this._config.entity) return;
+    
+    // Use slider_entity if configured, otherwise use main entity
+    const entityId = this._config.slider_entity || this._config.entity;
+    percent = Math.max(1, Math.min(100, percent));
+    const brightness = Math.round((percent / 100) * 255);
+    this._hass.callService('light', 'turn_on', {
+      entity_id: entityId,
+      brightness: brightness
+    });
+  }
+
   _handleTap() {
     if (!this._hass || !this._config.entity) return;
     const domain = this._config.entity.split('.')[0];
@@ -168,6 +227,29 @@ class PrismButtonCard extends HTMLElement {
     const state = entity ? entity.state : 'off';
     const friendlyName = this._config.name || (entity ? entity.attributes.friendly_name : null) || this._config.entity;
     const layout = this._config.layout || 'horizontal';
+    
+    // Brightness slider logic
+    const hasBrightness = this._hasBrightnessControl();
+    const brightness = hasBrightness ? this._getBrightness() : 0;
+    const showSlider = hasBrightness && isActive;
+    
+    // State display - show brightness percentage if available
+    const stateDisplay = (isActive && hasBrightness && brightness > 0) ? `${brightness}%` : state;
+    
+    // Get the color for the brightness slider - subtle but visible
+    const sliderColor = iconColor ? iconColor.color : 'rgb(255, 200, 100)';
+    const sliderOpacityStart = 0.08; // Dezent auf der linken Seite
+    const sliderOpacityEnd = 0.22;   // Stärker auf der rechten Seite
+    const sliderColorStart = sliderColor.replace('rgb', 'rgba').replace(')', `, ${sliderOpacityStart})`);
+    const sliderColorEnd = sliderColor.replace('rgb', 'rgba').replace(')', `, ${sliderOpacityEnd})`);
+    
+    // Icon glow intensity based on brightness (0.1 to 0.5 range)
+    const glowIntensity = showSlider ? (0.1 + (brightness / 100) * 0.4) : 0.35;
+    const glowIntensityOuter = showSlider ? (0.05 + (brightness / 100) * 0.2) : 0.15;
+    
+    // Icon opacity based on brightness (0.6 to 1.0 range)
+    const iconOpacity = showSlider ? (0.6 + (brightness / 100) * 0.4) : 1.0;
+    const iconDropShadow = showSlider ? `drop-shadow(0 0 ${Math.round(4 + brightness * 0.08)}px ${iconColor ? iconColor.shadow.replace('0.6', String(glowIntensity * 1.2)) : 'rgba(255, 200, 100, 0.4)'})` : `drop-shadow(0 0 6px ${iconColor ? iconColor.shadow.replace('0.6', '0.4') : 'rgba(255, 200, 100, 0.4)'})`;
 
     this.innerHTML = `
       <style>
@@ -201,12 +283,47 @@ class PrismButtonCard extends HTMLElement {
         ha-card:active {
           transform: scale(0.98) ${isActive ? 'translateY(2px)' : ''};
         }
+        
         .card-content {
           display: flex;
           flex-direction: ${layout === 'vertical' ? 'column' : 'row'};
           align-items: center;
           padding: 16px;
           gap: 16px;
+          position: relative;
+        }
+        
+        /* Brightness slider background - subtle gradient from light to stronger */
+        .brightness-slider {
+          position: absolute;
+          ${layout === 'vertical' ? `
+            /* Vertical: von unten nach oben - OHNE Ausschnitt */
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: ${showSlider ? brightness : 0}%;
+            width: auto;
+            background: linear-gradient(0deg, 
+              ${sliderColorStart} 0%,
+              ${sliderColorEnd} 100%);
+            border-radius: 0 0 16px 16px;
+          ` : `
+            /* Horizontal: von links nach rechts - MIT Icon-Ausschnitt */
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: ${showSlider ? brightness : 0}%;
+            background: linear-gradient(90deg, 
+              ${sliderColorStart} 0%,
+              ${sliderColorEnd} 100%);
+            border-radius: 16px 0 0 16px;
+            /* Icon links in der Mitte ausschneiden - 40px von links, center vertical */
+            mask-image: radial-gradient(circle 29px at 40px center, transparent 0, transparent 29px, black 30px);
+            -webkit-mask-image: radial-gradient(circle 29px at 40px center, transparent 0, transparent 29px, black 30px);
+          `}
+          transition: ${layout === 'vertical' ? 'height' : 'width'} 0.15s ease-out;
+          pointer-events: none;
+          z-index: 0;
         }
         .icon-container {
           display: flex;
@@ -216,6 +333,7 @@ class PrismButtonCard extends HTMLElement {
           position: relative;
           width: 48px;
           height: 48px;
+          z-index: 10;
         }
         /* Neumorphic icon circle - Dark Theme with Glassmorphism blend */
         .icon-circle {
@@ -223,9 +341,10 @@ class PrismButtonCard extends HTMLElement {
           width: 100%;
           height: 100%;
           border-radius: 50%;
+          z-index: 1;
           
           ${iconColor ? `
-            /* ACTIVE STATE - Raised with subtle color glow */
+            /* ACTIVE STATE - Raised with brightness-based glow */
             background: linear-gradient(145deg, 
               ${iconColor.color.replace('rgb', 'rgba').replace(')', ', 0.2)')}, 
               ${iconColor.color.replace('rgb', 'rgba').replace(')', ', 0.1)')});
@@ -233,9 +352,9 @@ class PrismButtonCard extends HTMLElement {
               /* Subtle outer shadows */
               3px 3px 8px rgba(0, 0, 0, 0.3),
               -2px -2px 6px rgba(255, 255, 255, 0.04),
-              /* Dezenter color glow */
-              0 0 12px ${iconColor.shadow.replace('0.6', '0.35')},
-              0 0 24px ${iconColor.shadow.replace('0.6', '0.15')},
+              /* Color glow - intensity based on brightness */
+              0 0 ${showSlider ? Math.round(8 + brightness * 0.16) : 12}px ${iconColor.shadow.replace('0.6', String(glowIntensity))},
+              0 0 ${showSlider ? Math.round(16 + brightness * 0.24) : 24}px ${iconColor.shadow.replace('0.6', String(glowIntensityOuter))},
               /* Inner highlight */
               inset 1px 1px 2px rgba(255, 255, 255, 0.1);
           ` : `
@@ -253,7 +372,7 @@ class PrismButtonCard extends HTMLElement {
         }
         .icon-wrapper {
           position: relative;
-          z-index: 1;
+          z-index: 2;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -262,7 +381,8 @@ class PrismButtonCard extends HTMLElement {
           --mdc-icon-size: 24px;
           ${iconColor 
             ? `color: ${iconColor.color} !important; 
-               filter: drop-shadow(0 0 6px ${iconColor.shadow.replace('0.6', '0.4')});` 
+               opacity: ${iconOpacity};
+               filter: ${iconDropShadow};` 
             : 'color: rgba(255, 255, 255, 0.4);'}
           transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
         }
@@ -271,6 +391,8 @@ class PrismButtonCard extends HTMLElement {
           min-width: 0;
           overflow: hidden;
           ${layout === 'vertical' ? 'text-align: center;' : ''}
+          position: relative;
+          z-index: 10;
         }
         .name {
           font-size: 16px;
@@ -292,6 +414,7 @@ class PrismButtonCard extends HTMLElement {
       </style>
       <ha-card>
         <div class="card-content">
+          <div class="brightness-slider"></div>
           <div class="icon-container">
             <div class="icon-circle"></div>
             <div class="icon-wrapper">
@@ -300,7 +423,7 @@ class PrismButtonCard extends HTMLElement {
           </div>
           <div class="info">
             <div class="name">${friendlyName}</div>
-            <div class="state">${state}</div>
+            <div class="state">${stateDisplay}</div>
           </div>
         </div>
       </ha-card>
@@ -308,23 +431,153 @@ class PrismButtonCard extends HTMLElement {
 
     // Add event listeners
     const card = this.querySelector('ha-card');
+    const slider = this.querySelector('.brightness-slider');
+    
     if (card) {
-      card.addEventListener('click', () => this._handleTap());
+      let touchStart = 0;
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let hasMoved = false;
+      
+      // Handle start of interaction
+      const handleInteractionStart = (e) => {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        touchStartX = clientX;
+        touchStartY = clientY;
+        touchStart = Date.now();
+        hasMoved = false;
+        this._isDragging = false;
+        this._dragStartX = clientX;
+        this._dragStartBrightness = brightness;
+      };
+      
+      // Handle move during interaction (only for brightness slider)
+      const handleInteractionMove = (e) => {
+        if (!showSlider) return;
+        
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        const deltaX = Math.abs(clientX - touchStartX);
+        const deltaY = Math.abs(clientY - touchStartY);
+        
+        // Start dragging based on layout direction
+        if (layout === 'vertical') {
+          // Vertical: Start dragging if moved more than 10px vertically and more vertical than horizontal
+          if (deltaY > 10 && deltaY > deltaX) {
+            this._isDragging = true;
+            hasMoved = true;
+          }
+        } else {
+          // Horizontal: Start dragging if moved more than 10px horizontally and more horizontal than vertical
+          if (deltaX > 10 && deltaX > deltaY) {
+            this._isDragging = true;
+            hasMoved = true;
+          }
+        }
+        
+        if (this._isDragging) {
+          e.preventDefault();
+          const rect = card.getBoundingClientRect();
+          let newBrightness;
+          
+          if (layout === 'vertical') {
+            // Vertical: Calculate from bottom (inverted Y-axis)
+            const percent = Math.round(((rect.bottom - clientY) / rect.height) * 100);
+            newBrightness = Math.max(1, Math.min(100, percent));
+            // Update slider visually
+            if (slider) {
+              slider.style.height = newBrightness + '%';
+            }
+          } else {
+            // Horizontal: Calculate from left
+            const percent = Math.round(((clientX - rect.left) / rect.width) * 100);
+            newBrightness = Math.max(1, Math.min(100, percent));
+            // Update slider visually
+            if (slider) {
+              slider.style.width = newBrightness + '%';
+            }
+          }
+          
+          // Update state display
+          const stateEl = this.querySelector('.state');
+          if (stateEl) {
+            stateEl.textContent = newBrightness + '%';
+          }
+        }
+      };
+      
+      // Handle end of interaction
+      const handleInteractionEnd = (e) => {
+        const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+        const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+        
+        // If we were dragging the brightness slider
+        if (this._isDragging && showSlider) {
+          e.preventDefault();
+          const rect = card.getBoundingClientRect();
+          let newBrightness;
+          
+          if (layout === 'vertical') {
+            // Vertical: Calculate from bottom (inverted Y-axis)
+            const percent = Math.round(((rect.bottom - clientY) / rect.height) * 100);
+            newBrightness = Math.max(1, Math.min(100, percent));
+          } else {
+            // Horizontal: Calculate from left
+            const percent = Math.round(((clientX - rect.left) / rect.width) * 100);
+            newBrightness = Math.max(1, Math.min(100, percent));
+          }
+          
+          this._setBrightness(newBrightness);
+          this._isDragging = false;
+          return;
+        }
+        
+        this._isDragging = false;
+        
+        // Handle tap/hold for ALL entities (not just lights)
+        const duration = Date.now() - touchStart;
+        if (!hasMoved && duration < 500) {
+          this._handleTap();
+        } else if (!hasMoved && duration >= 500) {
+          e.preventDefault();
+          this._handleHold();
+        }
+      };
+      
+      // Touch events
+      card.addEventListener('touchstart', handleInteractionStart, { passive: true });
+      card.addEventListener('touchmove', handleInteractionMove, { passive: false });
+      card.addEventListener('touchend', handleInteractionEnd);
+      
+      // Mouse events
+      card.addEventListener('mousedown', handleInteractionStart);
+      card.addEventListener('mousemove', (e) => {
+        if (e.buttons === 1) handleInteractionMove(e);
+      });
+      card.addEventListener('mouseup', handleInteractionEnd);
+      card.addEventListener('mouseleave', () => {
+        if (this._isDragging) {
+          this._isDragging = false;
+          this._updateCard(); // Reset to actual brightness
+        }
+      });
+      
+      // Click handler as fallback (for desktop without mousedown/up)
+      card.addEventListener('click', (e) => {
+        // Only handle if we didn't already handle via mouseup
+        if (!hasMoved && touchStart === 0) {
+          this._handleTap();
+        }
+        hasMoved = false;
+      });
+      
+      // Context menu for hold
       card.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         this._handleHold();
-      });
-      let touchStart = 0;
-      card.addEventListener('touchstart', () => {
-        touchStart = Date.now();
-      });
-      card.addEventListener('touchend', (e) => {
-        if (Date.now() - touchStart > 500) {
-          e.preventDefault();
-          this._handleHold();
-        } else {
-          this._handleTap();
-        }
       });
     }
   }
