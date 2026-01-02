@@ -3,7 +3,7 @@
  * https://github.com/BangerTech/Prism-Dashboard
  * 
  * Version: 1.0.0
- * Build Date: 2026-01-02T08:11:06.616Z
+ * Build Date: 2026-01-02T10:36:03.237Z
  * 
  * This file contains all Prism custom cards bundled together.
  * Just add this single file as a resource in Lovelace:
@@ -1270,6 +1270,7 @@ class PrismHeatCard extends HTMLElement {
     this._dragging = false;
     this._targetTemp = 20;
     this._currentTemp = 20;
+    this._humidity = null;
     this._minTemp = 10;
     this._maxTemp = 30;
     this._state = 'off';
@@ -1277,7 +1278,7 @@ class PrismHeatCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: "climate.example", name: "Living Room", color: "#fb923c" }
+    return { entity: "climate.example", name: "Living Room", icon: "mdi:heating-coil", color: "#fb923c" }
   }
 
   // Use getConfigForm for automatic form generation - more reliable than custom editor
@@ -1294,8 +1295,24 @@ class PrismHeatCard extends HTMLElement {
           selector: { text: {} }
         },
         {
+          name: "icon",
+          selector: { icon: {} }
+        },
+        {
           name: "color",
           selector: { color_rgb: {} }
+        },
+        {
+          name: "compact_mode",
+          selector: { boolean: {} }
+        },
+        {
+          name: "temperature_entity",
+          selector: { entity: { domain: "sensor" } }
+        },
+        {
+          name: "humidity_entity",
+          selector: { entity: { domain: "sensor" } }
         }
       ]
     };
@@ -1307,11 +1324,19 @@ class PrismHeatCard extends HTMLElement {
     }
     // Create a copy to avoid modifying read-only config object
     this.config = { ...config };
+    // Set default icon
+    if (!this.config.icon) {
+      this.config.icon = "mdi:heating-coil";
+    }
     // Normalize color (convert RGB arrays to hex if needed)
     if (this.config.color) {
       this.config.color = this._normalizeColor(this.config.color);
     } else {
       this.config.color = "#fb923c";
+    }
+    // Set default for compact_mode
+    if (this.config.compact_mode === undefined) {
+      this.config.compact_mode = false;
     }
   }
 
@@ -1334,8 +1359,25 @@ class PrismHeatCard extends HTMLElement {
 
     this._entity = entity;
     const newTarget = entity.attributes.temperature || 20;
-    const newCurrent = entity.attributes.current_temperature || 20;
     const newState = entity.state || 'off';
+    
+    // Get current temperature - from external entity if configured, otherwise from climate entity
+    let newCurrent = entity.attributes.current_temperature || 20;
+    if (this.config.temperature_entity) {
+      const tempEntity = hass.states[this.config.temperature_entity];
+      if (tempEntity && tempEntity.state && !isNaN(parseFloat(tempEntity.state))) {
+        newCurrent = parseFloat(tempEntity.state);
+      }
+    }
+    
+    // Get humidity if configured
+    let newHumidity = null;
+    if (this.config.humidity_entity) {
+      const humidityEntity = hass.states[this.config.humidity_entity];
+      if (humidityEntity && humidityEntity.state && !isNaN(parseFloat(humidityEntity.state))) {
+        newHumidity = parseFloat(humidityEntity.state);
+      }
+    }
 
     // Update state immediately if it changes
     if (this._state !== newState) {
@@ -1347,15 +1389,16 @@ class PrismHeatCard extends HTMLElement {
     const now = Date.now();
     const isInteracting = this._dragging || (now - this._lastInteraction < 2000);
 
-    if (!isInteracting && (this._targetTemp !== newTarget || this._currentTemp !== newCurrent)) {
+    if (!isInteracting && (this._targetTemp !== newTarget || this._currentTemp !== newCurrent || this._humidity !== newHumidity)) {
       this._targetTemp = newTarget;
       this._currentTemp = newCurrent;
+      this._humidity = newHumidity;
       this.render();
     }
   }
 
   getCardSize() {
-    return 4;
+    return this.config?.compact_mode ? 3 : 4;
   }
 
   connectedCallback() {
@@ -1459,6 +1502,7 @@ class PrismHeatCard extends HTMLElement {
     const activeArc = this.shadowRoot.querySelector('#active-arc');
     const tempText = this.shadowRoot.querySelector('#temp-text');
     const tempVal = this.shadowRoot.querySelector('.temp-val');
+    const currentTempEl = this.shadowRoot.querySelector('.current-temp');
     
     if(handle) handle.style.transform = `rotate(${rotation}deg)`;
     if(tempText) {
@@ -1466,6 +1510,9 @@ class PrismHeatCard extends HTMLElement {
     }
     if(tempVal) {
         tempVal.innerText = this._targetTemp.toFixed(1) + '°';
+    }
+    if(currentTempEl) {
+        currentTempEl.innerText = this._currentTemp.toFixed(1) + '°C';
     }
 
     if(activeArc) {
@@ -1505,6 +1552,7 @@ class PrismHeatCard extends HTMLElement {
     const isAuto = this._state === 'auto';
     const isCooling = this._state === 'cool';
     const isOff = this._state === 'off';
+    const isCompact = this.config.compact_mode;
 
     const percentage = Math.min(Math.max((this._targetTemp - this._minTemp) / (this._maxTemp - this._minTemp), 0), 1);
     const rotation = -135 + (percentage * 270);
@@ -1534,6 +1582,129 @@ class PrismHeatCard extends HTMLElement {
         iconClass = 'active off';
     }
 
+    // Compact Mode: Only render the knob without card wrapper
+    if (isCompact) {
+      this.shadowRoot.innerHTML = `
+        <style>
+          :host {
+            display: block;
+            font-family: system-ui, -apple-system, sans-serif;
+          }
+          .compact-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
+          }
+          .knob-container {
+              position: relative; width: 100%; max-width: 250px; min-width: 0; aspect-ratio: 1 / 1;
+              display: flex; justify-content: center; align-items: center;
+              overflow: hidden;
+          }
+          .inlet-track {
+              position: absolute; inset: 6.4%; border-radius: 50%;
+              background: linear-gradient(145deg, #1a1c1e, #222528);
+              box-shadow: 
+                inset 4px 4px 10px rgba(0, 0, 0, 0.8),
+                inset -3px -3px 8px rgba(255, 255, 255, 0.04),
+                inset 0 0 20px rgba(0, 0, 0, 0.4);
+              border: none;
+          }
+          svg {
+              position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+              transform: rotate(135deg);
+          }
+          .knob-handle {
+              position: absolute; width: 56%; height: 56%; border-radius: 50%;
+              background: linear-gradient(145deg, #2d3035, #1e2024);
+              box-shadow: 
+                8px 8px 20px rgba(0, 0, 0, 0.6),
+                -4px -4px 12px rgba(255, 255, 255, 0.03),
+                0 4px 15px rgba(0, 0, 0, 0.4),
+                inset 0 2px 4px rgba(255, 255, 255, 0.08),
+                inset 0 -2px 4px rgba(0, 0, 0, 0.4),
+                inset 0 0 20px rgba(0, 0, 0, 0.2);
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              border-top: 1px solid rgba(255, 255, 255, 0.12);
+              border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+              display: flex; justify-content: center; align-items: center; cursor: pointer;
+              overflow: hidden;
+          }
+          /* Dünne erhabene Linie am Knob-Rand */
+          .knob-handle::before {
+              content: '';
+              position: absolute;
+              inset: 4%;
+              border-radius: 50%;
+              background: transparent;
+              box-shadow: 
+                inset 2px 2px 4px rgba(0, 0, 0, 0.4),
+                inset -1px -1px 3px rgba(255, 255, 255, 0.03);
+              pointer-events: none;
+          }
+          .indicator {
+              position: absolute; top: 12px; width: 8px; height: 8px; border-radius: 50%;
+              background: linear-gradient(145deg, ${this.config.color}DD, ${this.config.color});
+              box-shadow: 
+                inset 1px 1px 2px rgba(255, 255, 255, 0.3),
+                inset -1px -1px 2px rgba(0, 0, 0, 0.3),
+                0 0 6px ${this.config.color}88;
+          }
+          .temp-display { text-align: center; overflow: hidden; width: 100%; position: relative; z-index: 2; }
+          .temp-val { font-size: 28px; font-weight: 700; color: white; line-height: 1; min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+          .temp-label { font-size: 9px; text-transform: uppercase; color: rgba(255,255,255,0.4); letter-spacing: 1px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .sensor-row { display: flex; justify-content: center; gap: 8px; margin-top: 4px; font-size: 11px; color: rgba(255,255,255,0.6); }
+          .indicator { z-index: 3; }
+        </style>
+        <div class="compact-wrapper">
+          <div class="knob-container" id="knob-container">
+              <div class="inlet-track"></div>
+              <svg viewBox="0 0 200 200">
+                  <defs>
+                     <linearGradient id="grad1-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')}" x1="0%" y1="0%" x2="100%" y2="0%">
+                       <stop offset="0%" style="stop-color:${this.config.color};stop-opacity:0.5" />
+                       <stop offset="100%" style="stop-color:${this.config.color};stop-opacity:1" />
+                     </linearGradient>
+                     <!-- Inset/Vertieft Filter für die orange Linie -->
+                     <filter id="inset-arc-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')}" x="-20%" y="-20%" width="140%" height="140%">
+                       <feGaussianBlur in="SourceAlpha" stdDeviation="1" result="blur"/>
+                       <feOffset in="blur" dx="1" dy="1" result="offsetBlur"/>
+                       <feFlood flood-color="rgba(0,0,0,0.6)" result="color"/>
+                       <feComposite in="color" in2="offsetBlur" operator="in" result="shadow"/>
+                       <feComposite in="shadow" in2="SourceAlpha" operator="in" result="innerShadow"/>
+                       <feMerge>
+                         <feMergeNode in="SourceGraphic"/>
+                         <feMergeNode in="innerShadow"/>
+                       </feMerge>
+                     </filter>
+                  </defs>
+                  <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="16" stroke-dasharray="${strokeDashArray}" stroke-linecap="round" />
+                  <circle id="active-arc" cx="100" cy="100" r="80" fill="none" stroke="url(#grad1-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')})" stroke-width="14" 
+                          stroke-dasharray="${strokeDashArray}" 
+                          stroke-dashoffset="${dashOffset}" 
+                          stroke-linecap="round"
+                          filter="url(#inset-arc-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')})" />
+              </svg>
+              <div class="knob-handle" id="knob-handle" style="transform: rotate(${rotation}deg)">
+                  <div class="indicator"></div>
+                  <div class="temp-display" id="temp-text" style="transform: rotate(${-rotation}deg)">
+                      <div class="temp-val">${this._targetTemp.toFixed(1)}°</div>
+                      <div class="temp-label">TARGET</div>
+                      <div class="sensor-row">
+                          <span>${this._currentTemp.toFixed(1)}°C</span>
+                          ${this._humidity !== null ? `<span>${this._humidity.toFixed(0)}%</span>` : ''}
+                      </div>
+                  </div>
+              </div>
+          </div>
+        </div>
+      `;
+      
+      this.setupListeners();
+      return;
+    }
+
+    // Normal Mode with card wrapper
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -1602,10 +1773,13 @@ class PrismHeatCard extends HTMLElement {
         }
         .inlet-track {
             position: absolute; inset: 6.4%; border-radius: 50%;
-            background: rgba(20, 20, 20, 0.8);
-            box-shadow: inset 3px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.05);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            border-top: 1px solid rgba(0,0,0,0.3);
+            background: linear-gradient(145deg, #1a1c1e, #222528);
+            box-shadow: 
+              /* Neumorphic inset - eingedrückt */
+              inset 4px 4px 10px rgba(0, 0, 0, 0.8),
+              inset -3px -3px 8px rgba(255, 255, 255, 0.04),
+              inset 0 0 20px rgba(0, 0, 0, 0.4);
+            border: none;
         }
         svg {
             position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
@@ -1613,20 +1787,49 @@ class PrismHeatCard extends HTMLElement {
         }
         .knob-handle {
             position: absolute; width: 56%; height: 56%; border-radius: 50%;
-            background: #25282e;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.05);
+            background: linear-gradient(145deg, #2d3035, #1e2024);
+            box-shadow: 
+              /* Äußerer Schatten für Erhebung */
+              8px 8px 20px rgba(0, 0, 0, 0.6),
+              -4px -4px 12px rgba(255, 255, 255, 0.03),
+              /* Mittlerer Glow */
+              0 4px 15px rgba(0, 0, 0, 0.4),
+              /* Innerer Ring-Effekt (Bevel) */
+              inset 0 2px 4px rgba(255, 255, 255, 0.08),
+              inset 0 -2px 4px rgba(0, 0, 0, 0.4),
+              /* Subtiler innerer Schatten für Tiefe */
+              inset 0 0 20px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.3);
             display: flex; justify-content: center; align-items: center; cursor: pointer;
             overflow: hidden;
         }
-        .indicator {
-            position: absolute; top: 12px; width: 6px; height: 6px; border-radius: 50%;
-            background: ${this.config.color}; box-shadow: 0 0 8px ${this.config.color}CC;
+        /* Dünne erhabene Linie am Knob-Rand */
+        .knob-handle::before {
+            content: '';
+            position: absolute;
+            inset: 4%;
+            border-radius: 50%;
+            background: transparent;
+            box-shadow: 
+              inset 2px 2px 4px rgba(0, 0, 0, 0.4),
+              inset -1px -1px 3px rgba(255, 255, 255, 0.03);
+            pointer-events: none;
         }
-        .temp-display { text-align: center; overflow: hidden; width: 100%; }
+        .indicator {
+            position: absolute; top: 12px; width: 8px; height: 8px; border-radius: 50%;
+            background: linear-gradient(145deg, ${this.config.color}DD, ${this.config.color});
+            box-shadow: 
+              inset 1px 1px 2px rgba(255, 255, 255, 0.3),
+              inset -1px -1px 2px rgba(0, 0, 0, 0.3),
+              0 0 6px ${this.config.color}88;
+        }
+        .temp-display { text-align: center; overflow: hidden; width: 100%; position: relative; z-index: 2; }
         /* Explicitly set font size and avoid layout shift */
-        .temp-val { font-size: 36px; font-weight: 700; color: white; line-height: 1; min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .temp-val { font-size: 36px; font-weight: 700; color: white; line-height: 1; min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         .temp-label { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.4); letter-spacing: 1px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .indicator { z-index: 3; }
         
         .controls {
             display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
@@ -1655,11 +1858,11 @@ class PrismHeatCard extends HTMLElement {
       <div class="card">
         <div class="header">
             <div class="icon-box ${iconClass}">
-                <ha-icon icon="mdi:heating-coil"></ha-icon>
+                <ha-icon icon="${this.config.icon}"></ha-icon>
             </div>
             <div class="title-area">
                 <div class="title">${this.config.name || 'Heizung'}</div>
-                <div class="subtitle">${this._currentTemp.toFixed(1)} °C</div>
+                <div class="subtitle">${this._currentTemp.toFixed(1)} °C${this._humidity !== null ? ` · ${this._humidity.toFixed(0)}%` : ''}</div>
             </div>
         </div>
         
@@ -1668,15 +1871,28 @@ class PrismHeatCard extends HTMLElement {
             <svg viewBox="0 0 200 200">
                 <defs>
                    <linearGradient id="grad1-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')}" x1="0%" y1="0%" x2="100%" y2="0%">
-                     <stop offset="0%" style="stop-color:${this.config.color};stop-opacity:0.4" />
+                     <stop offset="0%" style="stop-color:${this.config.color};stop-opacity:0.5" />
                      <stop offset="100%" style="stop-color:${this.config.color};stop-opacity:1" />
                    </linearGradient>
+                   <!-- Inset/Vertieft Filter für die orange Linie -->
+                   <filter id="inset-arc-n-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')}" x="-20%" y="-20%" width="140%" height="140%">
+                     <feGaussianBlur in="SourceAlpha" stdDeviation="1" result="blur"/>
+                     <feOffset in="blur" dx="1" dy="1" result="offsetBlur"/>
+                     <feFlood flood-color="rgba(0,0,0,0.6)" result="color"/>
+                     <feComposite in="color" in2="offsetBlur" operator="in" result="shadow"/>
+                     <feComposite in="shadow" in2="SourceAlpha" operator="in" result="innerShadow"/>
+                     <feMerge>
+                       <feMergeNode in="SourceGraphic"/>
+                       <feMergeNode in="innerShadow"/>
+                     </feMerge>
+                   </filter>
                 </defs>
                 <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="16" stroke-dasharray="${strokeDashArray}" stroke-linecap="round" />
-                <circle id="active-arc" cx="100" cy="100" r="80" fill="none" stroke="url(#grad1-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')})" stroke-width="16" 
+                <circle id="active-arc" cx="100" cy="100" r="80" fill="none" stroke="url(#grad1-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')})" stroke-width="14" 
                         stroke-dasharray="${strokeDashArray}" 
                         stroke-dashoffset="${dashOffset}" 
-                        stroke-linecap="round" />
+                        stroke-linecap="round"
+                        filter="url(#inset-arc-n-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')})" />
             </svg>
             <div class="knob-handle" id="knob-handle" style="transform: rotate(${rotation}deg)">
                 <div class="indicator"></div>
@@ -1963,6 +2179,7 @@ class PrismHeatLightCard extends HTMLElement {
     this._dragging = false;
     this._targetTemp = 20;
     this._currentTemp = 20;
+    this._humidity = null;
     this._minTemp = 10;
     this._maxTemp = 30;
     this._state = 'off';
@@ -1970,7 +2187,7 @@ class PrismHeatLightCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: "climate.example", name: "Living Room", color: "#fb923c" }
+    return { entity: "climate.example", name: "Living Room", icon: "mdi:heating-coil", color: "#fb923c" }
   }
 
   // Use getConfigForm for automatic form generation - more reliable than custom editor
@@ -1987,8 +2204,24 @@ class PrismHeatLightCard extends HTMLElement {
           selector: { text: {} }
         },
         {
+          name: "icon",
+          selector: { icon: {} }
+        },
+        {
           name: "color",
           selector: { color_rgb: {} }
+        },
+        {
+          name: "compact_mode",
+          selector: { boolean: {} }
+        },
+        {
+          name: "temperature_entity",
+          selector: { entity: { domain: "sensor" } }
+        },
+        {
+          name: "humidity_entity",
+          selector: { entity: { domain: "sensor" } }
         }
       ]
     };
@@ -2000,11 +2233,19 @@ class PrismHeatLightCard extends HTMLElement {
     }
     // Create a copy to avoid modifying read-only config object
     this.config = { ...config };
+    // Set default icon
+    if (!this.config.icon) {
+      this.config.icon = "mdi:heating-coil";
+    }
     // Normalize color (convert RGB arrays to hex if needed)
     if (this.config.color) {
       this.config.color = this._normalizeColor(this.config.color);
     } else {
       this.config.color = "#fb923c";
+    }
+    // Set default for compact_mode
+    if (this.config.compact_mode === undefined) {
+      this.config.compact_mode = false;
     }
   }
 
@@ -2027,8 +2268,25 @@ class PrismHeatLightCard extends HTMLElement {
 
     this._entity = entity;
     const newTarget = entity.attributes.temperature || 20;
-    const newCurrent = entity.attributes.current_temperature || 20;
     const newState = entity.state || 'off';
+    
+    // Get current temperature - from external entity if configured, otherwise from climate entity
+    let newCurrent = entity.attributes.current_temperature || 20;
+    if (this.config.temperature_entity) {
+      const tempEntity = hass.states[this.config.temperature_entity];
+      if (tempEntity && tempEntity.state && !isNaN(parseFloat(tempEntity.state))) {
+        newCurrent = parseFloat(tempEntity.state);
+      }
+    }
+    
+    // Get humidity if configured
+    let newHumidity = null;
+    if (this.config.humidity_entity) {
+      const humidityEntity = hass.states[this.config.humidity_entity];
+      if (humidityEntity && humidityEntity.state && !isNaN(parseFloat(humidityEntity.state))) {
+        newHumidity = parseFloat(humidityEntity.state);
+      }
+    }
 
     // Update state immediately if it changes
     if (this._state !== newState) {
@@ -2040,15 +2298,16 @@ class PrismHeatLightCard extends HTMLElement {
     const now = Date.now();
     const isInteracting = this._dragging || (now - this._lastInteraction < 2000);
 
-    if (!isInteracting && (this._targetTemp !== newTarget || this._currentTemp !== newCurrent)) {
+    if (!isInteracting && (this._targetTemp !== newTarget || this._currentTemp !== newCurrent || this._humidity !== newHumidity)) {
       this._targetTemp = newTarget;
       this._currentTemp = newCurrent;
+      this._humidity = newHumidity;
       this.render();
     }
   }
 
   getCardSize() {
-    return 4;
+    return this.config?.compact_mode ? 3 : 4;
   }
 
   connectedCallback() {
@@ -2152,6 +2411,7 @@ class PrismHeatLightCard extends HTMLElement {
     const activeArc = this.shadowRoot.querySelector('#active-arc');
     const tempText = this.shadowRoot.querySelector('#temp-text');
     const tempVal = this.shadowRoot.querySelector('.temp-val');
+    const currentTempEl = this.shadowRoot.querySelector('.current-temp');
     
     if(handle) handle.style.transform = `rotate(${rotation}deg)`;
     if(tempText) {
@@ -2159,6 +2419,9 @@ class PrismHeatLightCard extends HTMLElement {
     }
     if(tempVal) {
         tempVal.innerText = this._targetTemp.toFixed(1) + '°';
+    }
+    if(currentTempEl) {
+        currentTempEl.innerText = this._currentTemp.toFixed(1) + '°C';
     }
 
     if(activeArc) {
@@ -2198,6 +2461,7 @@ class PrismHeatLightCard extends HTMLElement {
     const isAuto = this._state === 'auto';
     const isCooling = this._state === 'cool';
     const isOff = this._state === 'off';
+    const isCompact = this.config.compact_mode;
 
     const percentage = Math.min(Math.max((this._targetTemp - this._minTemp) / (this._maxTemp - this._minTemp), 0), 1);
     const rotation = -135 + (percentage * 270);
@@ -2227,6 +2491,125 @@ class PrismHeatLightCard extends HTMLElement {
         iconClass = 'active off';
     }
 
+    // Compact Mode: Only render the knob without card wrapper
+    if (isCompact) {
+      this.shadowRoot.innerHTML = `
+        <style>
+          :host {
+            display: block;
+            font-family: system-ui, -apple-system, sans-serif;
+          }
+          .compact-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
+          }
+          .knob-container {
+              position: relative; width: 100%; max-width: 250px; min-width: 0; aspect-ratio: 1 / 1;
+              display: flex; justify-content: center; align-items: center;
+              overflow: hidden;
+          }
+          .inlet-track {
+              position: absolute; inset: 6.4%; border-radius: 50%;
+              background: linear-gradient(145deg, #e6e6e6, #f8f8f8);
+              box-shadow: 
+                inset 4px 4px 10px rgba(0,0,0,0.15),
+                inset -4px -4px 10px rgba(255,255,255,0.9),
+                inset 1px 1px 3px rgba(0,0,0,0.1);
+              border: 1px solid rgba(0,0,0,0.05);
+          }
+          svg {
+              position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+              transform: rotate(135deg);
+          }
+          .knob-handle {
+              position: absolute; width: 56%; height: 56%; border-radius: 50%;
+              background: linear-gradient(145deg, #ffffff, #e8e8e8);
+              box-shadow: 
+                8px 8px 20px rgba(0,0,0,0.12),
+                -6px -6px 16px rgba(255,255,255,0.9),
+                inset 1px 1px 2px rgba(255,255,255,0.8),
+                inset -1px -1px 2px rgba(0,0,0,0.05);
+              border: 1px solid rgba(255,255,255,0.8);
+              display: flex; justify-content: center; align-items: center; cursor: pointer;
+              overflow: hidden;
+          }
+          /* Dünne erhabene Linie am Knob-Rand */
+          .knob-handle::before {
+              content: '';
+              position: absolute;
+              inset: 4%;
+              border-radius: 50%;
+              background: transparent;
+              box-shadow: 
+                inset 2px 2px 4px rgba(0, 0, 0, 0.08),
+                inset -1px -1px 3px rgba(255, 255, 255, 0.9);
+              pointer-events: none;
+          }
+          .indicator {
+              position: absolute; top: 12px; width: 8px; height: 8px; border-radius: 50%;
+              background: linear-gradient(145deg, ${this.config.color}DD, ${this.config.color});
+              box-shadow: 
+                inset 1px 1px 2px rgba(255, 255, 255, 0.4),
+                inset -1px -1px 2px rgba(0, 0, 0, 0.2),
+                0 0 6px ${this.config.color}88;
+          }
+          .temp-display { text-align: center; overflow: hidden; width: 100%; position: relative; z-index: 2; }
+          .temp-val { font-size: 28px; font-weight: 700; color: #1a1a1a; line-height: 1; min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .temp-label { font-size: 9px; text-transform: uppercase; color: rgba(0,0,0,0.4); letter-spacing: 1px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .sensor-row { display: flex; justify-content: center; gap: 8px; margin-top: 4px; font-size: 11px; color: rgba(0,0,0,0.5); }
+          .indicator { z-index: 3; }
+        </style>
+        <div class="compact-wrapper">
+          <div class="knob-container" id="knob-container">
+              <div class="inlet-track"></div>
+              <svg viewBox="0 0 200 200">
+                  <defs>
+                     <linearGradient id="grad1-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')}" x1="0%" y1="0%" x2="100%" y2="0%">
+                       <stop offset="0%" style="stop-color:${this.config.color};stop-opacity:0.5" />
+                       <stop offset="100%" style="stop-color:${this.config.color};stop-opacity:1" />
+                     </linearGradient>
+                     <!-- Inset/Vertieft Filter für die orange Linie -->
+                     <filter id="inset-arc-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')}" x="-20%" y="-20%" width="140%" height="140%">
+                       <feGaussianBlur in="SourceAlpha" stdDeviation="1" result="blur"/>
+                       <feOffset in="blur" dx="1" dy="1" result="offsetBlur"/>
+                       <feFlood flood-color="rgba(0,0,0,0.4)" result="color"/>
+                       <feComposite in="color" in2="offsetBlur" operator="in" result="shadow"/>
+                       <feComposite in="shadow" in2="SourceAlpha" operator="in" result="innerShadow"/>
+                       <feMerge>
+                         <feMergeNode in="SourceGraphic"/>
+                         <feMergeNode in="innerShadow"/>
+                       </feMerge>
+                     </filter>
+                  </defs>
+                  <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(0,0,0,0.05)" stroke-width="16" stroke-dasharray="${strokeDashArray}" stroke-linecap="round" />
+                  <circle id="active-arc" cx="100" cy="100" r="80" fill="none" stroke="url(#grad1-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')})" stroke-width="14" 
+                          stroke-dasharray="${strokeDashArray}" 
+                          stroke-dashoffset="${dashOffset}" 
+                          stroke-linecap="round"
+                          filter="url(#inset-arc-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')})" />
+              </svg>
+              <div class="knob-handle" id="knob-handle" style="transform: rotate(${rotation}deg)">
+                  <div class="indicator"></div>
+                  <div class="temp-display" id="temp-text" style="transform: rotate(${-rotation}deg)">
+                      <div class="temp-val">${this._targetTemp.toFixed(1)}°</div>
+                      <div class="temp-label">TARGET</div>
+                      <div class="sensor-row">
+                          <span>${this._currentTemp.toFixed(1)}°C</span>
+                          ${this._humidity !== null ? `<span>${this._humidity.toFixed(0)}%</span>` : ''}
+                      </div>
+                  </div>
+              </div>
+          </div>
+        </div>
+      `;
+      
+      this.setupListeners();
+      return;
+    }
+
+    // Normal Mode with card wrapper
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -2321,14 +2704,31 @@ class PrismHeatLightCard extends HTMLElement {
             display: flex; justify-content: center; align-items: center; cursor: pointer;
             overflow: hidden;
         }
+        /* Dünne erhabene Linie am Knob-Rand */
+        .knob-handle::before {
+            content: '';
+            position: absolute;
+            inset: 4%;
+            border-radius: 50%;
+            background: transparent;
+            box-shadow: 
+              inset 2px 2px 4px rgba(0, 0, 0, 0.08),
+              inset -1px -1px 3px rgba(255, 255, 255, 0.9);
+            pointer-events: none;
+        }
         .indicator {
-            position: absolute; top: 12px; width: 6px; height: 6px; border-radius: 50%;
-            background: ${this.config.color}; box-shadow: 0 0 8px ${this.config.color}CC;
+            position: absolute; top: 12px; width: 8px; height: 8px; border-radius: 50%;
+            background: linear-gradient(145deg, ${this.config.color}DD, ${this.config.color});
+            box-shadow: 
+              inset 1px 1px 2px rgba(255, 255, 255, 0.4),
+              inset -1px -1px 2px rgba(0, 0, 0, 0.2),
+              0 0 6px ${this.config.color}88;
         }
         .temp-display { text-align: center; overflow: hidden; width: 100%; }
         /* Explicitly set font size and avoid layout shift */
         .temp-val { font-size: 36px; font-weight: 700; color: #1a1a1a; line-height: 1; min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .temp-label { font-size: 10px; text-transform: uppercase; color: rgba(0,0,0,0.4); letter-spacing: 1px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .current-temp { font-size: 12px; color: rgba(0,0,0,0.5); margin-top: 2px; }
         
         .controls {
             display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
@@ -2363,11 +2763,11 @@ class PrismHeatLightCard extends HTMLElement {
       <div class="card">
         <div class="header">
             <div class="icon-box ${iconClass}">
-                <ha-icon icon="mdi:heating-coil"></ha-icon>
+                <ha-icon icon="${this.config.icon}"></ha-icon>
             </div>
             <div class="title-area">
                 <div class="title">${this.config.name || 'Heizung'}</div>
-                <div class="subtitle">${this._currentTemp.toFixed(1)} °C</div>
+                <div class="subtitle">${this._currentTemp.toFixed(1)} °C${this._humidity !== null ? ` · ${this._humidity.toFixed(0)}%` : ''}</div>
             </div>
         </div>
         
@@ -2376,15 +2776,28 @@ class PrismHeatLightCard extends HTMLElement {
             <svg viewBox="0 0 200 200">
                 <defs>
                    <linearGradient id="grad1-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')}" x1="0%" y1="0%" x2="100%" y2="0%">
-                     <stop offset="0%" style="stop-color:${this.config.color};stop-opacity:0.4" />
+                     <stop offset="0%" style="stop-color:${this.config.color};stop-opacity:0.5" />
                      <stop offset="100%" style="stop-color:${this.config.color};stop-opacity:1" />
                    </linearGradient>
+                   <!-- Inset/Vertieft Filter für die orange Linie -->
+                   <filter id="inset-arc-n-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')}" x="-20%" y="-20%" width="140%" height="140%">
+                     <feGaussianBlur in="SourceAlpha" stdDeviation="1" result="blur"/>
+                     <feOffset in="blur" dx="1" dy="1" result="offsetBlur"/>
+                     <feFlood flood-color="rgba(0,0,0,0.4)" result="color"/>
+                     <feComposite in="color" in2="offsetBlur" operator="in" result="shadow"/>
+                     <feComposite in="shadow" in2="SourceAlpha" operator="in" result="innerShadow"/>
+                     <feMerge>
+                       <feMergeNode in="SourceGraphic"/>
+                       <feMergeNode in="innerShadow"/>
+                     </feMerge>
+                   </filter>
                 </defs>
                 <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(0,0,0,0.05)" stroke-width="16" stroke-dasharray="${strokeDashArray}" stroke-linecap="round" />
-                <circle id="active-arc" cx="100" cy="100" r="80" fill="none" stroke="url(#grad1-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')})" stroke-width="16" 
+                <circle id="active-arc" cx="100" cy="100" r="80" fill="none" stroke="url(#grad1-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')})" stroke-width="14" 
                         stroke-dasharray="${strokeDashArray}" 
                         stroke-dashoffset="${dashOffset}" 
-                        stroke-linecap="round" />
+                        stroke-linecap="round"
+                        filter="url(#inset-arc-n-${this.config.entity.replace(/[^a-zA-Z0-9]/g, '')})" />
             </svg>
             <div class="knob-handle" id="knob-handle" style="transform: rotate(${rotation}deg)">
                 <div class="indicator"></div>
@@ -2670,7 +3083,7 @@ class PrismHeatSmallCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: "climate.example", name: "Heizung" }
+    return { entity: "climate.example", name: "Heizung", icon: "mdi:fire" }
   }
 
   static getConfigForm() {
@@ -2684,6 +3097,18 @@ class PrismHeatSmallCard extends HTMLElement {
         {
           name: "name",
           selector: { text: {} }
+        },
+        {
+          name: "icon",
+          selector: { icon: {} }
+        },
+        {
+          name: "temperature_entity",
+          selector: { entity: { domain: "sensor" } }
+        },
+        {
+          name: "humidity_entity",
+          selector: { entity: { domain: "sensor" } }
         }
       ]
     };
@@ -2693,7 +3118,11 @@ class PrismHeatSmallCard extends HTMLElement {
     if (!config.entity) {
       throw new Error('Please define an entity');
     }
-    this.config = config;
+    this.config = { ...config };
+    // Set default icon
+    if (!this.config.icon) {
+      this.config.icon = "mdi:fire";
+    }
     this.render();
   }
 
@@ -2702,6 +3131,27 @@ class PrismHeatSmallCard extends HTMLElement {
     if (this.config && this.config.entity) {
       const entity = hass.states[this.config.entity];
       this._entity = entity || null;
+      
+      // Get temperature from external entity if configured, with fallback to 20
+      this._currentTemp = (entity && entity.attributes && entity.attributes.current_temperature !== undefined) 
+        ? entity.attributes.current_temperature 
+        : 20;
+      if (this.config.temperature_entity) {
+        const tempEntity = hass.states[this.config.temperature_entity];
+        if (tempEntity && tempEntity.state && !isNaN(parseFloat(tempEntity.state))) {
+          this._currentTemp = parseFloat(tempEntity.state);
+        }
+      }
+      
+      // Get humidity if configured
+      this._humidity = null;
+      if (this.config.humidity_entity) {
+        const humidityEntity = hass.states[this.config.humidity_entity];
+        if (humidityEntity && humidityEntity.state && !isNaN(parseFloat(humidityEntity.state))) {
+          this._humidity = parseFloat(humidityEntity.state);
+        }
+      }
+      
       this.render();
     }
   }
@@ -2753,14 +3203,15 @@ class PrismHeatSmallCard extends HTMLElement {
     const attr = this._entity ? this._entity.attributes : {};
     const state = this._entity ? this._entity.state : 'off';
     const targetTemp = attr.temperature !== undefined ? attr.temperature : 20;
-    const currentTemp = attr.current_temperature !== undefined ? attr.current_temperature : 20;
+    const currentTemp = this._currentTemp !== undefined ? this._currentTemp : (attr.current_temperature !== undefined ? attr.current_temperature : 20);
     const name = this.config.name || (this._entity ? attr.friendly_name : null) || 'Heizung';
     
     const isHeating = state === 'heat' || state === 'heating';
     const hvacMode = state === 'off' ? 'Aus' : (state === 'auto' ? 'Auto' : 'Heizen');
     
-    // Status Text
-    const statusText = `${this.formatTemp(currentTemp)} °C`;
+    // Status Text with optional humidity
+    const humidityText = (this._humidity !== null && this._humidity !== undefined) ? ` · ${this._humidity.toFixed(0)}%` : '';
+    const statusText = `${this.formatTemp(currentTemp)} °C${humidityText}`;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -2874,20 +3325,47 @@ class PrismHeatSmallCard extends HTMLElement {
         }
         
         .control-btn {
+            position: relative;
             height: 38px; width: 50px; border-radius: 12px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.05);
+            background: linear-gradient(145deg, #2d3035, #1e2024);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-top: 1px solid rgba(255,255,255,0.12);
+            border-bottom: 1px solid rgba(0,0,0,0.3);
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; transition: all 0.2s; color: rgba(255,255,255,0.7);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 
+              4px 4px 10px rgba(0,0,0,0.5),
+              -2px -2px 6px rgba(255,255,255,0.03),
+              inset 0 1px 2px rgba(255,255,255,0.05);
+            overflow: hidden;
+        }
+        /* Erhabene 3D Linie */
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border-radius: 9px;
+            background: transparent;
+            box-shadow: 
+              inset 1px 1px 3px rgba(0, 0, 0, 0.4),
+              inset -1px -1px 2px rgba(255, 255, 255, 0.03);
+            pointer-events: none;
         }
         .control-btn:active {
-            background: rgba(20, 20, 20, 0.8);
-            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.05);
+            background: linear-gradient(145deg, #1a1c1e, #222528);
+            box-shadow: 
+              inset 3px 3px 8px rgba(0,0,0,0.8), 
+              inset -1px -1px 3px rgba(255,255,255,0.03);
             border-top: 1px solid rgba(0,0,0,0.4);
-            transform: scale(0.95);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transform: scale(0.97);
+        }
+        .control-btn:active::before {
+            box-shadow: none;
         }
         .control-btn ha-icon {
+            position: relative;
+            z-index: 1;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -2913,7 +3391,7 @@ class PrismHeatSmallCard extends HTMLElement {
         <div class="header">
             <div class="header-left">
                 <div class="icon-box">
-                    <ha-icon icon="mdi:fire"></ha-icon>
+                    <ha-icon icon="${this.config.icon}"></ha-icon>
                 </div>
                 <div class="info">
                     <div class="title">${name}</div>
@@ -2971,7 +3449,7 @@ class PrismHeatSmallLightCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: "climate.example", name: "Heizung" }
+    return { entity: "climate.example", name: "Heizung", icon: "mdi:fire" }
   }
 
   static getConfigForm() {
@@ -2985,6 +3463,18 @@ class PrismHeatSmallLightCard extends HTMLElement {
         {
           name: "name",
           selector: { text: {} }
+        },
+        {
+          name: "icon",
+          selector: { icon: {} }
+        },
+        {
+          name: "temperature_entity",
+          selector: { entity: { domain: "sensor" } }
+        },
+        {
+          name: "humidity_entity",
+          selector: { entity: { domain: "sensor" } }
         }
       ]
     };
@@ -2994,7 +3484,11 @@ class PrismHeatSmallLightCard extends HTMLElement {
     if (!config.entity) {
       throw new Error('Please define an entity');
     }
-    this.config = config;
+    this.config = { ...config };
+    // Set default icon
+    if (!this.config.icon) {
+      this.config.icon = "mdi:fire";
+    }
     this.render();
   }
 
@@ -3003,6 +3497,27 @@ class PrismHeatSmallLightCard extends HTMLElement {
     if (this.config && this.config.entity) {
       const entity = hass.states[this.config.entity];
       this._entity = entity || null;
+      
+      // Get temperature from external entity if configured, with fallback to 20
+      this._currentTemp = (entity && entity.attributes && entity.attributes.current_temperature !== undefined) 
+        ? entity.attributes.current_temperature 
+        : 20;
+      if (this.config.temperature_entity) {
+        const tempEntity = hass.states[this.config.temperature_entity];
+        if (tempEntity && tempEntity.state && !isNaN(parseFloat(tempEntity.state))) {
+          this._currentTemp = parseFloat(tempEntity.state);
+        }
+      }
+      
+      // Get humidity if configured
+      this._humidity = null;
+      if (this.config.humidity_entity) {
+        const humidityEntity = hass.states[this.config.humidity_entity];
+        if (humidityEntity && humidityEntity.state && !isNaN(parseFloat(humidityEntity.state))) {
+          this._humidity = parseFloat(humidityEntity.state);
+        }
+      }
+      
       this.render();
     }
   }
@@ -3054,14 +3569,15 @@ class PrismHeatSmallLightCard extends HTMLElement {
     const attr = this._entity ? this._entity.attributes : {};
     const state = this._entity ? this._entity.state : 'off';
     const targetTemp = attr.temperature !== undefined ? attr.temperature : 20;
-    const currentTemp = attr.current_temperature !== undefined ? attr.current_temperature : 20;
+    const currentTemp = this._currentTemp !== undefined ? this._currentTemp : (attr.current_temperature !== undefined ? attr.current_temperature : 20);
     const name = this.config.name || (this._entity ? attr.friendly_name : null) || 'Heizung';
     
     const isHeating = state === 'heat' || state === 'heating';
     const hvacMode = state === 'off' ? 'Aus' : (state === 'auto' ? 'Auto' : 'Heizen');
     
-    // Status Text
-    const statusText = `${this.formatTemp(currentTemp)} °C`;
+    // Status Text with optional humidity
+    const humidityText = (this._humidity !== null && this._humidity !== undefined) ? ` · ${this._humidity.toFixed(0)}%` : '';
+    const statusText = `${this.formatTemp(currentTemp)} °C${humidityText}`;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -3181,14 +3697,31 @@ class PrismHeatSmallLightCard extends HTMLElement {
         }
         
         .control-btn {
+            position: relative;
             height: 38px; width: 50px; border-radius: 12px;
-            background: linear-gradient(145deg, #f0f0f0, #ffffff);
-            border: 1px solid rgba(255,255,255,0.8);
+            background: linear-gradient(145deg, #ffffff, #e8e8e8);
+            border: 1px solid rgba(255,255,255,0.9);
+            border-top: 1px solid rgba(255,255,255,1);
+            border-bottom: 1px solid rgba(0,0,0,0.08);
             box-shadow: 
-              3px 3px 8px rgba(0,0,0,0.08),
-              -3px -3px 8px rgba(255,255,255,0.9);
+              4px 4px 10px rgba(0,0,0,0.1),
+              -3px -3px 8px rgba(255,255,255,0.95),
+              inset 0 1px 2px rgba(255,255,255,0.9);
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; transition: all 0.2s; color: rgba(0,0,0,0.7);
+            overflow: hidden;
+        }
+        /* Erhabene 3D Linie */
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border-radius: 9px;
+            background: transparent;
+            box-shadow: 
+              inset 1px 1px 3px rgba(0, 0, 0, 0.06),
+              inset -1px -1px 2px rgba(255, 255, 255, 0.9);
+            pointer-events: none;
         }
         .control-btn:active {
             background: linear-gradient(145deg, #e6e6e6, #f0f0f0);
@@ -3196,9 +3729,14 @@ class PrismHeatSmallLightCard extends HTMLElement {
               inset 3px 3px 8px rgba(0,0,0,0.12),
               inset -2px -2px 6px rgba(255,255,255,0.8);
             border: 1px solid rgba(0,0,0,0.08);
-            transform: scale(0.95);
+            transform: scale(0.97);
+        }
+        .control-btn:active::before {
+            box-shadow: none;
         }
         .control-btn ha-icon {
+            position: relative;
+            z-index: 1;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -3225,7 +3763,7 @@ class PrismHeatSmallLightCard extends HTMLElement {
         <div class="header">
             <div class="header-left">
                 <div class="icon-box">
-                    <ha-icon icon="mdi:fire"></ha-icon>
+                    <ha-icon icon="${this.config.icon}"></ha-icon>
                 </div>
                 <div class="info">
                     <div class="title">${name}</div>
@@ -6406,12 +6944,18 @@ class PrismVacuumCard extends HTMLElement {
       const entityId = this.config.map_camera;
       const domain = entityId.split('.')[0];
       
+      // First try entity_picture attribute - this is a pre-signed URL that works for both camera and image entities
+      if (this._mapEntity.attributes.entity_picture) {
+        const entityPicture = this._mapEntity.attributes.entity_picture;
+        // Add cache-busting timestamp if not already present
+        const separator = entityPicture.includes('?') ? '&' : '?';
+        return `${entityPicture}${separator}_ts=${Date.now()}`;
+      }
+      
+      // Fallback for camera entities
       if (domain === 'camera') {
-        // Camera entity - use camera proxy
-        return `/api/camera_proxy/${entityId}?token=${this._mapEntity.attributes.access_token || ''}&t=${Date.now()}`;
-      } else if (domain === 'image') {
-        // Image entity
-        return `/api/image_proxy/${entityId}?t=${Date.now()}`;
+        const token = this._mapEntity.attributes.access_token || '';
+        return `/api/camera_proxy/${entityId}?token=${token}&t=${Date.now()}`;
       }
       
       return null;
@@ -7159,10 +7703,18 @@ class PrismVacuumLightCard extends HTMLElement {
       const entityId = this.config.map_camera;
       const domain = entityId.split('.')[0];
       
+      // First try entity_picture attribute - this is a pre-signed URL that works for both camera and image entities
+      if (this._mapEntity.attributes.entity_picture) {
+        const entityPicture = this._mapEntity.attributes.entity_picture;
+        // Add cache-busting timestamp if not already present
+        const separator = entityPicture.includes('?') ? '&' : '?';
+        return `${entityPicture}${separator}_ts=${Date.now()}`;
+      }
+      
+      // Fallback for camera entities
       if (domain === 'camera') {
-        return `/api/camera_proxy/${entityId}?token=${this._mapEntity.attributes.access_token || ''}&t=${Date.now()}`;
-      } else if (domain === 'image') {
-        return `/api/image_proxy/${entityId}?t=${Date.now()}`;
+        const token = this._mapEntity.attributes.access_token || '';
+        return `/api/camera_proxy/${entityId}?token=${token}&t=${Date.now()}`;
       }
       
       return null;
