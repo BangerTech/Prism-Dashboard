@@ -107,6 +107,64 @@ class PrismCrealityCard extends HTMLElement {
           name: 'power_switch_icon',
           label: 'Power switch icon (default: mdi:power)',
           selector: { icon: {} }
+        },
+        // Multi-Printer View section
+        {
+          type: 'expandable',
+          name: '',
+          title: 'Multi-Printer Camera View',
+          schema: [
+            {
+              name: 'multi_printer_enabled',
+              label: 'Enable Multi-Printer View (show multiple printers in camera popup)',
+              selector: { boolean: {} }
+            },
+            {
+              name: 'multi_printer_2',
+              label: 'Printer 2 (optional)',
+              selector: { device: { filter: printerFilterCombinations } }
+            },
+            {
+              name: 'multi_camera_2',
+              label: 'Printer 2 Camera (auto-detected if not set)',
+              selector: { entity: { domain: 'camera' } }
+            },
+            {
+              name: 'multi_name_2',
+              label: 'Printer 2 Name (optional)',
+              selector: { text: {} }
+            },
+            {
+              name: 'multi_printer_3',
+              label: 'Printer 3 (optional)',
+              selector: { device: { filter: printerFilterCombinations } }
+            },
+            {
+              name: 'multi_camera_3',
+              label: 'Printer 3 Camera (auto-detected if not set)',
+              selector: { entity: { domain: 'camera' } }
+            },
+            {
+              name: 'multi_name_3',
+              label: 'Printer 3 Name (optional)',
+              selector: { text: {} }
+            },
+            {
+              name: 'multi_printer_4',
+              label: 'Printer 4 (optional)',
+              selector: { device: { filter: printerFilterCombinations } }
+            },
+            {
+              name: 'multi_camera_4',
+              label: 'Printer 4 Camera (auto-detected if not set)',
+              selector: { entity: { domain: 'camera' } }
+            },
+            {
+              name: 'multi_name_4',
+              label: 'Printer 4 Name (optional)',
+              selector: { text: {} }
+            }
+          ]
         }
       ]
     };
@@ -232,6 +290,222 @@ class PrismCrealityCard extends HTMLElement {
   getEntityValue(key) {
     const state = this.getEntityState(key);
     return state ? parseFloat(state) || 0 : 0;
+  }
+
+  // Get device entities for any printer (by device ID) - for multi-printer view
+  getDeviceEntitiesForPrinter(deviceId) {
+    if (!this._hass || !deviceId) return {};
+    
+    const result = {};
+    for (const entityId in this._hass.entities) {
+      const entityInfo = this._hass.entities[entityId];
+      
+      if (entityInfo.device_id === deviceId) {
+        if (entityInfo.platform === 'creality_control') {
+          const translationKey = entityInfo.translation_key;
+          if (translationKey && ENTITY_KEYS.includes(translationKey)) {
+            result[translationKey] = {
+              entity_id: entityId,
+              ...entityInfo
+            };
+          }
+          result[entityId] = entityInfo;
+        }
+      }
+    }
+    return result;
+  }
+
+  // Get entity state for a specific device's entities
+  getEntityStateForDevice(deviceEntities, key) {
+    const entityInfo = deviceEntities[key];
+    if (!entityInfo?.entity_id) return null;
+    const state = this._hass.states[entityInfo.entity_id];
+    return state?.state ?? null;
+  }
+
+  // Get entity value for a specific device
+  getEntityValueForDevice(deviceEntities, key) {
+    const state = this.getEntityStateForDevice(deviceEntities, key);
+    return state ? parseFloat(state) || 0 : 0;
+  }
+
+  // Find entity by pattern for a specific device
+  findEntityByPatternForDevice(deviceId, pattern, domain = null) {
+    if (!this._hass || !deviceId) return null;
+    
+    for (const entityId in this._hass.entities) {
+      const entityInfo = this._hass.entities[entityId];
+      if (entityInfo.device_id === deviceId && entityId.toLowerCase().includes(pattern.toLowerCase())) {
+        if (domain) {
+          const entityDomain = entityId.split('.')[0];
+          if (entityDomain === domain) return entityId;
+        } else {
+          return entityId;
+        }
+      }
+    }
+    return null;
+  }
+
+  // Get printer data for any device (by device ID) - for multi-printer view
+  getPrinterDataForDevice(deviceId, customCameraEntity, customName) {
+    if (!this._hass || !deviceId) {
+      return {
+        name: customName || 'Unknown Printer',
+        progress: 0,
+        stateStr: 'unavailable',
+        isPrinting: false,
+        isPaused: false,
+        isIdle: true,
+        printTimeLeft: '--',
+        currentLayer: 0,
+        totalLayers: 0,
+        nozzleTemp: 0,
+        targetNozzleTemp: 0,
+        bedTemp: 0,
+        targetBedTemp: 0,
+        chamberTemp: 0,
+        cameraEntity: null
+      };
+    }
+
+    const deviceEntities = this.getDeviceEntitiesForPrinter(deviceId);
+    
+    // Get print status - Creality uses 'state' or 'deviceState'
+    let stateStr = 'unavailable';
+    const stateEntity = this.findEntityByPatternForDevice(deviceId, 'state', 'sensor');
+    if (stateEntity) {
+      stateStr = this._hass.states[stateEntity]?.state || 'unavailable';
+    }
+    
+    const statusLower = stateStr.toLowerCase();
+    const isPrinting = ['printing', 'prepare', 'running', 'druckt'].includes(statusLower);
+    const isPaused = ['paused', 'pause', 'pausiert'].includes(statusLower);
+    const isIdle = !isPrinting && !isPaused;
+
+    // Progress
+    let progress = 0;
+    const progressEntity = this.findEntityByPatternForDevice(deviceId, 'printprogress', 'sensor') ||
+                          this.findEntityByPatternForDevice(deviceId, 'progress', 'sensor');
+    if (progressEntity) {
+      progress = parseFloat(this._hass.states[progressEntity]?.state) || 0;
+    }
+
+    // Remaining time
+    let printTimeLeft = '--';
+    const timeEntity = this.findEntityByPatternForDevice(deviceId, 'printlefttime', 'sensor') ||
+                       this.findEntityByPatternForDevice(deviceId, 'lefttime', 'sensor');
+    if (timeEntity && (isPrinting || isPaused)) {
+      const minutes = parseFloat(this._hass.states[timeEntity]?.state) || 0;
+      if (minutes > 0) {
+        const hours = Math.floor(minutes / 60);
+        const mins = Math.round(minutes % 60);
+        printTimeLeft = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+      }
+    }
+
+    // Layer info
+    let currentLayer = 0;
+    let totalLayers = 0;
+    if (isPrinting || isPaused) {
+      const layerEntity = this.findEntityByPatternForDevice(deviceId, '_layer', 'sensor');
+      const totalLayerEntity = this.findEntityByPatternForDevice(deviceId, 'totallayer', 'sensor');
+      if (layerEntity) currentLayer = parseInt(this._hass.states[layerEntity]?.state) || 0;
+      if (totalLayerEntity) totalLayers = parseInt(this._hass.states[totalLayerEntity]?.state) || 0;
+    }
+
+    // Temperatures
+    let nozzleTemp = 0, targetNozzleTemp = 0, bedTemp = 0, targetBedTemp = 0, chamberTemp = 0;
+    
+    const nozzleTempEntity = this.findEntityByPatternForDevice(deviceId, 'nozzletemp', 'sensor');
+    const targetNozzleEntity = this.findEntityByPatternForDevice(deviceId, 'targetnozzle', 'sensor');
+    const bedTempEntity = this.findEntityByPatternForDevice(deviceId, 'bedtemp', 'sensor');
+    const targetBedEntity = this.findEntityByPatternForDevice(deviceId, 'targetbed', 'sensor');
+    const boxTempEntity = this.findEntityByPatternForDevice(deviceId, 'boxtemp', 'sensor');
+    
+    if (nozzleTempEntity) nozzleTemp = parseFloat(this._hass.states[nozzleTempEntity]?.state) || 0;
+    if (targetNozzleEntity) targetNozzleTemp = parseFloat(this._hass.states[targetNozzleEntity]?.state) || 0;
+    if (bedTempEntity) bedTemp = parseFloat(this._hass.states[bedTempEntity]?.state) || 0;
+    if (targetBedEntity) targetBedTemp = parseFloat(this._hass.states[targetBedEntity]?.state) || 0;
+    if (boxTempEntity) chamberTemp = parseFloat(this._hass.states[boxTempEntity]?.state) || 0;
+
+    // Camera entity
+    let cameraEntity = customCameraEntity;
+    if (!cameraEntity) {
+      cameraEntity = this.findEntityByPatternForDevice(deviceId, 'camera', 'camera');
+    }
+    if (cameraEntity && !cameraEntity.startsWith('camera.')) {
+      cameraEntity = null;
+    }
+
+    // Device name
+    const device = this._hass.devices?.[deviceId];
+    const name = customName || device?.name || 'Creality Printer';
+
+    return {
+      deviceId,
+      name,
+      progress,
+      stateStr,
+      isPrinting,
+      isPaused,
+      isIdle,
+      printTimeLeft,
+      currentLayer,
+      totalLayers,
+      nozzleTemp,
+      targetNozzleTemp,
+      bedTemp,
+      targetBedTemp,
+      chamberTemp,
+      cameraEntity
+    };
+  }
+
+  // Get all configured printers for multi-view
+  getMultiPrinterConfigs() {
+    const printers = [];
+    
+    // Primary printer (always included)
+    if (this.config.printer) {
+      printers.push({
+        deviceId: this.config.printer,
+        cameraEntity: this.config.camera_entity,
+        name: this.config.name,
+        index: 1
+      });
+    }
+    
+    // Additional printers (only if multi-printer is enabled)
+    if (this.config.multi_printer_enabled) {
+      if (this.config.multi_printer_2) {
+        printers.push({
+          deviceId: this.config.multi_printer_2,
+          cameraEntity: this.config.multi_camera_2,
+          name: this.config.multi_name_2,
+          index: 2
+        });
+      }
+      if (this.config.multi_printer_3) {
+        printers.push({
+          deviceId: this.config.multi_printer_3,
+          cameraEntity: this.config.multi_camera_3,
+          name: this.config.multi_name_3,
+          index: 3
+        });
+      }
+      if (this.config.multi_printer_4) {
+        printers.push({
+          deviceId: this.config.multi_printer_4,
+          cameraEntity: this.config.multi_camera_4,
+          name: this.config.multi_name_4,
+          index: 4
+        });
+      }
+    }
+    
+    return printers;
   }
 
   setConfig(config) {
@@ -587,6 +861,17 @@ class PrismCrealityCard extends HTMLElement {
   openCameraPopup() {
     if (!this._hass) return;
     
+    // Check if multi-printer mode is enabled
+    const isMultiPrinter = this.config.multi_printer_enabled && (
+      this.config.multi_printer_2 || this.config.multi_printer_3 || this.config.multi_printer_4
+    );
+    
+    if (isMultiPrinter) {
+      this.openMultiCameraPopup();
+      return;
+    }
+    
+    // Single printer mode - original behavior
     // Get camera entity (must be camera domain)
     let entityId = this.config.camera_entity;
     if (!entityId) {
@@ -643,11 +928,12 @@ class PrismCrealityCard extends HTMLElement {
           position: relative;
           min-width: 500px;
           min-height: 400px;
-          width: 75vw;
+          /* Calculate width based on 16:9 aspect ratio of video area (height minus header + footer bar ~110px) */
+          width: calc((75vh - 110px) * 16 / 9);
           height: 75vh;
           max-width: 95vw;
           max-height: 90vh;
-          background: #0a0a0a;
+          background: transparent;
           border-radius: 20px;
           overflow: hidden;
           box-shadow: 0 25px 80px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.1);
@@ -1407,6 +1693,721 @@ class PrismCrealityCard extends HTMLElement {
     }
     
     console.log('Prism Creality: Camera popup closed');
+  }
+
+  // Multi-Printer Camera Popup - shows grid of all configured printers
+  openMultiCameraPopup() {
+    if (!this._hass) return;
+    
+    // Remove existing popup if any
+    this.closeCameraPopup();
+    
+    // Get all configured printers
+    const printerConfigs = this.getMultiPrinterConfigs();
+    if (printerConfigs.length === 0) return;
+    
+    // Get data for all printers
+    const printersData = printerConfigs.map(pc => 
+      this.getPrinterDataForDevice(pc.deviceId, pc.cameraEntity, pc.name)
+    );
+    
+    // Filter to only printers with valid camera entities
+    const validPrinters = printersData.filter(p => p.cameraEntity);
+    if (validPrinters.length === 0) return;
+    
+    const printerCount = validPrinters.length;
+    
+    // Determine grid layout
+    let gridCols = 1, gridRows = 1;
+    if (printerCount === 2) { gridCols = 2; gridRows = 1; }
+    else if (printerCount === 3) { gridCols = 2; gridRows = 2; }
+    else if (printerCount >= 4) { gridCols = 2; gridRows = 2; }
+    
+    // Create popup in document.body
+    const overlay = document.createElement('div');
+    overlay.id = 'prism-camera-popup-overlay';
+    overlay.innerHTML = `
+      <style>
+        #prism-camera-popup-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.9);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          z-index: 99999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          box-sizing: border-box;
+          animation: prismMultiFadeIn 0.2s ease;
+          font-family: system-ui, -apple-system, sans-serif;
+        }
+        @keyframes prismMultiFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .prism-multi-popup {
+          position: relative;
+          width: 90vw;
+          height: 90vh;
+          max-width: 1800px;
+          background: #0a0a0a;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 25px 80px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.1);
+          animation: prismMultiSlideIn 0.3s ease;
+          display: flex;
+          flex-direction: column;
+        }
+        @keyframes prismMultiSlideIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        .prism-multi-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 20px;
+          background: linear-gradient(180deg, rgba(30,32,36,0.98), rgba(20,22,25,0.98));
+          border-bottom: 1px solid rgba(255,255,255,0.08);
+          cursor: move;
+          user-select: none;
+        }
+        .prism-multi-title {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          color: rgba(255,255,255,0.95);
+          font-size: 15px;
+          font-weight: 600;
+        }
+        .prism-multi-title-icon {
+          width: 32px;
+          height: 32px;
+          background: rgba(59, 130, 246, 0.15);
+          border: 1px solid rgba(59, 130, 246, 0.3);
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #3B82F6;
+          --mdc-icon-size: 18px;
+        }
+        .prism-multi-title-icon ha-icon {
+          display: flex;
+          --mdc-icon-size: 18px;
+        }
+        .prism-multi-badge {
+          background: rgba(59, 130, 246, 0.2);
+          color: #60a5fa;
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 600;
+        }
+        .prism-multi-close {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.1);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: rgba(255,255,255,0.6);
+          transition: all 0.2s;
+          --mdc-icon-size: 18px;
+        }
+        .prism-multi-close ha-icon {
+          display: flex;
+          --mdc-icon-size: 18px;
+        }
+        .prism-multi-close:hover {
+          background: rgba(255,80,80,0.25);
+          border-color: rgba(255,80,80,0.4);
+          color: #ff6b6b;
+        }
+        .prism-multi-grid {
+          flex: 1;
+          display: grid;
+          grid-template-columns: repeat(${gridCols}, 1fr);
+          grid-template-rows: repeat(${gridRows}, 1fr);
+          gap: 2px;
+          background: rgba(0,0,0,0.5);
+          overflow: hidden;
+        }
+        .prism-multi-cell {
+          position: relative;
+          background: #000;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+        .prism-multi-cell-header {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          padding: 8px 12px;
+          background: linear-gradient(180deg, rgba(0,0,0,0.7), transparent);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          z-index: 10;
+        }
+        .prism-multi-cell-name {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.95);
+        }
+        .prism-multi-cell-name-icon {
+          width: 22px;
+          height: 22px;
+          background: rgba(59, 130, 246, 0.2);
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #3B82F6;
+          --mdc-icon-size: 12px;
+        }
+        .prism-multi-cell-name-icon ha-icon {
+          display: flex;
+          --mdc-icon-size: 12px;
+        }
+        .prism-multi-cell-actions {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .prism-multi-light-btn {
+          width: 26px;
+          height: 26px;
+          border-radius: 6px;
+          background: rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.15);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: rgba(255,255,255,0.5);
+          transition: all 0.2s;
+          --mdc-icon-size: 14px;
+        }
+        .prism-multi-light-btn ha-icon {
+          display: flex;
+          --mdc-icon-size: 14px;
+        }
+        .prism-multi-light-btn:hover {
+          background: rgba(255,200,100,0.2);
+          color: #ffc864;
+        }
+        .prism-multi-light-btn.active {
+          background: rgba(255,200,100,0.25);
+          border-color: rgba(255,200,100,0.4);
+          color: #ffc864;
+        }
+        .prism-multi-cell-status {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          background: rgba(0,0,0,0.5);
+          border-radius: 12px;
+          font-size: 10px;
+          font-weight: 500;
+        }
+        .prism-multi-cell-status.printing {
+          background: rgba(59, 130, 246, 0.15);
+          color: #60a5fa;
+        }
+        .prism-multi-cell-status.paused {
+          background: rgba(251, 191, 36, 0.15);
+          color: #fbbf24;
+        }
+        .prism-multi-cell-status.idle {
+          background: rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.5);
+        }
+        .prism-multi-status-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+        }
+        .prism-multi-cell-status.printing .prism-multi-status-dot {
+          animation: statusPulse 2s infinite;
+        }
+        @keyframes statusPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        .prism-multi-camera {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        }
+        .prism-multi-camera ha-camera-stream,
+        .prism-multi-camera img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+        .prism-multi-camera ha-camera-stream video {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+        .prism-multi-info-panel {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          padding: 10px 12px;
+          background: linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0.6), transparent);
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          gap: 16px;
+          z-index: 10;
+        }
+        .prism-multi-progress-section {
+          flex: 0 0 auto;
+          min-width: 140px;
+        }
+        .prism-multi-progress-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 4px;
+        }
+        .prism-multi-progress-label {
+          font-size: 9px;
+          color: rgba(255,255,255,0.4);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .prism-multi-progress-value {
+          font-size: 14px;
+          font-weight: 700;
+          color: #60a5fa;
+          font-family: 'SF Mono', Monaco, monospace;
+        }
+        .prism-multi-progress-bar {
+          height: 4px;
+          background: rgba(255,255,255,0.1);
+          border-radius: 2px;
+          overflow: hidden;
+        }
+        .prism-multi-progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #3B82F6, #60a5fa);
+          border-radius: 2px;
+          transition: width 0.3s ease;
+        }
+        .prism-multi-stats {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .prism-multi-stat {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .prism-multi-stat-label {
+          font-size: 8px;
+          color: rgba(255,255,255,0.35);
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+        .prism-multi-stat-value {
+          font-size: 11px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.85);
+          font-family: 'SF Mono', Monaco, monospace;
+        }
+        .prism-multi-stat-value .target {
+          font-size: 9px;
+          color: rgba(255,255,255,0.35);
+          font-weight: 500;
+        }
+        .prism-multi-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 20px;
+          background: rgba(15,15,15,0.95);
+          border-top: 1px solid rgba(255,255,255,0.05);
+          font-size: 10px;
+          color: rgba(255,255,255,0.35);
+        }
+        .prism-multi-footer-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .prism-multi-toggle-info {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 10px;
+          background: rgba(255,255,255,0.06);
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.2s;
+          border: none;
+          color: rgba(255,255,255,0.5);
+          font-size: 10px;
+          font-family: inherit;
+          --mdc-icon-size: 12px;
+        }
+        .prism-multi-toggle-info ha-icon {
+          display: flex;
+          --mdc-icon-size: 12px;
+        }
+        .prism-multi-toggle-info:hover {
+          background: rgba(255,255,255,0.12);
+          color: rgba(255,255,255,0.8);
+        }
+        .prism-multi-toggle-info.active {
+          background: rgba(59, 130, 246, 0.15);
+          color: #60a5fa;
+        }
+        .prism-multi-info-hidden .prism-multi-info-panel {
+          display: none;
+        }
+        .prism-multi-resize-hint {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          margin-right: 30px;
+        }
+        .prism-multi-resize-handle {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          width: 24px;
+          height: 24px;
+          cursor: nwse-resize;
+          z-index: 100;
+        }
+        .prism-multi-resize-handle::before {
+          content: '';
+          position: absolute;
+          bottom: 4px;
+          right: 4px;
+          width: 12px;
+          height: 12px;
+          border-right: 2px solid rgba(255,255,255,0.3);
+          border-bottom: 2px solid rgba(255,255,255,0.3);
+          transition: all 0.2s;
+        }
+        .prism-multi-resize-handle:hover::before {
+          border-color: rgba(255,255,255,0.5);
+        }
+      </style>
+      <div class="prism-multi-popup">
+        <div class="prism-multi-header">
+          <div class="prism-multi-title">
+            <div class="prism-multi-title-icon">
+              <ha-icon icon="mdi:view-grid"></ha-icon>
+            </div>
+            <span>Multi-Printer View</span>
+            <span class="prism-multi-badge">${printerCount} Printers</span>
+          </div>
+          <button class="prism-multi-close">
+            <ha-icon icon="mdi:close"></ha-icon>
+          </button>
+        </div>
+        <div class="prism-multi-grid">
+          ${validPrinters.map((printer, idx) => `
+            <div class="prism-multi-cell" data-printer-idx="${idx}" data-device-id="${printer.deviceId}">
+              <div class="prism-multi-cell-header">
+                <div class="prism-multi-cell-name">
+                  <div class="prism-multi-cell-name-icon">
+                    <ha-icon icon="mdi:printer-3d-nozzle"></ha-icon>
+                  </div>
+                  <span>${printer.name}</span>
+                </div>
+                <div class="prism-multi-cell-actions">
+                  <button class="prism-multi-light-btn" data-light-idx="${idx}" data-device-id="${printer.deviceId}" title="Toggle Light">
+                    <ha-icon icon="mdi:lightbulb-outline"></ha-icon>
+                  </button>
+                  <div class="prism-multi-cell-status ${printer.isPrinting ? 'printing' : printer.isPaused ? 'paused' : 'idle'}">
+                    <div class="prism-multi-status-dot"></div>
+                    <span data-field="status-${idx}">${printer.stateStr}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="prism-multi-camera" data-camera-idx="${idx}"></div>
+              <div class="prism-multi-info-panel">
+                <div class="prism-multi-progress-section">
+                  <div class="prism-multi-progress-header">
+                    <span class="prism-multi-progress-label">Progress</span>
+                    <span class="prism-multi-progress-value" data-field="progress-${idx}">${Math.round(printer.progress)}%</span>
+                  </div>
+                  <div class="prism-multi-progress-bar">
+                    <div class="prism-multi-progress-fill" data-field="progress-fill-${idx}" style="width: ${printer.progress}%"></div>
+                  </div>
+                </div>
+                <div class="prism-multi-stats">
+                  <div class="prism-multi-stat">
+                    <span class="prism-multi-stat-label">Time Left</span>
+                    <span class="prism-multi-stat-value" data-field="time-${idx}">${printer.printTimeLeft}</span>
+                  </div>
+                  <div class="prism-multi-stat">
+                    <span class="prism-multi-stat-label">Layer</span>
+                    <span class="prism-multi-stat-value" data-field="layer-${idx}">${printer.currentLayer} <span class="target">/ ${printer.totalLayers}</span></span>
+                  </div>
+                  <div class="prism-multi-stat">
+                    <span class="prism-multi-stat-label">Nozzle</span>
+                    <span class="prism-multi-stat-value" data-field="nozzle-${idx}">${Math.round(printer.nozzleTemp)}° <span class="target">/ ${Math.round(printer.targetNozzleTemp)}°</span></span>
+                  </div>
+                  <div class="prism-multi-stat">
+                    <span class="prism-multi-stat-label">Bed</span>
+                    <span class="prism-multi-stat-value" data-field="bed-${idx}">${Math.round(printer.bedTemp)}° <span class="target">/ ${Math.round(printer.targetBedTemp)}°</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="prism-multi-footer">
+          <div class="prism-multi-footer-left">
+            <button class="prism-multi-toggle-info active">
+              <ha-icon icon="mdi:information"></ha-icon>
+              <span>Info</span>
+            </button>
+          </div>
+          <div class="prism-multi-resize-hint">
+            <span>Drag corner to resize</span>
+          </div>
+        </div>
+        <div class="prism-multi-resize-handle"></div>
+      </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    this._cameraPopupOverlay = overlay;
+    
+    // Store printer configs for updates
+    this._multiPrinterConfigs = printerConfigs;
+    
+    // Setup camera feeds (Creality uses ha-camera-stream)
+    validPrinters.forEach((printer, idx) => {
+      const cameraContainer = overlay.querySelector(`[data-camera-idx="${idx}"]`);
+      if (!cameraContainer || !printer.cameraEntity) return;
+      
+      const stateObj = this._hass.states[printer.cameraEntity];
+      if (!stateObj) return;
+      
+      const cameraStream = document.createElement('ha-camera-stream');
+      cameraStream.hass = this._hass;
+      cameraStream.stateObj = stateObj;
+      cameraStream.muted = true;
+      cameraStream.controls = true;
+      cameraStream.allowExoPlayer = true;
+      cameraStream.setAttribute('muted', '');
+      cameraStream.setAttribute('controls', '');
+      cameraStream.setAttribute('autoplay', '');
+      cameraContainer.appendChild(cameraStream);
+    });
+    
+    // Close button handler
+    overlay.querySelector('.prism-multi-close').onclick = () => this.closeCameraPopup();
+    
+    // Click on overlay background closes popup
+    overlay.onclick = (e) => {
+      if (e.target === overlay) {
+        this.closeCameraPopup();
+      }
+    };
+    
+    // Toggle info panels
+    const toggleInfoBtn = overlay.querySelector('.prism-multi-toggle-info');
+    const grid = overlay.querySelector('.prism-multi-grid');
+    toggleInfoBtn.onclick = () => {
+      grid.classList.toggle('prism-multi-info-hidden');
+      toggleInfoBtn.classList.toggle('active');
+    };
+    
+    // Light button handlers for each printer
+    overlay.querySelectorAll('.prism-multi-light-btn').forEach(btn => {
+      const deviceId = btn.dataset.deviceId;
+      
+      // Find light entity for this device (Creality uses switch or light domain)
+      let lightEntity = null;
+      for (const entityId in this._hass.entities) {
+        const entityInfo = this._hass.entities[entityId];
+        if (entityInfo.device_id === deviceId && 
+            (entityId.includes('light') || entityInfo.translation_key === 'lightSw')) {
+          if (entityId.startsWith('light.') || entityId.startsWith('switch.')) {
+            lightEntity = entityId;
+            break;
+          }
+        }
+      }
+      
+      // Update button state based on current light state
+      if (lightEntity) {
+        const domain = lightEntity.split('.')[0];
+        const updateLightBtn = () => {
+          const state = this._hass.states[lightEntity]?.state;
+          if (state === 'on') {
+            btn.classList.add('active');
+            btn.querySelector('ha-icon').setAttribute('icon', 'mdi:lightbulb');
+          } else {
+            btn.classList.remove('active');
+            btn.querySelector('ha-icon').setAttribute('icon', 'mdi:lightbulb-outline');
+          }
+        };
+        updateLightBtn();
+        
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          this._hass.callService(domain, 'toggle', { entity_id: lightEntity });
+          setTimeout(updateLightBtn, 100);
+        };
+      } else {
+        btn.style.display = 'none';
+      }
+    });
+    
+    // Escape key handler
+    this._cameraPopupEscHandler = (e) => {
+      if (e.key === 'Escape') {
+        this.closeCameraPopup();
+      }
+    };
+    document.addEventListener('keydown', this._cameraPopupEscHandler);
+    
+    // Make popup draggable by header
+    const popup = overlay.querySelector('.prism-multi-popup');
+    const header = overlay.querySelector('.prism-multi-header');
+    let isDragging = false;
+    let startX, startY, startLeft, startTop;
+    
+    header.onmousedown = (e) => {
+      if (e.target.closest('.prism-multi-close')) return;
+      isDragging = true;
+      const rect = popup.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      startLeft = rect.left;
+      startTop = rect.top;
+      popup.style.position = 'fixed';
+      popup.style.margin = '0';
+      popup.style.left = startLeft + 'px';
+      popup.style.top = startTop + 'px';
+      e.preventDefault();
+    };
+    
+    document.addEventListener('mousemove', this._cameraPopupDragHandler = (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      popup.style.left = (startLeft + dx) + 'px';
+      popup.style.top = (startTop + dy) + 'px';
+    });
+    
+    document.addEventListener('mouseup', this._cameraPopupDragEndHandler = () => {
+      isDragging = false;
+    });
+    
+    // Custom resize handle
+    const resizeHandle = overlay.querySelector('.prism-multi-resize-handle');
+    let isResizing = false;
+    let resizeStartX, resizeStartY, resizeStartWidth, resizeStartHeight;
+    
+    resizeHandle.onmousedown = (e) => {
+      isResizing = true;
+      const rect = popup.getBoundingClientRect();
+      resizeStartX = e.clientX;
+      resizeStartY = e.clientY;
+      resizeStartWidth = rect.width;
+      resizeStartHeight = rect.height;
+      
+      if (popup.style.position !== 'fixed') {
+        popup.style.position = 'fixed';
+        popup.style.margin = '0';
+        popup.style.left = rect.left + 'px';
+        popup.style.top = rect.top + 'px';
+      }
+      
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    
+    document.addEventListener('mousemove', this._cameraPopupResizeHandler = (e) => {
+      if (!isResizing) return;
+      const dx = e.clientX - resizeStartX;
+      const dy = e.clientY - resizeStartY;
+      const newWidth = Math.max(600, Math.min(resizeStartWidth + dx, window.innerWidth * 0.98));
+      const newHeight = Math.max(400, Math.min(resizeStartHeight + dy, window.innerHeight * 0.98));
+      popup.style.width = newWidth + 'px';
+      popup.style.height = newHeight + 'px';
+    });
+    
+    document.addEventListener('mouseup', this._cameraPopupResizeEndHandler = () => {
+      isResizing = false;
+    });
+    
+    // Update info panel data periodically
+    this._cameraPopupUpdateInterval = setInterval(() => {
+      if (!this._cameraPopupOverlay || !this._multiPrinterConfigs) return;
+      
+      this._multiPrinterConfigs.forEach((pc, idx) => {
+        const newData = this.getPrinterDataForDevice(pc.deviceId, pc.cameraEntity, pc.name);
+        
+        // Update progress
+        const progressValue = overlay.querySelector(`[data-field="progress-${idx}"]`);
+        const progressFill = overlay.querySelector(`[data-field="progress-fill-${idx}"]`);
+        if (progressValue) progressValue.textContent = `${Math.round(newData.progress)}%`;
+        if (progressFill) progressFill.style.width = `${newData.progress}%`;
+        
+        // Update time
+        const timeValue = overlay.querySelector(`[data-field="time-${idx}"]`);
+        if (timeValue) timeValue.textContent = newData.printTimeLeft;
+        
+        // Update layer
+        const layerValue = overlay.querySelector(`[data-field="layer-${idx}"]`);
+        if (layerValue) layerValue.innerHTML = `${newData.currentLayer} <span class="target">/ ${newData.totalLayers}</span>`;
+        
+        // Update temperatures
+        const nozzleValue = overlay.querySelector(`[data-field="nozzle-${idx}"]`);
+        if (nozzleValue) nozzleValue.innerHTML = `${Math.round(newData.nozzleTemp)}° <span class="target">/ ${Math.round(newData.targetNozzleTemp)}°</span>`;
+        
+        const bedValue = overlay.querySelector(`[data-field="bed-${idx}"]`);
+        if (bedValue) bedValue.innerHTML = `${Math.round(newData.bedTemp)}° <span class="target">/ ${Math.round(newData.targetBedTemp)}°</span>`;
+        
+        // Update status
+        const statusText = overlay.querySelector(`[data-field="status-${idx}"]`);
+        if (statusText) statusText.textContent = newData.stateStr;
+        
+        // Update status badge class
+        const cell = overlay.querySelector(`[data-printer-idx="${idx}"]`);
+        if (cell) {
+          const statusBadge = cell.querySelector('.prism-multi-cell-status');
+          if (statusBadge) {
+            statusBadge.classList.remove('printing', 'paused', 'idle');
+            statusBadge.classList.add(newData.isPrinting ? 'printing' : newData.isPaused ? 'paused' : 'idle');
+          }
+        }
+      });
+    }, 2000);
+    
+    console.log('Prism Creality: Multi-camera popup opened with', printerCount, 'printers');
   }
 
   getPrinterData() {
