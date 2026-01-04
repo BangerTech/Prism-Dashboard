@@ -8,7 +8,7 @@
  * - Weather effects (rain, snow, fog, sun, moon, stars)
  * - Day/Night transitions with house dimming
  * 
- * @version 1.2.2
+ * @version 1.2.3
  * @author BangerTech
  */
 
@@ -849,9 +849,9 @@ class PrismEnergyHorizontalCard extends HTMLElement {
     let html = '<div class="weather-container">';
     const { weatherType, isNight, isSunrise, isSunset } = weatherData;
 
-    // Rain
+    // Rain (optimized for mobile performance)
     if (weatherType === 'rainy' || weatherType === 'stormy') {
-      const dropCount = weatherType === 'stormy' ? 35 : 20;
+      const dropCount = weatherType === 'stormy' ? 25 : 15;
       for (let i = 0; i < dropCount; i++) {
         const left = Math.random() * 100;
         const delay = Math.random() * 2;
@@ -860,13 +860,13 @@ class PrismEnergyHorizontalCard extends HTMLElement {
       }
     }
 
-    // Snow
+    // Snow (optimized for mobile performance)
     if (weatherType === 'snowy') {
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 25; i++) {
         const left = Math.random() * 100;
         const delay = Math.random() * 6;
-        const duration = 4 + Math.random() * 6;
-        const size = 2 + Math.random() * 4;
+        const duration = 5 + Math.random() * 5;
+        const size = 3 + Math.random() * 3;
         html += `<div class="snow-flake" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; width: ${size}px; height: ${size}px;"></div>`;
       }
     }
@@ -945,10 +945,12 @@ class PrismEnergyHorizontalCard extends HTMLElement {
   _getWeatherStyles() {
     return `
       .weather-container { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; border-radius: 28px; }
-      .rain-drop { position: absolute; width: 2px; height: 20px; background: linear-gradient(to bottom, transparent, rgba(174, 194, 224, 0.6)); top: -30px; border-radius: 0 0 2px 2px; animation: rain-fall linear infinite; }
-      @keyframes rain-fall { 0% { top: -30px; opacity: 0; } 5% { opacity: 0.6; } 95% { opacity: 0.6; } 100% { top: 100%; opacity: 0; } }
-      .snow-flake { position: absolute; background: radial-gradient(circle at 30% 30%, #ffffff, #e8e8e8); border-radius: 50%; top: -10px; animation: snow-fall linear infinite; opacity: 0.5; }
-      @keyframes snow-fall { 0% { top: -10px; transform: translateX(0); opacity: 0; } 5% { opacity: 0.6; } 50% { transform: translateX(25px); } 95% { opacity: 0.6; } 100% { top: 100%; transform: translateX(-25px); opacity: 0; } }
+      /* Rain Animation (optimized for mobile performance) */
+      .rain-drop { position: absolute; width: 2px; height: 20px; background: linear-gradient(to bottom, transparent, rgba(174, 194, 224, 0.6)); top: 0; border-radius: 0 0 2px 2px; opacity: 0; will-change: transform, opacity; contain: layout style paint; animation: rain-fall linear infinite; }
+      @keyframes rain-fall { 0% { transform: translateY(-30px); opacity: 0; } 5% { opacity: 0.7; } 95% { opacity: 0.7; } 100% { transform: translateY(100vh); opacity: 0; } }
+      /* Snow Animation (optimized for mobile performance) */
+      .snow-flake { position: absolute; background: rgba(255, 255, 255, 0.9); border-radius: 50%; top: 0; opacity: 0; will-change: transform, opacity; contain: layout style paint; animation: snow-fall linear infinite; box-shadow: 0 0 4px rgba(255, 255, 255, 0.5); }
+      @keyframes snow-fall { 0% { transform: translateY(-10px) translateX(0); opacity: 0; } 5% { opacity: 0.7; } 50% { transform: translateY(50vh) translateX(20px); } 95% { opacity: 0.7; } 100% { transform: translateY(100vh) translateX(-20px); opacity: 0; } }
       .fog-layer { position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(200, 210, 220, 0.15), transparent); animation: fog-drift linear infinite; filter: blur(30px); }
       .fog-1 { animation-duration: 25s; } .fog-2 { animation-duration: 35s; animation-direction: reverse; opacity: 0.5; }
       @keyframes fog-drift { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
@@ -2008,7 +2010,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY-HORIZONTAL %c v1.2.2 %c EV Details Section `,
+  `%c PRISM-ENERGY-HORIZONTAL %c v1.2.3 %c Weather Performance Optimized `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'

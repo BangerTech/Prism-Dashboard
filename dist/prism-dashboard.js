@@ -3,7 +3,7 @@
  * https://github.com/BangerTech/Prism-Dashboard
  * 
  * Version: 1.0.0
- * Build Date: 2026-01-03T14:16:07.409Z
+ * Build Date: 2026-01-04T07:09:27.107Z
  * 
  * This file contains all Prism custom cards bundled together.
  * Just add this single file as a resource in Lovelace:
@@ -11951,7 +11951,7 @@ window.customCards.push({
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.2.4
+ * @version 1.2.5
  * @author BangerTech
  */
 
@@ -12953,27 +12953,25 @@ class PrismEnergyCard extends HTMLElement {
     let html = '<div class="weather-container">';
     const { weatherType, isNight, isSunrise, isSunset } = weatherData;
 
-    // Rain effect
+    // Rain effect (optimized for mobile performance)
     if (weatherType === 'rainy' || weatherType === 'stormy') {
-      const dropCount = weatherType === 'stormy' ? 35 : 20;
+      const dropCount = weatherType === 'stormy' ? 25 : 15;
       for (let i = 0; i < dropCount; i++) {
         const left = Math.random() * 100;
         const delay = Math.random() * 2;
         const duration = 0.6 + Math.random() * 0.4;
-        const opacity = 0.3 + Math.random() * 0.4;
-        html += `<div class="rain-drop" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; opacity: ${opacity};"></div>`;
+        html += `<div class="rain-drop" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s;"></div>`;
       }
     }
 
-    // Snow effect
+    // Snow effect (optimized for mobile performance)
     if (weatherType === 'snowy') {
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 25; i++) {
         const left = Math.random() * 100;
         const delay = Math.random() * 6;
-        const duration = 4 + Math.random() * 6;
-        const size = 2 + Math.random() * 4;
-        const opacity = 0.4 + Math.random() * 0.4;
-        html += `<div class="snow-flake" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; width: ${size}px; height: ${size}px; opacity: ${opacity};"></div>`;
+        const duration = 5 + Math.random() * 5;
+        const size = 3 + Math.random() * 3;
+        html += `<div class="snow-flake" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; width: ${size}px; height: ${size}px;"></div>`;
       }
     }
 
@@ -13083,46 +13081,51 @@ class PrismEnergyCard extends HTMLElement {
         border-radius: 24px;
       }
 
-      /* Rain Animation */
+      /* Rain Animation (optimized for mobile performance) */
       .rain-drop {
         position: absolute;
         width: 2px;
         height: 20px;
         background: linear-gradient(to bottom, transparent, rgba(174, 194, 224, 0.6), rgba(174, 194, 224, 0.8));
-        top: -30px;
+        top: 0;
         border-radius: 0 0 2px 2px;
+        opacity: 0;
+        /* GPU acceleration */
+        will-change: transform, opacity;
+        contain: layout style paint;
         animation: rain-fall linear infinite;
-        filter: blur(0.5px);
       }
       @keyframes rain-fall {
-        0% { top: -30px; opacity: 0; }
-        5% { opacity: 1; }
-        95% { opacity: 1; }
-        100% { top: 100%; opacity: 0; }
+        0% { transform: translateY(-30px); opacity: 0; }
+        5% { opacity: 0.7; }
+        95% { opacity: 0.7; }
+        100% { transform: translateY(100vh); opacity: 0; }
       }
 
-      /* Snow Animation */
+      /* Snow Animation (optimized for mobile performance) */
       .snow-flake {
         position: absolute;
-        background: radial-gradient(circle at 30% 30%, #ffffff, #e8e8e8);
+        background: rgba(255, 255, 255, 0.9);
         border-radius: 50%;
-        top: -10px;
-        filter: blur(0.5px);
+        top: 0;
+        opacity: 0;
+        /* GPU acceleration */
+        will-change: transform, opacity;
+        contain: layout style paint;
         animation: snow-fall linear infinite;
+        /* Glow effect kept for visual appeal */
         box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
       }
       @keyframes snow-fall {
         0% { 
-          top: -10px; 
-          transform: translateX(0) rotate(0deg); 
+          transform: translateY(-10px) translateX(0); 
           opacity: 0; 
         }
-        5% { opacity: 0.8; }
-        50% { transform: translateX(25px) rotate(180deg); }
-        95% { opacity: 0.8; }
+        5% { opacity: 0.7; }
+        50% { transform: translateY(50vh) translateX(20px); }
+        95% { opacity: 0.7; }
         100% { 
-          top: 100%; 
-          transform: translateX(-25px) rotate(360deg); 
+          transform: translateY(100vh) translateX(-20px); 
           opacity: 0; 
         }
       }
@@ -14151,7 +14154,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.2.4 %c Live Details Update `,
+  `%c PRISM-ENERGY %c v1.2.5 %c Weather Performance Optimized `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
@@ -14174,7 +14177,7 @@ console.info(
  * - Weather effects (rain, snow, fog, sun, moon, stars)
  * - Day/Night transitions with house dimming
  * 
- * @version 1.2.2
+ * @version 1.2.3
  * @author BangerTech
  */
 
@@ -15015,9 +15018,9 @@ class PrismEnergyHorizontalCard extends HTMLElement {
     let html = '<div class="weather-container">';
     const { weatherType, isNight, isSunrise, isSunset } = weatherData;
 
-    // Rain
+    // Rain (optimized for mobile performance)
     if (weatherType === 'rainy' || weatherType === 'stormy') {
-      const dropCount = weatherType === 'stormy' ? 35 : 20;
+      const dropCount = weatherType === 'stormy' ? 25 : 15;
       for (let i = 0; i < dropCount; i++) {
         const left = Math.random() * 100;
         const delay = Math.random() * 2;
@@ -15026,13 +15029,13 @@ class PrismEnergyHorizontalCard extends HTMLElement {
       }
     }
 
-    // Snow
+    // Snow (optimized for mobile performance)
     if (weatherType === 'snowy') {
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 25; i++) {
         const left = Math.random() * 100;
         const delay = Math.random() * 6;
-        const duration = 4 + Math.random() * 6;
-        const size = 2 + Math.random() * 4;
+        const duration = 5 + Math.random() * 5;
+        const size = 3 + Math.random() * 3;
         html += `<div class="snow-flake" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; width: ${size}px; height: ${size}px;"></div>`;
       }
     }
@@ -15111,10 +15114,12 @@ class PrismEnergyHorizontalCard extends HTMLElement {
   _getWeatherStyles() {
     return `
       .weather-container { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; border-radius: 28px; }
-      .rain-drop { position: absolute; width: 2px; height: 20px; background: linear-gradient(to bottom, transparent, rgba(174, 194, 224, 0.6)); top: -30px; border-radius: 0 0 2px 2px; animation: rain-fall linear infinite; }
-      @keyframes rain-fall { 0% { top: -30px; opacity: 0; } 5% { opacity: 0.6; } 95% { opacity: 0.6; } 100% { top: 100%; opacity: 0; } }
-      .snow-flake { position: absolute; background: radial-gradient(circle at 30% 30%, #ffffff, #e8e8e8); border-radius: 50%; top: -10px; animation: snow-fall linear infinite; opacity: 0.5; }
-      @keyframes snow-fall { 0% { top: -10px; transform: translateX(0); opacity: 0; } 5% { opacity: 0.6; } 50% { transform: translateX(25px); } 95% { opacity: 0.6; } 100% { top: 100%; transform: translateX(-25px); opacity: 0; } }
+      /* Rain Animation (optimized for mobile performance) */
+      .rain-drop { position: absolute; width: 2px; height: 20px; background: linear-gradient(to bottom, transparent, rgba(174, 194, 224, 0.6)); top: 0; border-radius: 0 0 2px 2px; opacity: 0; will-change: transform, opacity; contain: layout style paint; animation: rain-fall linear infinite; }
+      @keyframes rain-fall { 0% { transform: translateY(-30px); opacity: 0; } 5% { opacity: 0.7; } 95% { opacity: 0.7; } 100% { transform: translateY(100vh); opacity: 0; } }
+      /* Snow Animation (optimized for mobile performance) */
+      .snow-flake { position: absolute; background: rgba(255, 255, 255, 0.9); border-radius: 50%; top: 0; opacity: 0; will-change: transform, opacity; contain: layout style paint; animation: snow-fall linear infinite; box-shadow: 0 0 4px rgba(255, 255, 255, 0.5); }
+      @keyframes snow-fall { 0% { transform: translateY(-10px) translateX(0); opacity: 0; } 5% { opacity: 0.7; } 50% { transform: translateY(50vh) translateX(20px); } 95% { opacity: 0.7; } 100% { transform: translateY(100vh) translateX(-20px); opacity: 0; } }
       .fog-layer { position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(200, 210, 220, 0.15), transparent); animation: fog-drift linear infinite; filter: blur(30px); }
       .fog-1 { animation-duration: 25s; } .fog-2 { animation-duration: 35s; animation-direction: reverse; opacity: 0.5; }
       @keyframes fog-drift { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
@@ -16174,7 +16179,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY-HORIZONTAL %c v1.2.2 %c EV Details Section `,
+  `%c PRISM-ENERGY-HORIZONTAL %c v1.2.3 %c Weather Performance Optimized `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
@@ -17265,14 +17270,14 @@ class PrismBambuCard extends HTMLElement {
     return {
       deviceId,
       name,
-      progress,
+      progress: isIdle ? 0 : progress,
       stateStr,
       isPrinting,
       isPaused,
       isIdle,
-      printTimeLeft,
-      currentLayer,
-      totalLayers,
+      printTimeLeft: isIdle ? '--' : printTimeLeft,
+      currentLayer: isIdle ? 0 : currentLayer,
+      totalLayers: isIdle ? 0 : totalLayers,
       nozzleTemp,
       targetNozzleTemp,
       bedTemp,
@@ -17417,15 +17422,14 @@ class PrismBambuCard extends HTMLElement {
     updateText('.status-text', data.stateStr);
     
     // Update time left
-    const timeValue = this.shadowRoot.querySelector('.stats-row .stat-value');
-    if (timeValue) {
-      timeValue.textContent = data.printTimeLeft;
+    const statVals = this.shadowRoot.querySelectorAll('.stats-row .stat-val');
+    if (statVals.length >= 1) {
+      statVals[0].textContent = data.printTimeLeft;
     }
     
     // Update layer
-    const layerValue = this.shadowRoot.querySelector('.stats-row .stat-value:last-of-type');
-    if (layerValue) {
-      layerValue.textContent = `${data.currentLayer} / ${data.totalLayers}`;
+    if (statVals.length >= 2) {
+      statVals[1].innerHTML = `${data.isIdle ? '--' : data.currentLayer} <span style="font-size: 0.875rem; opacity: 0.4;">/ ${data.isIdle ? '--' : data.totalLayers}</span>`;
     }
     
     // Update fans via data-pill attributes
@@ -17532,6 +17536,22 @@ class PrismBambuCard extends HTMLElement {
       coverWrapper.classList.toggle('idle', data.isIdle);
     }
     
+    // Update printer icon state
+    const printerIcon = this.shadowRoot.querySelector('.printer-icon');
+    if (printerIcon) {
+      const isOfflineOrUnavailable = ['offline', 'unavailable'].includes(data.stateStr.toLowerCase());
+      const isPowerOff = data.powerSwitch && !data.isPowerOn;
+      
+      printerIcon.classList.remove('offline', 'printing', 'paused');
+      if (isOfflineOrUnavailable || isPowerOff) {
+        printerIcon.classList.add('offline');
+      } else if (data.isPrinting) {
+        printerIcon.classList.add('printing');
+      } else if (data.isPaused) {
+        printerIcon.classList.add('paused');
+      }
+    }
+    
     // Update cover image URL if it changed
     const coverImage = this.shadowRoot.querySelector('.cover-image');
     if (coverImage && data.coverImageUrl && coverImage.src !== data.coverImageUrl) {
@@ -17575,6 +17595,37 @@ class PrismBambuCard extends HTMLElement {
   }
 
   setupListeners() {
+    // Helper for touch + click support (tablets/mobile)
+    const addTapListener = (element, callback) => {
+      if (!element) return;
+      let touchMoved = false;
+      let touchStartTime = 0;
+      
+      element.addEventListener('touchstart', (e) => { 
+        touchMoved = false; 
+        touchStartTime = Date.now();
+      }, { passive: true });
+      
+      element.addEventListener('touchmove', () => { 
+        touchMoved = true; 
+      }, { passive: true });
+      
+      element.addEventListener('touchend', (e) => {
+        // Only trigger if it was a tap (not a swipe) and quick enough
+        if (!touchMoved && (Date.now() - touchStartTime) < 500) {
+          e.preventDefault();
+          e.stopPropagation();
+          callback(e);
+        }
+      });
+      
+      // Also keep click for desktop
+      element.onclick = (e) => {
+        e.stopPropagation();
+        callback(e);
+      };
+    };
+    
     // Use onclick to avoid duplicate event listeners when re-rendering
     const viewToggle = this.shadowRoot?.querySelector('.view-toggle');
     if (viewToggle) {
@@ -17650,15 +17701,14 @@ class PrismBambuCard extends HTMLElement {
           
           PrismBambuCard.log('Camera live stream created:', entityId);
           
-          // Click to open popup with full stream
-          cameraStream.onclick = (e) => {
-            e.stopPropagation();
-            this.openCameraPopup();
-          };
-          
           // Clear container and add stream
           cameraContainer.innerHTML = '';
           cameraContainer.appendChild(cameraStream);
+          
+          // Tap/Click to open popup with full stream (works on tablets too)
+          addTapListener(cameraStream, () => {
+            this.openCameraPopup();
+          });
         } else {
           // SNAPSHOT MODE - use img element with periodic refresh
           const snapshotImg = document.createElement('img');
@@ -17687,15 +17737,14 @@ class PrismBambuCard extends HTMLElement {
           
           PrismBambuCard.log('Camera snapshot mode created:', entityId, 'Refresh: 2s');
           
-          // Click to open popup with full stream (popup always shows live stream)
-          snapshotImg.onclick = (e) => {
-            e.stopPropagation();
-            this.openCameraPopup();
-          };
-          
           // Clear container and add snapshot image
           cameraContainer.innerHTML = '';
           cameraContainer.appendChild(snapshotImg);
+          
+          // Tap/Click to open popup with full stream (works on tablets too)
+          addTapListener(snapshotImg, () => {
+            this.openCameraPopup();
+          });
         }
       }
     }
@@ -18789,6 +18838,9 @@ class PrismBambuCard extends HTMLElement {
       this._cameraPopupEscHandler = null;
     }
     
+    // Refresh the camera stream in the card (it may have paused while popup was open)
+    this._refreshCardCameraStream();
+    
     // Remove drag listeners
     if (this._cameraPopupDragHandler) {
       document.removeEventListener('mousemove', this._cameraPopupDragHandler);
@@ -18810,6 +18862,75 @@ class PrismBambuCard extends HTMLElement {
     }
     
     PrismBambuCard.log('Camera popup closed');
+  }
+  
+  // Refresh the camera stream in the card after popup closes
+  _refreshCardCameraStream() {
+    if (!this.shadowRoot || !this._hass || !this.showCamera) return;
+    
+    const cameraContainer = this.shadowRoot.querySelector('.camera-container');
+    if (!cameraContainer) return;
+    
+    const entityId = cameraContainer.dataset.entity;
+    const stateObj = this._hass.states[entityId];
+    if (!stateObj) return;
+    
+    // Check if using live stream mode
+    const useLiveStream = this.config.camera_live_stream !== false;
+    if (!useLiveStream) return; // Snapshot mode doesn't need refresh
+    
+    // Find existing camera stream
+    const existingStream = cameraContainer.querySelector('ha-camera-stream');
+    if (!existingStream) return;
+    
+    // Small delay to let popup fully close, then recreate stream
+    setTimeout(() => {
+      // Remove old stream
+      existingStream.remove();
+      
+      // Create fresh camera stream
+      const cameraStream = document.createElement('ha-camera-stream');
+      cameraStream.hass = this._hass;
+      cameraStream.stateObj = stateObj;
+      cameraStream.className = 'camera-feed';
+      cameraStream.style.cursor = 'pointer';
+      cameraStream.muted = true;
+      cameraStream.controls = true;
+      cameraStream.allowExoPlayer = true;
+      cameraStream.setAttribute('muted', '');
+      cameraStream.setAttribute('controls', '');
+      cameraStream.setAttribute('autoplay', '');
+      
+      cameraContainer.appendChild(cameraStream);
+      
+      // Re-add tap listener
+      let touchMoved = false;
+      let touchStartTime = 0;
+      
+      cameraStream.addEventListener('touchstart', () => { 
+        touchMoved = false; 
+        touchStartTime = Date.now();
+      }, { passive: true });
+      
+      cameraStream.addEventListener('touchmove', () => { 
+        touchMoved = true; 
+      }, { passive: true });
+      
+      cameraStream.addEventListener('touchend', (e) => {
+        if (!touchMoved && (Date.now() - touchStartTime) < 500) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.openCameraPopup();
+        }
+      });
+      
+      cameraStream.onclick = (e) => {
+        e.stopPropagation();
+        this.openCameraPopup();
+      };
+      
+      PrismBambuCard.log('Camera stream refreshed after popup close');
+    }, 100);
   }
 
   // Multi-Printer Camera Popup - shows grid of all configured printers
@@ -20185,7 +20306,7 @@ class PrismBambuCard extends HTMLElement {
             min-width: 40px;
             min-height: 40px;
             border-radius: 50%;
-            background-color: rgba(0, 174, 66, 0.1);
+            background: linear-gradient(145deg, rgba(0, 174, 66, 0.15), rgba(0, 174, 66, 0.08));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -20193,6 +20314,7 @@ class PrismBambuCard extends HTMLElement {
             border: 1px solid rgba(0, 174, 66, 0.2);
             box-shadow: inset 0 0 10px rgba(0, 174, 66, 0.1);
             flex-shrink: 0;
+            transition: all 0.3s ease;
         }
         .printer-icon ha-icon {
             width: 24px;
@@ -20200,6 +20322,48 @@ class PrismBambuCard extends HTMLElement {
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.3s ease;
+        }
+        /* Offline/Unavailable/Power Off - Grey, inset look like prism-button */
+        .printer-icon.offline {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            color: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 
+                inset 3px 3px 8px rgba(0, 0, 0, 0.5),
+                inset -2px -2px 6px rgba(255, 255, 255, 0.05),
+                inset 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        /* Printing - Green with glow animation */
+        .printer-icon.printing {
+            box-shadow: 
+                0 0 12px rgba(0, 174, 66, 0.4),
+                0 0 24px rgba(0, 174, 66, 0.2),
+                inset 0 0 10px rgba(0, 174, 66, 0.1);
+            animation: printerIconGlow 2s ease-in-out infinite;
+        }
+        @keyframes printerIconGlow {
+            0%, 100% { 
+                box-shadow: 
+                    0 0 12px rgba(0, 174, 66, 0.4),
+                    0 0 24px rgba(0, 174, 66, 0.2),
+                    inset 0 0 10px rgba(0, 174, 66, 0.1);
+            }
+            50% { 
+                box-shadow: 
+                    0 0 18px rgba(0, 174, 66, 0.6),
+                    0 0 36px rgba(0, 174, 66, 0.3),
+                    inset 0 0 15px rgba(0, 174, 66, 0.15);
+            }
+        }
+        /* Paused - Yellow/Orange */
+        .printer-icon.paused {
+            background: linear-gradient(145deg, rgba(251, 191, 36, 0.15), rgba(251, 191, 36, 0.08));
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            box-shadow: inset 0 0 10px rgba(251, 191, 36, 0.1);
         }
         .title {
             font-size: 1.125rem;
@@ -21040,7 +21204,7 @@ class PrismBambuCard extends HTMLElement {
         
         <div class="header">
             <div class="header-left">
-                <div class="printer-icon">
+                <div class="printer-icon ${(['offline', 'unavailable'].includes(data.stateStr.toLowerCase()) || (data.powerSwitch && !data.isPowerOn)) ? 'offline' : data.isPrinting ? 'printing' : data.isPaused ? 'paused' : ''}">
                     <ha-icon icon="mdi:printer-3d-nozzle"></ha-icon>
                 </div>
                 <div>
@@ -21782,14 +21946,14 @@ class PrismCrealityCard extends HTMLElement {
     return {
       deviceId,
       name,
-      progress,
+      progress: isIdle ? 0 : progress,
       stateStr,
       isPrinting,
       isPaused,
       isIdle,
-      printTimeLeft,
-      currentLayer,
-      totalLayers,
+      printTimeLeft: isIdle ? '--' : printTimeLeft,
+      currentLayer: isIdle ? 0 : currentLayer,
+      totalLayers: isIdle ? 0 : totalLayers,
       nozzleTemp,
       targetNozzleTemp,
       bedTemp,
@@ -21913,16 +22077,31 @@ class PrismCrealityCard extends HTMLElement {
     // Update status
     updateText('.status-text', data.stateStr);
     
+    // Update printer icon state
+    const printerIcon = this.shadowRoot.querySelector('.printer-icon');
+    if (printerIcon) {
+      const isOfflineOrUnavailable = ['offline', 'unavailable'].includes(data.stateStr.toLowerCase());
+      const isPowerOff = data.powerSwitch && !data.isPowerOn;
+      
+      printerIcon.classList.remove('offline', 'printing', 'paused');
+      if (isOfflineOrUnavailable || isPowerOff) {
+        printerIcon.classList.add('offline');
+      } else if (data.isPrinting) {
+        printerIcon.classList.add('printing');
+      } else if (data.isPaused) {
+        printerIcon.classList.add('paused');
+      }
+    }
+    
     // Update time left
-    const timeValue = this.shadowRoot.querySelector('.stats-row .stat-value');
-    if (timeValue) {
-      timeValue.textContent = data.printTimeLeft;
+    const statVals = this.shadowRoot.querySelectorAll('.stats-row .stat-val');
+    if (statVals.length >= 1) {
+      statVals[0].textContent = data.printTimeLeft;
     }
     
     // Update layer
-    const layerValue = this.shadowRoot.querySelector('.stats-row .stat-value:last-of-type');
-    if (layerValue) {
-      layerValue.textContent = `${data.currentLayer} / ${data.totalLayers}`;
+    if (statVals.length >= 2) {
+      statVals[1].innerHTML = `${data.isIdle ? '--' : data.currentLayer} <span style="font-size: 0.875rem; opacity: 0.4;">/ ${data.isIdle ? '--' : data.totalLayers}</span>`;
     }
     
     // Update temperatures and fans via pill values
@@ -22003,6 +22182,37 @@ class PrismCrealityCard extends HTMLElement {
   }
 
   setupListeners() {
+    // Helper for touch + click support (tablets/mobile)
+    const addTapListener = (element, callback) => {
+      if (!element) return;
+      let touchMoved = false;
+      let touchStartTime = 0;
+      
+      element.addEventListener('touchstart', (e) => { 
+        touchMoved = false; 
+        touchStartTime = Date.now();
+      }, { passive: true });
+      
+      element.addEventListener('touchmove', () => { 
+        touchMoved = true; 
+      }, { passive: true });
+      
+      element.addEventListener('touchend', (e) => {
+        // Only trigger if it was a tap (not a swipe) and quick enough
+        if (!touchMoved && (Date.now() - touchStartTime) < 500) {
+          e.preventDefault();
+          e.stopPropagation();
+          callback(e);
+        }
+      });
+      
+      // Also keep click for desktop
+      element.onclick = (e) => {
+        e.stopPropagation();
+        callback(e);
+      };
+    };
+    
     // Use onclick to avoid duplicate event listeners when re-rendering
     const viewToggle = this.shadowRoot?.querySelector('.view-toggle');
     if (viewToggle) {
@@ -22056,15 +22266,14 @@ class PrismCrealityCard extends HTMLElement {
         cameraStream.className = 'camera-feed';
         cameraStream.style.cursor = 'pointer';
         
-        // Click to open popup
-        cameraStream.onclick = (e) => {
-          e.stopPropagation();
-          this.openCameraPopup();
-        };
-        
         // Clear container and add stream
         cameraContainer.innerHTML = '';
         cameraContainer.appendChild(cameraStream);
+        
+        // Tap/Click to open popup (works on tablets too)
+        addTapListener(cameraStream, () => {
+          this.openCameraPopup();
+        });
       }
     }
     
@@ -23028,7 +23237,75 @@ class PrismCrealityCard extends HTMLElement {
       this._cameraPopupResizeEndHandler = null;
     }
     
+    // Refresh the camera stream in the card (it may have paused while popup was open)
+    this._refreshCardCameraStream();
+    
     console.log('Prism Creality: Camera popup closed');
+  }
+  
+  // Refresh the camera stream in the card after popup closes
+  _refreshCardCameraStream() {
+    if (!this.shadowRoot || !this._hass || !this.showCamera) return;
+    
+    const cameraContainer = this.shadowRoot.querySelector('.camera-container');
+    if (!cameraContainer) return;
+    
+    const entityId = cameraContainer.dataset.entity;
+    const stateObj = this._hass.states[entityId];
+    if (!stateObj) return;
+    
+    // Find existing camera stream
+    const existingStream = cameraContainer.querySelector('ha-camera-stream');
+    if (!existingStream) return;
+    
+    // Small delay to let popup fully close, then recreate stream
+    setTimeout(() => {
+      // Remove old stream
+      existingStream.remove();
+      
+      // Create fresh camera stream
+      const cameraStream = document.createElement('ha-camera-stream');
+      cameraStream.hass = this._hass;
+      cameraStream.stateObj = stateObj;
+      cameraStream.className = 'camera-feed';
+      cameraStream.style.cursor = 'pointer';
+      cameraStream.muted = true;
+      cameraStream.controls = true;
+      cameraStream.allowExoPlayer = true;
+      cameraStream.setAttribute('muted', '');
+      cameraStream.setAttribute('controls', '');
+      cameraStream.setAttribute('autoplay', '');
+      
+      cameraContainer.appendChild(cameraStream);
+      
+      // Re-add tap listener
+      let touchMoved = false;
+      let touchStartTime = 0;
+      
+      cameraStream.addEventListener('touchstart', () => { 
+        touchMoved = false; 
+        touchStartTime = Date.now();
+      }, { passive: true });
+      
+      cameraStream.addEventListener('touchmove', () => { 
+        touchMoved = true; 
+      }, { passive: true });
+      
+      cameraStream.addEventListener('touchend', (e) => {
+        if (!touchMoved && (Date.now() - touchStartTime) < 500) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.openCameraPopup();
+        }
+      });
+      
+      cameraStream.onclick = (e) => {
+        e.stopPropagation();
+        this.openCameraPopup();
+      };
+      
+      console.log('Prism Creality: Camera stream refreshed after popup close');
+    }, 100);
   }
 
   // Multi-Printer Camera Popup - shows grid of all configured printers
@@ -24045,7 +24322,7 @@ class PrismCrealityCard extends HTMLElement {
             min-width: 40px;
             min-height: 40px;
             border-radius: 50%;
-            background-color: rgba(0, 150, 255, 0.1);
+            background: linear-gradient(145deg, rgba(0, 150, 255, 0.15), rgba(0, 150, 255, 0.08));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -24053,6 +24330,7 @@ class PrismCrealityCard extends HTMLElement {
             border: 1px solid rgba(0, 150, 255, 0.2);
             box-shadow: inset 0 0 10px rgba(0, 150, 255, 0.1);
             flex-shrink: 0;
+            transition: all 0.3s ease;
         }
         .printer-icon ha-icon {
             width: 24px;
@@ -24060,6 +24338,49 @@ class PrismCrealityCard extends HTMLElement {
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.3s ease;
+        }
+        /* Offline/Unavailable/Power Off - Grey, inset look like prism-button */
+        .printer-icon.offline {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            color: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 
+                inset 3px 3px 8px rgba(0, 0, 0, 0.5),
+                inset -2px -2px 6px rgba(255, 255, 255, 0.05),
+                inset 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        /* Printing - Blue with glow animation */
+        .printer-icon.printing {
+            box-shadow: 
+                0 0 12px rgba(0, 150, 255, 0.4),
+                0 0 24px rgba(0, 150, 255, 0.2),
+                inset 0 0 10px rgba(0, 150, 255, 0.1);
+            animation: printerIconGlow 2s ease-in-out infinite;
+        }
+        @keyframes printerIconGlow {
+            0%, 100% { 
+                box-shadow: 
+                    0 0 12px rgba(0, 150, 255, 0.4),
+                    0 0 24px rgba(0, 150, 255, 0.2),
+                    inset 0 0 10px rgba(0, 150, 255, 0.1);
+            }
+            50% { 
+                box-shadow: 
+                    0 0 18px rgba(0, 150, 255, 0.6),
+                    0 0 36px rgba(0, 150, 255, 0.3),
+                    inset 0 0 15px rgba(0, 150, 255, 0.15);
+            }
+        }
+        /* Paused - Yellow/Orange */
+        .printer-icon.paused {
+            background: linear-gradient(145deg, rgba(251, 191, 36, 0.15), rgba(251, 191, 36, 0.08));
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            box-shadow: inset 0 0 10px rgba(251, 191, 36, 0.1);
+        }
         }
         .title {
             font-size: 1.125rem;
@@ -24462,7 +24783,7 @@ class PrismCrealityCard extends HTMLElement {
         
         <div class="header">
             <div class="header-left">
-                <div class="printer-icon">
+                <div class="printer-icon ${(['offline', 'unavailable'].includes(data.stateStr.toLowerCase()) || (data.powerSwitch && !data.isPowerOn)) ? 'offline' : data.isPrinting ? 'printing' : data.isPaused ? 'paused' : ''}">
                     <ha-icon icon="mdi:printer-3d-nozzle"></ha-icon>
                 </div>
                 <div>

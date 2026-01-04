@@ -9,7 +9,7 @@
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.2.4
+ * @version 1.2.5
  * @author BangerTech
  */
 
@@ -1011,27 +1011,25 @@ class PrismEnergyCard extends HTMLElement {
     let html = '<div class="weather-container">';
     const { weatherType, isNight, isSunrise, isSunset } = weatherData;
 
-    // Rain effect
+    // Rain effect (optimized for mobile performance)
     if (weatherType === 'rainy' || weatherType === 'stormy') {
-      const dropCount = weatherType === 'stormy' ? 35 : 20;
+      const dropCount = weatherType === 'stormy' ? 25 : 15;
       for (let i = 0; i < dropCount; i++) {
         const left = Math.random() * 100;
         const delay = Math.random() * 2;
         const duration = 0.6 + Math.random() * 0.4;
-        const opacity = 0.3 + Math.random() * 0.4;
-        html += `<div class="rain-drop" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; opacity: ${opacity};"></div>`;
+        html += `<div class="rain-drop" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s;"></div>`;
       }
     }
 
-    // Snow effect
+    // Snow effect (optimized for mobile performance)
     if (weatherType === 'snowy') {
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 25; i++) {
         const left = Math.random() * 100;
         const delay = Math.random() * 6;
-        const duration = 4 + Math.random() * 6;
-        const size = 2 + Math.random() * 4;
-        const opacity = 0.4 + Math.random() * 0.4;
-        html += `<div class="snow-flake" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; width: ${size}px; height: ${size}px; opacity: ${opacity};"></div>`;
+        const duration = 5 + Math.random() * 5;
+        const size = 3 + Math.random() * 3;
+        html += `<div class="snow-flake" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; width: ${size}px; height: ${size}px;"></div>`;
       }
     }
 
@@ -1141,46 +1139,51 @@ class PrismEnergyCard extends HTMLElement {
         border-radius: 24px;
       }
 
-      /* Rain Animation */
+      /* Rain Animation (optimized for mobile performance) */
       .rain-drop {
         position: absolute;
         width: 2px;
         height: 20px;
         background: linear-gradient(to bottom, transparent, rgba(174, 194, 224, 0.6), rgba(174, 194, 224, 0.8));
-        top: -30px;
+        top: 0;
         border-radius: 0 0 2px 2px;
+        opacity: 0;
+        /* GPU acceleration */
+        will-change: transform, opacity;
+        contain: layout style paint;
         animation: rain-fall linear infinite;
-        filter: blur(0.5px);
       }
       @keyframes rain-fall {
-        0% { top: -30px; opacity: 0; }
-        5% { opacity: 1; }
-        95% { opacity: 1; }
-        100% { top: 100%; opacity: 0; }
+        0% { transform: translateY(-30px); opacity: 0; }
+        5% { opacity: 0.7; }
+        95% { opacity: 0.7; }
+        100% { transform: translateY(100vh); opacity: 0; }
       }
 
-      /* Snow Animation */
+      /* Snow Animation (optimized for mobile performance) */
       .snow-flake {
         position: absolute;
-        background: radial-gradient(circle at 30% 30%, #ffffff, #e8e8e8);
+        background: rgba(255, 255, 255, 0.9);
         border-radius: 50%;
-        top: -10px;
-        filter: blur(0.5px);
+        top: 0;
+        opacity: 0;
+        /* GPU acceleration */
+        will-change: transform, opacity;
+        contain: layout style paint;
         animation: snow-fall linear infinite;
+        /* Glow effect kept for visual appeal */
         box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
       }
       @keyframes snow-fall {
         0% { 
-          top: -10px; 
-          transform: translateX(0) rotate(0deg); 
+          transform: translateY(-10px) translateX(0); 
           opacity: 0; 
         }
-        5% { opacity: 0.8; }
-        50% { transform: translateX(25px) rotate(180deg); }
-        95% { opacity: 0.8; }
+        5% { opacity: 0.7; }
+        50% { transform: translateY(50vh) translateX(20px); }
+        95% { opacity: 0.7; }
         100% { 
-          top: 100%; 
-          transform: translateX(-25px) rotate(360deg); 
+          transform: translateY(100vh) translateX(-20px); 
           opacity: 0; 
         }
       }
@@ -2209,7 +2212,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.2.4 %c Live Details Update `,
+  `%c PRISM-ENERGY %c v1.2.5 %c Weather Performance Optimized `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'

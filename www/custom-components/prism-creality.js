@@ -446,14 +446,14 @@ class PrismCrealityCard extends HTMLElement {
     return {
       deviceId,
       name,
-      progress,
+      progress: isIdle ? 0 : progress,
       stateStr,
       isPrinting,
       isPaused,
       isIdle,
-      printTimeLeft,
-      currentLayer,
-      totalLayers,
+      printTimeLeft: isIdle ? '--' : printTimeLeft,
+      currentLayer: isIdle ? 0 : currentLayer,
+      totalLayers: isIdle ? 0 : totalLayers,
       nozzleTemp,
       targetNozzleTemp,
       bedTemp,
@@ -577,16 +577,31 @@ class PrismCrealityCard extends HTMLElement {
     // Update status
     updateText('.status-text', data.stateStr);
     
+    // Update printer icon state
+    const printerIcon = this.shadowRoot.querySelector('.printer-icon');
+    if (printerIcon) {
+      const isOfflineOrUnavailable = ['offline', 'unavailable'].includes(data.stateStr.toLowerCase());
+      const isPowerOff = data.powerSwitch && !data.isPowerOn;
+      
+      printerIcon.classList.remove('offline', 'printing', 'paused');
+      if (isOfflineOrUnavailable || isPowerOff) {
+        printerIcon.classList.add('offline');
+      } else if (data.isPrinting) {
+        printerIcon.classList.add('printing');
+      } else if (data.isPaused) {
+        printerIcon.classList.add('paused');
+      }
+    }
+    
     // Update time left
-    const timeValue = this.shadowRoot.querySelector('.stats-row .stat-value');
-    if (timeValue) {
-      timeValue.textContent = data.printTimeLeft;
+    const statVals = this.shadowRoot.querySelectorAll('.stats-row .stat-val');
+    if (statVals.length >= 1) {
+      statVals[0].textContent = data.printTimeLeft;
     }
     
     // Update layer
-    const layerValue = this.shadowRoot.querySelector('.stats-row .stat-value:last-of-type');
-    if (layerValue) {
-      layerValue.textContent = `${data.currentLayer} / ${data.totalLayers}`;
+    if (statVals.length >= 2) {
+      statVals[1].innerHTML = `${data.isIdle ? '--' : data.currentLayer} <span style="font-size: 0.875rem; opacity: 0.4;">/ ${data.isIdle ? '--' : data.totalLayers}</span>`;
     }
     
     // Update temperatures and fans via pill values
@@ -667,6 +682,37 @@ class PrismCrealityCard extends HTMLElement {
   }
 
   setupListeners() {
+    // Helper for touch + click support (tablets/mobile)
+    const addTapListener = (element, callback) => {
+      if (!element) return;
+      let touchMoved = false;
+      let touchStartTime = 0;
+      
+      element.addEventListener('touchstart', (e) => { 
+        touchMoved = false; 
+        touchStartTime = Date.now();
+      }, { passive: true });
+      
+      element.addEventListener('touchmove', () => { 
+        touchMoved = true; 
+      }, { passive: true });
+      
+      element.addEventListener('touchend', (e) => {
+        // Only trigger if it was a tap (not a swipe) and quick enough
+        if (!touchMoved && (Date.now() - touchStartTime) < 500) {
+          e.preventDefault();
+          e.stopPropagation();
+          callback(e);
+        }
+      });
+      
+      // Also keep click for desktop
+      element.onclick = (e) => {
+        e.stopPropagation();
+        callback(e);
+      };
+    };
+    
     // Use onclick to avoid duplicate event listeners when re-rendering
     const viewToggle = this.shadowRoot?.querySelector('.view-toggle');
     if (viewToggle) {
@@ -720,15 +766,14 @@ class PrismCrealityCard extends HTMLElement {
         cameraStream.className = 'camera-feed';
         cameraStream.style.cursor = 'pointer';
         
-        // Click to open popup
-        cameraStream.onclick = (e) => {
-          e.stopPropagation();
-          this.openCameraPopup();
-        };
-        
         // Clear container and add stream
         cameraContainer.innerHTML = '';
         cameraContainer.appendChild(cameraStream);
+        
+        // Tap/Click to open popup (works on tablets too)
+        addTapListener(cameraStream, () => {
+          this.openCameraPopup();
+        });
       }
     }
     
@@ -1692,7 +1737,75 @@ class PrismCrealityCard extends HTMLElement {
       this._cameraPopupResizeEndHandler = null;
     }
     
+    // Refresh the camera stream in the card (it may have paused while popup was open)
+    this._refreshCardCameraStream();
+    
     console.log('Prism Creality: Camera popup closed');
+  }
+  
+  // Refresh the camera stream in the card after popup closes
+  _refreshCardCameraStream() {
+    if (!this.shadowRoot || !this._hass || !this.showCamera) return;
+    
+    const cameraContainer = this.shadowRoot.querySelector('.camera-container');
+    if (!cameraContainer) return;
+    
+    const entityId = cameraContainer.dataset.entity;
+    const stateObj = this._hass.states[entityId];
+    if (!stateObj) return;
+    
+    // Find existing camera stream
+    const existingStream = cameraContainer.querySelector('ha-camera-stream');
+    if (!existingStream) return;
+    
+    // Small delay to let popup fully close, then recreate stream
+    setTimeout(() => {
+      // Remove old stream
+      existingStream.remove();
+      
+      // Create fresh camera stream
+      const cameraStream = document.createElement('ha-camera-stream');
+      cameraStream.hass = this._hass;
+      cameraStream.stateObj = stateObj;
+      cameraStream.className = 'camera-feed';
+      cameraStream.style.cursor = 'pointer';
+      cameraStream.muted = true;
+      cameraStream.controls = true;
+      cameraStream.allowExoPlayer = true;
+      cameraStream.setAttribute('muted', '');
+      cameraStream.setAttribute('controls', '');
+      cameraStream.setAttribute('autoplay', '');
+      
+      cameraContainer.appendChild(cameraStream);
+      
+      // Re-add tap listener
+      let touchMoved = false;
+      let touchStartTime = 0;
+      
+      cameraStream.addEventListener('touchstart', () => { 
+        touchMoved = false; 
+        touchStartTime = Date.now();
+      }, { passive: true });
+      
+      cameraStream.addEventListener('touchmove', () => { 
+        touchMoved = true; 
+      }, { passive: true });
+      
+      cameraStream.addEventListener('touchend', (e) => {
+        if (!touchMoved && (Date.now() - touchStartTime) < 500) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.openCameraPopup();
+        }
+      });
+      
+      cameraStream.onclick = (e) => {
+        e.stopPropagation();
+        this.openCameraPopup();
+      };
+      
+      console.log('Prism Creality: Camera stream refreshed after popup close');
+    }, 100);
   }
 
   // Multi-Printer Camera Popup - shows grid of all configured printers
@@ -2709,7 +2822,7 @@ class PrismCrealityCard extends HTMLElement {
             min-width: 40px;
             min-height: 40px;
             border-radius: 50%;
-            background-color: rgba(0, 150, 255, 0.1);
+            background: linear-gradient(145deg, rgba(0, 150, 255, 0.15), rgba(0, 150, 255, 0.08));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -2717,6 +2830,7 @@ class PrismCrealityCard extends HTMLElement {
             border: 1px solid rgba(0, 150, 255, 0.2);
             box-shadow: inset 0 0 10px rgba(0, 150, 255, 0.1);
             flex-shrink: 0;
+            transition: all 0.3s ease;
         }
         .printer-icon ha-icon {
             width: 24px;
@@ -2724,6 +2838,49 @@ class PrismCrealityCard extends HTMLElement {
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.3s ease;
+        }
+        /* Offline/Unavailable/Power Off - Grey, inset look like prism-button */
+        .printer-icon.offline {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            color: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 
+                inset 3px 3px 8px rgba(0, 0, 0, 0.5),
+                inset -2px -2px 6px rgba(255, 255, 255, 0.05),
+                inset 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        /* Printing - Blue with glow animation */
+        .printer-icon.printing {
+            box-shadow: 
+                0 0 12px rgba(0, 150, 255, 0.4),
+                0 0 24px rgba(0, 150, 255, 0.2),
+                inset 0 0 10px rgba(0, 150, 255, 0.1);
+            animation: printerIconGlow 2s ease-in-out infinite;
+        }
+        @keyframes printerIconGlow {
+            0%, 100% { 
+                box-shadow: 
+                    0 0 12px rgba(0, 150, 255, 0.4),
+                    0 0 24px rgba(0, 150, 255, 0.2),
+                    inset 0 0 10px rgba(0, 150, 255, 0.1);
+            }
+            50% { 
+                box-shadow: 
+                    0 0 18px rgba(0, 150, 255, 0.6),
+                    0 0 36px rgba(0, 150, 255, 0.3),
+                    inset 0 0 15px rgba(0, 150, 255, 0.15);
+            }
+        }
+        /* Paused - Yellow/Orange */
+        .printer-icon.paused {
+            background: linear-gradient(145deg, rgba(251, 191, 36, 0.15), rgba(251, 191, 36, 0.08));
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            box-shadow: inset 0 0 10px rgba(251, 191, 36, 0.1);
+        }
         }
         .title {
             font-size: 1.125rem;
@@ -3126,7 +3283,7 @@ class PrismCrealityCard extends HTMLElement {
         
         <div class="header">
             <div class="header-left">
-                <div class="printer-icon">
+                <div class="printer-icon ${(['offline', 'unavailable'].includes(data.stateStr.toLowerCase()) || (data.powerSwitch && !data.isPowerOn)) ? 'offline' : data.isPrinting ? 'printing' : data.isPaused ? 'paused' : ''}">
                     <ha-icon icon="mdi:printer-3d-nozzle"></ha-icon>
                 </div>
                 <div>
