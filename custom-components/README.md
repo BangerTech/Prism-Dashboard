@@ -283,7 +283,7 @@ A Creality 3D printer card with glassmorphism design and full display of print p
   image: /local/custom-components/images/prism-creality.webp  # Optional: .webp, .png or .jpg
 ```
 
-**Note:** The card uses Home Assistant's **Device Registry** and automatically filters all relevant entities based on the selected printer device. This works with the [Creality-Control Integration](https://github.com/SiloCityLabs/Creality-Control).
+**Note:** The card uses Home Assistant's **Device Registry** and automatically filters all relevant entities based on the selected printer device. This works with the [Creality-Control Integration](https://github.com/SiloCityLabs/Creality-Control) and additionally supports [Moonraker](https://github.com/marcolivierarsenault/moonraker-home-assistant) for rooted printers.
 
 **Features:**
 - ✅ **Auto-Entity Detection**: Automatic detection of Light Switch and Camera entities
@@ -328,13 +328,15 @@ The card automatically detects all relevant entities based on the printer device
 **Creality-Control Integration:**
 The card is compatible with the [Creality-Control Integration](https://github.com/SiloCityLabs/Creality-Control) and uses all available sensors, switches, buttons, and camera entities.
 
+**Moonraker Support (Additional):**
+For rooted Creality printers running Klipper/Moonraker, the card also supports the [Moonraker Home Assistant Integration](https://github.com/marcolivierarsenault/moonraker-home-assistant). The card automatically detects entities based on your **device name** in Home Assistant (e.g., device "K1-098D" → finds entities like `sensor.k1_098d_bed_temperature`).
+
 **Images:**
 - The default printer image (`printer-blank.jpg`) is automatically installed with HACS
 - Default path: `/hacsfiles/Prism-Dashboard/images/printer-blank.jpg`
 - You can specify a custom image path in the `image` field if needed
 - The card supports `.webp`, `.png` and `.jpg` formats
-3. The card supports `.webp`, `.png` and `.jpg` formats
-4. As a last fallback, a printer icon is displayed
+- As a last fallback, a printer icon is displayed
 
 **Interactions:**
 

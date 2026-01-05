@@ -1,15 +1,28 @@
-// Creality Manufacturer and Models for device filtering
-// Based on Creality-Control integration (https://github.com/SiloCityLabs/Creality-Control)
-const CREALITY_MANUFACTURER = 'Creality';
-const CREALITY_PRINTER_MODELS = [
-  // K-Series (FDM)
+// Manufacturer and Models for device filtering
+// Supports: Creality-Control, Moonraker/Klipper integrations
+const SUPPORTED_MANUFACTURERS = [
+  'Creality',
+  'Moonraker', 
+  'Klipper',
+  'moonraker',
+  'klipper'
+];
+
+const SUPPORTED_PRINTER_MODELS = [
+  // Creality K-Series (FDM)
   'K1', 'K1C', 'K1 Max', 'K1 SE', 'K1SE', 'K1 MAX',
   'K2 Plus', 'K2 Pro', 'K2_PLUS', 'K2_PRO',
-  // Halot Series (Resin)
+  // Creality Halot Series (Resin)
   'Halot', 'Halot One', 'Halot Max', 'Halot Sky',
-  // Generic
-  'Creality Printer', 'Creality'
+  // Generic Creality
+  'Creality Printer', 'Creality',
+  // Moonraker/Klipper - these often use printer name as model
+  '3D Printer', 'Printer', 'FDM Printer'
 ];
+
+// Legacy constants for backwards compatibility
+const CREALITY_MANUFACTURER = 'Creality';
+const CREALITY_PRINTER_MODELS = SUPPORTED_PRINTER_MODELS;
 
 // Entity keys to look for (based on Creality-Control sensor.py)
 const ENTITY_KEYS = [
@@ -55,16 +68,26 @@ class PrismCrealityCard extends HTMLElement {
 
   static getConfigForm() {
     // Build filter for printer device selector
-    const printerFilterCombinations = CREALITY_PRINTER_MODELS.map(model => ({
-      manufacturer: CREALITY_MANUFACTURER,
-      model: model
-    }));
+    // Support both Creality Control and Moonraker/Klipper integrations
+    const printerFilterCombinations = [];
+    
+    // Add all manufacturer/model combinations
+    for (const manufacturer of SUPPORTED_MANUFACTURERS) {
+      for (const model of SUPPORTED_PRINTER_MODELS) {
+        printerFilterCombinations.push({ manufacturer, model });
+      }
+    }
+    
+    // Also add integration-based filters (catches devices by integration name)
+    printerFilterCombinations.push({ integration: 'creality_control' });
+    printerFilterCombinations.push({ integration: 'moonraker' });
+    printerFilterCombinations.push({ integration: 'klipper' });
 
     return {
       schema: [
         {
           name: 'printer',
-          label: 'Creality Printer (select your printer device)',
+          label: 'Printer Device (Creality Control or Moonraker)',
           required: true,
           selector: { device: { filter: printerFilterCombinations } }
         },
@@ -177,13 +200,20 @@ class PrismCrealityCard extends HTMLElement {
     const deviceId = this.config.printer;
     const result = {};
     
-    // Loop through all hass entities and find those belonging to our device
+    // Support multiple platforms
+    const supportedPlatforms = ['creality_control', 'moonraker', 'klipper'];
+    
+    // First try: Loop through all hass entities and find those belonging to our device
     for (const entityId in this._hass.entities) {
       const entityInfo = this._hass.entities[entityId];
       
       if (entityInfo.device_id === deviceId) {
-        // Check if this entity matches one of our known keys or is from creality_control
-        if (entityInfo.platform === 'creality_control') {
+        // Check if this entity matches one of our known keys or is from a supported platform
+        const platform = entityInfo.platform || '';
+        const isSupported = supportedPlatforms.some(p => platform.toLowerCase().includes(p)) || 
+                           !platform || platform === '';
+        
+        if (isSupported) {
           const translationKey = entityInfo.translation_key;
           if (translationKey && ENTITY_KEYS.includes(translationKey)) {
             result[translationKey] = {
@@ -197,58 +227,109 @@ class PrismCrealityCard extends HTMLElement {
       }
     }
     
+    // Second try: If no entities found by device_id, search by device name in entity IDs
+    // This is important for Moonraker where entities are named like "sensor.k1_098d_bed_temperature"
+    if (Object.keys(result).length === 0) {
+      const device = this._hass.devices?.[deviceId];
+      if (device?.name) {
+        // Create search patterns from device name
+        // E.g., "K1-098D" -> "k1_098d" (with underscores) and "k1098d" (simple)
+        const deviceName = device.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const deviceNameSimple = device.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        
+        console.log('Prism Creality: No device_id match, searching by device name:', device.name);
+        console.log('Prism Creality: Search patterns:', deviceName, deviceNameSimple);
+        
+        // Search in states (this covers ALL entities including those without entity registry entry)
+        for (const entityId in this._hass.states) {
+          const entityIdLower = entityId.toLowerCase();
+          
+          // Match by device name pattern (e.g., "sensor.k1_098d_bed_temperature" contains "k1_098d")
+          if (deviceName && entityIdLower.includes(deviceName)) {
+            result[entityId] = { entity_id: entityId };
+          }
+          // Also try simplified name without underscores
+          else if (deviceNameSimple && deviceNameSimple !== deviceName && entityIdLower.includes(deviceNameSimple)) {
+            result[entityId] = { entity_id: entityId };
+          }
+        }
+        
+        console.log('Prism Creality: Found entities by name search:', Object.keys(result).length);
+        if (Object.keys(result).length > 0) {
+          console.log('Prism Creality: Sample entities:', Object.keys(result).slice(0, 10));
+        }
+      }
+    }
+    
     return result;
   }
 
   // Get entity by name pattern (searches entity_id)
-  // First tries device-bound entities, then falls back to platform-based search
+  // First tries device-bound entities, then falls back to device name search
   findEntityByPattern(pattern, domain = null) {
     if (!this._hass) return null;
     
     const deviceId = this.config?.printer;
+    const supportedPlatforms = ['creality_control', 'moonraker', 'klipper'];
     
-    // First pass: Look for entities bound to our device
+    // Get device name patterns for searching (dynamically from actual device name)
+    // E.g., device "K1-098D" -> patterns: ["k1_098d", "k1098d"] and parts: ["k1", "098d"]
+    let deviceNamePattern = '';
+    let deviceNameSimple = '';
+    let deviceNameParts = [];
+    
+    if (deviceId) {
+      const device = this._hass.devices?.[deviceId];
+      if (device?.name) {
+        deviceNamePattern = device.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        deviceNameSimple = device.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        deviceNameParts = device.name.toLowerCase().split(/[^a-z0-9]+/).filter(p => p.length >= 2);
+      }
+    }
+    
+    // Helper to check if entity matches domain
+    const matchesDomain = (entityId, targetDomain) => {
+      if (!targetDomain) return true;
+      return entityId.split('.')[0] === targetDomain;
+    };
+    
+    // First pass: Look for entities bound to our device by device_id
     for (const entityId in this._hass.entities) {
       const entityInfo = this._hass.entities[entityId];
       if (entityInfo.device_id === deviceId && entityId.toLowerCase().includes(pattern.toLowerCase())) {
-        if (domain) {
-          const entityDomain = entityId.split('.')[0];
-          if (entityDomain === domain) {
-            return entityId;
-          }
-        } else {
-          return entityId;
+        if (matchesDomain(entityId, domain)) return entityId;
+      }
+    }
+    
+    // Second pass: Look for entities by full device name pattern (e.g., "k1_098d")
+    // This catches Moonraker entities like "sensor.k1_098d_bed_temperature"
+    if (deviceNamePattern) {
+      for (const entityId in this._hass.states) {
+        const entityIdLower = entityId.toLowerCase();
+        if (entityIdLower.includes(deviceNamePattern) && entityIdLower.includes(pattern.toLowerCase())) {
+          if (matchesDomain(entityId, domain)) return entityId;
         }
       }
     }
     
-    // Second pass: Look for creality_control platform entities (they may not be bound to device)
+    // Third pass: Try simplified device name (without underscores)
+    if (deviceNameSimple && deviceNameSimple !== deviceNamePattern) {
+      for (const entityId in this._hass.states) {
+        const entityIdLower = entityId.toLowerCase();
+        if (entityIdLower.includes(deviceNameSimple) && entityIdLower.includes(pattern.toLowerCase())) {
+          if (matchesDomain(entityId, domain)) return entityId;
+        }
+      }
+    }
+    
+    // Fourth pass: Look for supported platform entities (fallback for entities not matching device name)
     for (const entityId in this._hass.entities) {
       const entityInfo = this._hass.entities[entityId];
-      // Check if it's from creality_control platform and matches pattern
-      if (entityInfo.platform === 'creality_control' && entityId.toLowerCase().includes(pattern.toLowerCase())) {
-        if (domain) {
-          const entityDomain = entityId.split('.')[0];
-          if (entityDomain === domain) {
-            return entityId;
-          }
-        } else {
-          return entityId;
-        }
-      }
-    }
-    
-    // Third pass: Look for any entity with "creality" in name and matching pattern
-    for (const entityId in this._hass.entities) {
-      if (entityId.toLowerCase().includes('creality') && entityId.toLowerCase().includes(pattern.toLowerCase())) {
-        if (domain) {
-          const entityDomain = entityId.split('.')[0];
-          if (entityDomain === domain) {
-            return entityId;
-          }
-        } else {
-          return entityId;
-        }
+      const platform = entityInfo.platform || '';
+      const isSupported = supportedPlatforms.some(p => platform.toLowerCase().includes(p));
+      
+      if (isSupported && entityId.toLowerCase().includes(pattern.toLowerCase())) {
+        if (matchesDomain(entityId, domain)) return entityId;
       }
     }
     
@@ -297,11 +378,21 @@ class PrismCrealityCard extends HTMLElement {
     if (!this._hass || !deviceId) return {};
     
     const result = {};
+    // Support both Creality Control and Moonraker platforms
+    const supportedPlatforms = ['creality_control', 'moonraker', 'klipper'];
+    
+    // First try: Find by device_id in entities registry
     for (const entityId in this._hass.entities) {
       const entityInfo = this._hass.entities[entityId];
       
       if (entityInfo.device_id === deviceId) {
-        if (entityInfo.platform === 'creality_control') {
+        // Accept entities from supported platforms, or any entity if platform is unknown
+        const platform = entityInfo.platform || '';
+        const isSupported = supportedPlatforms.some(p => platform.toLowerCase().includes(p)) || 
+                           !platform || 
+                           platform === '';
+        
+        if (isSupported) {
           const translationKey = entityInfo.translation_key;
           if (translationKey && ENTITY_KEYS.includes(translationKey)) {
             result[translationKey] = {
@@ -313,6 +404,28 @@ class PrismCrealityCard extends HTMLElement {
         }
       }
     }
+    
+    // Second try: If no entities found, search by device name in entity IDs
+    if (Object.keys(result).length === 0) {
+      const device = this._hass.devices?.[deviceId];
+      if (device) {
+        const deviceName = device.name?.toLowerCase().replace(/[^a-z0-9]/g, '_') || '';
+        const deviceNameSimple = device.name?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
+        
+        console.log('Prism Creality: Searching by device name:', device.name, '-> patterns:', deviceName, deviceNameSimple);
+        
+        // Search in states by device name pattern (covers all entities)
+        for (const entityId in this._hass.states) {
+          const entityIdLower = entityId.toLowerCase();
+          if (entityIdLower.includes(deviceName) || entityIdLower.includes(deviceNameSimple)) {
+            result[entityId] = { entity_id: entityId };
+          }
+        }
+        
+        console.log('Prism Creality: Found entities by name pattern:', Object.keys(result).length);
+      }
+    }
+    
     return result;
   }
 
@@ -334,6 +447,7 @@ class PrismCrealityCard extends HTMLElement {
   findEntityByPatternForDevice(deviceId, pattern, domain = null) {
     if (!this._hass || !deviceId) return null;
     
+    // First try: Find by device_id
     for (const entityId in this._hass.entities) {
       const entityInfo = this._hass.entities[entityId];
       if (entityInfo.device_id === deviceId && entityId.toLowerCase().includes(pattern.toLowerCase())) {
@@ -345,6 +459,29 @@ class PrismCrealityCard extends HTMLElement {
         }
       }
     }
+    
+    // Second try: Get device name and search by entity name pattern
+    // This is important for integrations where entities might not have device_id set
+    const device = this._hass.devices?.[deviceId];
+    if (device) {
+      const deviceName = device.name?.toLowerCase().replace(/[^a-z0-9]/g, '_') || '';
+      const deviceNameSimple = device.name?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
+      
+      for (const entityId in this._hass.states) {
+        const entityIdLower = entityId.toLowerCase();
+        // Check if entity name contains device name or pattern
+        if ((entityIdLower.includes(deviceName) || entityIdLower.includes(deviceNameSimple)) && 
+            entityIdLower.includes(pattern.toLowerCase())) {
+          if (domain) {
+            const entityDomain = entityId.split('.')[0];
+            if (entityDomain === domain) return entityId;
+          } else {
+            return entityId;
+          }
+        }
+      }
+    }
+    
     return null;
   }
 
@@ -372,13 +509,23 @@ class PrismCrealityCard extends HTMLElement {
 
     const deviceEntities = this.getDeviceEntitiesForPrinter(deviceId);
     
-    // Get print status - Creality uses 'deviceState', 'print_state', or 'state'
-    // Priority order: devicestate > print_state > printer_state > state (most specific first)
+    // Helper to find entity with multiple pattern options
+    const findEntityMultiPattern = (patterns, domain = 'sensor') => {
+      for (const pattern of patterns) {
+        const entity = this.findEntityByPatternForDevice(deviceId, pattern, domain);
+        if (entity) return entity;
+      }
+      return null;
+    };
+    
+    // Get print status
+    // Creality Control: devicestate, print_state
+    // Moonraker: print_status, current_print_state, status
     let stateStr = 'Idle';
-    const stateEntity = this.findEntityByPatternForDevice(deviceId, 'devicestate', 'sensor') ||
-                        this.findEntityByPatternForDevice(deviceId, 'print_state', 'sensor') ||
-                        this.findEntityByPatternForDevice(deviceId, 'printer_state', 'sensor') ||
-                        this.findEntityByPatternForDevice(deviceId, '_state', 'sensor');
+    const stateEntity = findEntityMultiPattern([
+      'devicestate', 'print_status', 'print_state', 'current_print_state', 
+      'printer_state', 'status', '_state'
+    ]);
     
     if (stateEntity) {
       const rawState = this._hass.states[stateEntity]?.state || 'unavailable';
@@ -404,9 +551,12 @@ class PrismCrealityCard extends HTMLElement {
     const statusLower = stateStr.toLowerCase();
     
     // Progress - get early for smart status detection
+    // Creality: printprogress, progress
+    // Moonraker: print_progress, progress_percentage
     let progress = 0;
-    const progressEntity = this.findEntityByPatternForDevice(deviceId, 'printprogress', 'sensor') ||
-                          this.findEntityByPatternForDevice(deviceId, 'progress', 'sensor');
+    const progressEntity = findEntityMultiPattern([
+      'printprogress', 'print_progress', 'progress_percentage', 'progress'
+    ]);
     if (progressEntity) {
       progress = parseFloat(this._hass.states[progressEntity]?.state) || 0;
     }
@@ -437,36 +587,57 @@ class PrismCrealityCard extends HTMLElement {
     const isIdle = !isPrinting && !isPaused;
 
     // Remaining time
+    // Creality: printlefttime, lefttime (in minutes)
+    // Moonraker: print_time_left, time_remaining, eta (may be in seconds)
     let printTimeLeft = '--';
-    const timeEntity = this.findEntityByPatternForDevice(deviceId, 'printlefttime', 'sensor') ||
-                       this.findEntityByPatternForDevice(deviceId, 'lefttime', 'sensor');
+    const timeEntity = findEntityMultiPattern([
+      'printlefttime', 'print_time_left', 'time_remaining', 'lefttime', 'eta', 'remaining'
+    ]);
     if (timeEntity && (isPrinting || isPaused)) {
-      const minutes = parseFloat(this._hass.states[timeEntity]?.state) || 0;
-      if (minutes > 0) {
-        const hours = Math.floor(minutes / 60);
-        const mins = Math.round(minutes % 60);
+      let timeValue = parseFloat(this._hass.states[timeEntity]?.state) || 0;
+      // If value > 1000, assume it's in seconds (Moonraker), convert to minutes
+      if (timeValue > 1000) {
+        timeValue = timeValue / 60;
+      }
+      if (timeValue > 0) {
+        const hours = Math.floor(timeValue / 60);
+        const mins = Math.round(timeValue % 60);
         printTimeLeft = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
       }
     }
 
     // Layer info
+    // Creality: _layer, totallayer
+    // Moonraker: current_layer, total_layer, layer
     let currentLayer = 0;
     let totalLayers = 0;
     if (isPrinting || isPaused) {
-      const layerEntity = this.findEntityByPatternForDevice(deviceId, '_layer', 'sensor');
-      const totalLayerEntity = this.findEntityByPatternForDevice(deviceId, 'totallayer', 'sensor');
+      const layerEntity = findEntityMultiPattern(['current_layer', '_layer', 'layer']);
+      const totalLayerEntity = findEntityMultiPattern(['total_layer', 'totallayer', 'total_layers']);
       if (layerEntity) currentLayer = parseInt(this._hass.states[layerEntity]?.state) || 0;
       if (totalLayerEntity) totalLayers = parseInt(this._hass.states[totalLayerEntity]?.state) || 0;
     }
 
     // Temperatures
+    // Creality: nozzletemp, bedtemp, boxtemp
+    // Moonraker: extruder_temperature, heater_bed_temperature, temperature
     let nozzleTemp = 0, targetNozzleTemp = 0, bedTemp = 0, targetBedTemp = 0, chamberTemp = 0;
     
-    const nozzleTempEntity = this.findEntityByPatternForDevice(deviceId, 'nozzletemp', 'sensor');
-    const targetNozzleEntity = this.findEntityByPatternForDevice(deviceId, 'targetnozzle', 'sensor');
-    const bedTempEntity = this.findEntityByPatternForDevice(deviceId, 'bedtemp', 'sensor');
-    const targetBedEntity = this.findEntityByPatternForDevice(deviceId, 'targetbed', 'sensor');
-    const boxTempEntity = this.findEntityByPatternForDevice(deviceId, 'boxtemp', 'sensor');
+    const nozzleTempEntity = findEntityMultiPattern([
+      'nozzletemp', 'extruder_temperature', 'extruder_temp', 'hotend_temp', 'nozzle_temp'
+    ]);
+    const targetNozzleEntity = findEntityMultiPattern([
+      'targetnozzle', 'extruder_target', 'target_extruder', 'nozzle_target', 'target_nozzle'
+    ]);
+    const bedTempEntity = findEntityMultiPattern([
+      'bedtemp', 'heater_bed_temperature', 'bed_temp', 'bed_temperature', 'heated_bed'
+    ]);
+    const targetBedEntity = findEntityMultiPattern([
+      'targetbed', 'heater_bed_target', 'bed_target', 'target_bed'
+    ]);
+    const boxTempEntity = findEntityMultiPattern([
+      'boxtemp', 'chamber_temp', 'chamber_temperature', 'enclosure_temp'
+    ]);
     
     if (nozzleTempEntity) nozzleTemp = parseFloat(this._hass.states[nozzleTempEntity]?.state) || 0;
     if (targetNozzleEntity) targetNozzleTemp = parseFloat(this._hass.states[targetNozzleEntity]?.state) || 0;
@@ -865,36 +1036,61 @@ class PrismCrealityCard extends HTMLElement {
     if (!this._hass) return;
     
     const deviceId = this.config?.printer;
+    const data = this.getPrinterData();
+    let btn = null;
     
-    // Find pause/resume button entity - try multiple patterns
-    // Creality Control uses button domain for pause/resume
-    let pauseBtn = null;
-    
-    // Try device-bound entities first with various patterns
-    // Creality Control uses: button.pause_resume_print
-    const patterns = ['pause_resume_print', 'pause_resume', 'pauseresume', 'pause', 'resume', 'play_pause'];
-    
-    for (const pattern of patterns) {
-      pauseBtn = this.findEntityByPatternForDevice(deviceId, pattern, 'button');
-      if (pauseBtn) break;
+    // First try: Toggle button (Creality Control uses this)
+    const togglePatterns = ['pause_resume_print', 'pause_resume', 'pauseresume'];
+    for (const pattern of togglePatterns) {
+      btn = this.findEntityByPatternForDevice(deviceId, pattern, 'button');
+      if (btn) break;
     }
-    
-    // Fallback to general search if device-bound not found
-    if (!pauseBtn) {
-      for (const pattern of patterns) {
-        pauseBtn = this.findEntityByPattern(pattern, 'button');
-        if (pauseBtn) break;
+    if (!btn) {
+      for (const pattern of togglePatterns) {
+        btn = this.findEntityByPattern(pattern, 'button');
+        if (btn) break;
       }
     }
     
-    console.log('Prism Creality: handlePause - Found entity:', pauseBtn);
+    // Second try: Separate pause/resume buttons (Moonraker uses these)
+    if (!btn) {
+      if (data.isPaused) {
+        // Need to RESUME
+        const resumePatterns = ['resume_print', 'resume'];
+        for (const pattern of resumePatterns) {
+          btn = this.findEntityByPatternForDevice(deviceId, pattern, 'button');
+          if (btn) break;
+        }
+        if (!btn) {
+          for (const pattern of resumePatterns) {
+            btn = this.findEntityByPattern(pattern, 'button');
+            if (btn) break;
+          }
+        }
+      } else if (data.isPrinting) {
+        // Need to PAUSE
+        const pausePatterns = ['pause_print', 'pause'];
+        for (const pattern of pausePatterns) {
+          btn = this.findEntityByPatternForDevice(deviceId, pattern, 'button');
+          if (btn) break;
+        }
+        if (!btn) {
+          for (const pattern of pausePatterns) {
+            btn = this.findEntityByPattern(pattern, 'button');
+            if (btn) break;
+          }
+        }
+      }
+    }
     
-    if (pauseBtn) {
-      this._hass.callService('button', 'press', { entity_id: pauseBtn });
-      console.log('Prism Creality: Called button.press for:', pauseBtn);
+    console.log('Prism Creality: handlePause - isPaused:', data.isPaused, 'isPrinting:', data.isPrinting, 'Found entity:', btn);
+    
+    if (btn) {
+      this._hass.callService('button', 'press', { entity_id: btn });
+      console.log('Prism Creality: Called button.press for:', btn);
     } else {
       console.warn('Prism Creality: No pause/resume button found. Available entities:', 
-        Object.keys(this._hass.entities).filter(e => e.includes('creality') || e.includes('k1')));
+        Object.keys(this._hass.entities).filter(e => e.includes('creality') || e.includes('k1') || e.includes('moonraker')));
       
       // Open more-info for the print status entity as fallback
       const stateEntity = this.findEntityByPattern('print_state') || this.findEntityByPattern('state');
@@ -913,8 +1109,9 @@ class PrismCrealityCard extends HTMLElement {
     if (!this._hass) return;
     const deviceId = this.config?.printer;
     
-    // Creality Control uses: button.stop_print, button.emergency_stop
-    const patterns = ['stop_print', 'emergency_stop', 'stop'];
+    // Creality Control: stop_print, emergency_stop
+    // Moonraker: cancel_print, emergency_stop
+    const patterns = ['stop_print', 'cancel_print', 'emergency_stop', 'stop'];
     let stopBtn = null;
     
     for (const pattern of patterns) {
@@ -2789,25 +2986,41 @@ class PrismCrealityCard extends HTMLElement {
     }
     
     // Find entities by searching entity_ids (Creality uses different naming pattern)
-    const progressEntity = this.findEntityByPattern('print_progress');
-    const stateEntity = this.findEntityByPattern('print_state') || this.findEntityByPattern('device_state');
-    const layerEntity = this.findEntityByPattern('current_layer');
-    const totalLayerEntity = this.findEntityByPattern('total_layer');
-    const timeLeftEntity = this.findEntityByPattern('time_left');
-    const nozzleTempEntity = this.findEntityByPattern('nozzle_temp');
-    const targetNozzleTempEntity = this.findEntityByPattern('target_nozzle');
-    const bedTempEntity = this.findEntityByPattern('bed_temp');
-    const targetBedTempEntity = this.findEntityByPattern('target_bed');
-    const boxTempEntity = this.findEntityByPattern('box_temp');
-    const modelFanEntity = this.findEntityByPattern('model_fan');
-    const auxFanEntity = this.findEntityByPattern('auxiliary_fan');
-    const caseFanEntity = this.findEntityByPattern('case_fan');
+    // Helper to find entity with multiple pattern options (supports Creality Control + Moonraker)
+    const findMulti = (patterns, domain = null) => {
+      for (const pattern of patterns) {
+        const entity = this.findEntityByPattern(pattern, domain);
+        if (entity) return entity;
+      }
+      return null;
+    };
+    
+    // Status, Progress, Layers - support both Creality Control and Moonraker
+    const progressEntity = findMulti(['printprogress', 'print_progress', 'progress_percentage', 'progress']);
+    const stateEntity = findMulti(['devicestate', 'print_status', 'print_state', 'device_state', 'status']);
+    const layerEntity = findMulti(['current_layer', '_layer', 'layer']);
+    const totalLayerEntity = findMulti(['total_layer', 'totallayer', 'total_layers']);
+    const timeLeftEntity = findMulti(['printlefttime', 'print_time_left', 'time_remaining', 'time_left', 'eta']);
+    
+    // Temperatures
+    const nozzleTempEntity = findMulti(['nozzletemp', 'extruder_temperature', 'extruder_temp', 'nozzle_temp']);
+    const targetNozzleTempEntity = findMulti(['targetnozzle', 'extruder_target', 'target_nozzle']);
+    const bedTempEntity = findMulti(['bedtemp', 'heater_bed_temperature', 'bed_temp', 'bed_temperature']);
+    const targetBedTempEntity = findMulti(['targetbed', 'heater_bed_target', 'target_bed']);
+    const boxTempEntity = findMulti(['boxtemp', 'chamber_temp', 'chamber_temperature', 'enclosure_temp']);
+    
+    // Fans - Creality: modelfan, Moonraker: part_fan, fan_speed
+    const modelFanEntity = findMulti(['modelfan', 'model_fan', 'part_fan', 'fan_speed', 'print_cooling_fan']);
+    const auxFanEntity = findMulti(['auxiliaryfan', 'auxiliary_fan', 'aux_fan']);
+    const caseFanEntity = findMulti(['casefan', 'case_fan', 'enclosure_fan', 'controller_fan']);
+    
     // Light: prefer switch domain for control, sensor for status
-    const lightSwitchEntity = this.findEntityByPattern('light', 'switch');
-    const lightSensorEntity = this.findEntityByPattern('light', 'sensor');
+    const lightSwitchEntity = findMulti(['lightsw', 'light', 'led'], 'switch');
+    const lightSensorEntity = findMulti(['lightsw', 'light', 'led'], 'sensor');
+    
     // Camera: must be camera domain
     const cameraEntityAuto = this.findEntityByPattern('camera', 'camera');
-    const fileNameEntity = this.findEntityByPattern('filename') || this.findEntityByPattern('print_filename');
+    const fileNameEntity = findMulti(['filename', 'print_filename', 'current_file']);
     
     // Read values
     const progress = this.getEntityValueById(progressEntity);
