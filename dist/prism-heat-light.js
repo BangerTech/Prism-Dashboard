@@ -462,15 +462,18 @@ class PrismHeatLightCard extends HTMLElement {
           box-sizing: border-box;
         }
         .header {
-            display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
+            display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
         }
         .icon-box {
-            width: 42px; height: 42px; border-radius: 50%;
+            width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
             background: rgba(0, 0, 0, 0.05); color: rgba(0, 0, 0, 0.4);
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             flex-shrink: 0;
             transition: all 0.3s ease;
+        }
+        .icon-box ha-icon {
+            width: 22px; height: 22px; --mdc-icon-size: 22px;
         }
         .icon-box.active.heat {
             background: rgba(251, 146, 60, 0.15); color: #fb923c;
@@ -490,8 +493,8 @@ class PrismHeatLightCard extends HTMLElement {
         }
 
         .title-area { flex: 1; min-width: 0; overflow: hidden; }
-        .title { font-size: 18px; font-weight: 500; color: #1a1a1a; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .subtitle { font-size: 13px; color: #666; line-height: 1.2; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; line-height: 1.2; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         .status-badge {
             padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase;

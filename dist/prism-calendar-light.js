@@ -308,16 +308,19 @@ class PrismCalendarLightCard extends HTMLElement {
         }
         
         .header {
-            display: flex; gap: 20px; align-items: center; margin-bottom: 24px; padding-left: 8px;
+            display: flex; gap: 12px; align-items: center; margin-bottom: 24px; padding-left: 8px;
         }
         .icon-box {
-            width: 42px; height: 42px; border-radius: 50%;
+            width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             flex-shrink: 0;
         }
-        .title { font-size: 18px; font-weight: 500; color: #1a1a1a; }
-        .subtitle { font-size: 12px; font-weight: 500; color: #666; text-transform: uppercase; margin-top: 2px; }
+        .icon-box ha-icon {
+            width: 22px; height: 22px; --mdc-icon-size: 22px;
+        }
+        .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; }
+        .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; text-transform: uppercase; margin-top: 4px; }
         
         .event-list {
             display: flex; flex-direction: column; gap: 12px;

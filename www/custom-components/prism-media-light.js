@@ -254,9 +254,9 @@ class PrismMediaLightCard extends HTMLElement {
         }
         
         .info { flex: 1; min-width: 0; }
-        .title { font-size: 18px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1a1a1a; }
+        .title { font-size: 1.125rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1a1a1a; line-height: 1; }
         .subtitle-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
-        .subtitle { font-size: 14px; color: rgba(0,0,0,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .subtitle { font-size: 0.75rem; color: rgba(0,0,0,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .state-dot {
             width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
             background: ${isPlaying ? playingColor : isPaused ? '#d97706' : 'rgba(0,0,0,0.2)'};

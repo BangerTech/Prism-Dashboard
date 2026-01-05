@@ -193,16 +193,19 @@ class PrismShutterLightCard extends HTMLElement {
         }
         
         .header {
-            display: flex; gap: 16px; align-items: center; margin-bottom: 24px;
+            display: flex; gap: 12px; align-items: center; margin-bottom: 24px;
         }
         .icon-box {
-            width: 48px; height: 48px; border-radius: 50%;
+            width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
             background: rgba(59, 130, 246, 0.2); color: #60a5fa;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
-        .title { font-size: 18px; font-weight: 500; color: #1a1a1a; }
-        .subtitle { font-size: 12px; font-weight: 500; color: #666; text-transform: uppercase; margin-top: 2px; }
+        .icon-box ha-icon {
+            width: 22px; height: 22px; --mdc-icon-size: 22px;
+        }
+        .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; }
+        .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; text-transform: uppercase; margin-top: 4px; }
         
         /* Inlet Slider Display (Interactive) */
         .slider-track {
@@ -226,7 +229,7 @@ class PrismShutterLightCard extends HTMLElement {
             display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
         }
         .control-btn {
-            height: 48px; border-radius: 12px;
+            height: 40px; border-radius: 12px;
             background: linear-gradient(145deg, #f0f0f0, #ffffff);
             border: 1px solid rgba(255,255,255,0.8);
             box-shadow: 

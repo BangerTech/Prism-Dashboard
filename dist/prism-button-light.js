@@ -127,8 +127,34 @@ class PrismButtonLightCard extends HTMLElement {
     
     const state = entity.state;
     const isActive = this._isActive();
+    const attr = entity.attributes;
     
-    // If active_color is configured and entity is active, use it
+    // For lights: PRIORITY 1 - use actual rgb_color from entity if available
+    if (isActive && this._config.entity.startsWith('light.')) {
+      // Check for rgb_color attribute (set by color picker) - highest priority
+      if (attr.rgb_color && Array.isArray(attr.rgb_color) && attr.rgb_color.length >= 3) {
+        const [r, g, b] = attr.rgb_color;
+        return { color: `rgb(${r}, ${g}, ${b})`, shadow: `rgba(${r}, ${g}, ${b}, 0.6)` };
+      }
+      // Check for hs_color and convert to RGB
+      if (attr.hs_color && Array.isArray(attr.hs_color) && attr.hs_color.length >= 2) {
+        const [h, s] = attr.hs_color;
+        const rgb = this._hsToRgb(h, s, 100);
+        return { color: `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`, shadow: `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.6)` };
+      }
+      // PRIORITY 2: Fallback to active_color from config
+      if (this._config.active_color) {
+        const hex = this._config.active_color;
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return { color: `rgb(${r}, ${g}, ${b})`, shadow: `rgba(${r}, ${g}, ${b}, 0.6)` };
+      }
+      // Default warm white for lights without color
+      return { color: 'rgb(255, 200, 100)', shadow: 'rgba(255, 200, 100, 0.6)' };
+    }
+    
+    // For non-lights: use active_color if configured
     if (isActive && this._config.active_color) {
       const hex = this._config.active_color;
       const r = parseInt(hex.slice(1, 3), 16);
@@ -154,6 +180,32 @@ class PrismButtonLightCard extends HTMLElement {
       }
     }
     return null;
+  }
+  
+  // Helper: Convert HS color to RGB
+  _hsToRgb(h, s, l) {
+    h = h / 360;
+    s = s / 100;
+    l = l / 100;
+    let r, g, b;
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
   }
 
   _hasBrightnessControl() {
@@ -339,9 +391,9 @@ class PrismButtonLightCard extends HTMLElement {
               ${sliderColorStart} 0%,
               ${sliderColorEnd} 100%);
             border-radius: 16px 0 0 16px;
-            /* Icon links in der Mitte ausschneiden - 40px von links, center vertical */
-            mask-image: radial-gradient(circle 28px at 40px center, transparent 0, transparent 28px, black 29px);
-            -webkit-mask-image: radial-gradient(circle 28px at 40px center, transparent 0, transparent 28px, black 29px);
+            /* Icon links in der Mitte ausschneiden - 36px von links (16px padding + 20px half icon), center vertical */
+            mask-image: radial-gradient(circle 25px at 36px center, transparent 0, transparent 25px, black 26px);
+            -webkit-mask-image: radial-gradient(circle 25px at 36px center, transparent 0, transparent 25px, black 26px);
           `}
           transition: ${layout === 'vertical' ? 'height' : 'width'} 0.15s ease-out;
           pointer-events: none;
@@ -363,8 +415,8 @@ class PrismButtonLightCard extends HTMLElement {
           justify-content: center;
           flex-shrink: 0;
           position: relative;
-          width: 48px;
-          height: 48px;
+          width: 40px;
+          height: 40px;
         }
         
         /* Glassmorphic icon circle with glow */

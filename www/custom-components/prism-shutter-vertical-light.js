@@ -232,18 +232,13 @@ class PrismShutterVerticalLightCard extends HTMLElement {
               width: 100%;
           }
           .icon-box {
-              width: 40px; height: 40px; border-radius: 50%;
+              width: 36px; height: 36px; border-radius: 50%;
               background: rgba(59, 130, 246, 0.2); color: #60a5fa;
               display: flex; align-items: center; justify-content: center;
-              box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
-              position: relative;
+              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
           }
           .icon-box ha-icon {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 100%;
-              height: 100%;
+              width: 18px; height: 18px; --mdc-icon-size: 18px;
           }
           .info {
               text-align: center; width: 100%;
@@ -285,8 +280,14 @@ class PrismShutterVerticalLightCard extends HTMLElement {
               width: 100%;
               height: 100%;
           }
-          .control-btn.btn-up, .control-btn.btn-down { height: 36px; }
-          .control-btn.btn-stop { height: 32px; }
+          .control-btn.btn-up, .control-btn.btn-down { height: 32px; }
+          .control-btn.btn-up ha-icon, .control-btn.btn-down ha-icon { 
+              width: 18px; height: 18px; --mdc-icon-size: 18px; 
+          }
+          .control-btn.btn-stop { height: 28px; }
+          .control-btn.btn-stop ha-icon { 
+              width: 14px; height: 14px; --mdc-icon-size: 14px; 
+          }
           
           .control-btn:active {
               background: linear-gradient(145deg, #e6e6e6, #f0f0f0);

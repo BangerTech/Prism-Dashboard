@@ -377,19 +377,22 @@ class PrismLedLightCard extends HTMLElement {
           .header {
               display: flex; justify-content: space-between; align-items: flex-start;
           }
-          .header-left { display: flex; align-items: center; gap: 16px; }
+          .header-left { display: flex; align-items: center; gap: 12px; }
           
           .icon-box {
-              width: 48px; height: 48px; border-radius: 50%;
+              width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
               background: rgba(0,0,0,0.05); 
               color: rgba(0,0,0,0.4);
               display: flex; align-items: center; justify-content: center;
               transition: all 0.5s ease;
           }
+          .icon-box ha-icon {
+              width: 22px; height: 22px; --mdc-icon-size: 22px;
+          }
           
           .info { display: flex; flex-direction: column; }
-          .title { font-size: 18px; font-weight: 700; color: #1a1a1a; line-height: 1.2; }
-          .subtitle { font-size: 14px; font-weight: 500; color: #666; margin-top: 4px; }
+          .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; }
+          .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; margin-top: 4px; }
           
           .power-btn {
               width: 48px; height: 48px; border-radius: 16px;

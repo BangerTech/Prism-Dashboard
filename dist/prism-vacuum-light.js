@@ -341,14 +341,14 @@ class PrismVacuumLightCard extends HTMLElement {
               gap: 12px;
           }
           .header-left { 
-              display: flex; align-items: center; gap: 16px;
+              display: flex; align-items: center; gap: 12px;
               flex: 1;
               min-width: 0;
               overflow: hidden;
           }
           
           .icon-box {
-              width: 48px; height: 48px; border-radius: 50%;
+              width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
               background: ${isActive ? 'rgba(59, 130, 246, 0.15)' : hasError ? 'rgba(220, 38, 38, 0.15)' : 'rgba(0,0,0,0.05)'}; 
               color: ${isActive ? '#2563eb' : hasError ? '#dc2626' : 'rgba(0,0,0,0.4)'};
               display: flex; align-items: center; justify-content: center;
@@ -358,6 +358,9 @@ class PrismVacuumLightCard extends HTMLElement {
               ${hasError ? 'filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.4));' : ''}
           }
           .icon-box ha-icon {
+              width: 22px;
+              height: 22px;
+              --mdc-icon-size: 22px;
               display: flex;
               align-items: center;
               justify-content: center;
@@ -374,13 +377,13 @@ class PrismVacuumLightCard extends HTMLElement {
               overflow: hidden;
           }
           .title { 
-              font-size: 18px; font-weight: 700; color: #1a1a1a; line-height: 1.2;
+              font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
           }
           .subtitle { 
-              font-size: 12px; font-weight: 500; color: #666; margin-top: 2px;
+              font-size: 0.75rem; font-weight: 500; color: #666; margin-top: 4px;
               display: flex; align-items: center; gap: 8px;
               flex-wrap: wrap;
               overflow: hidden;

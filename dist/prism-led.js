@@ -320,11 +320,19 @@ class PrismLedCard extends HTMLElement {
             powerBtn.style.color = color;
             powerBtn.style.opacity = 0.6 + (this.localBrightness / 250);
         }
+        const headerIconHaIcon = headerIcon ? headerIcon.querySelector('ha-icon') : null;
         if(headerIcon && this._entity && this._entity.state === 'on') {
-            headerIcon.style.backgroundColor = `${color}33`;
+            // Keep Neumorphism pressed style + add color glow
+            headerIcon.style.background = 'linear-gradient(145deg, rgba(25, 27, 30, 1), rgba(30, 32, 38, 1))';
             headerIcon.style.color = color;
-            headerIcon.style.boxShadow = `0 0 15px ${color}66`;
-            headerIcon.style.opacity = opacity;
+            headerIcon.style.boxShadow = `inset 3px 3px 8px rgba(0, 0, 0, 0.7), inset -2px -2px 4px rgba(255, 255, 255, 0.03), 0 0 12px ${color}50`;
+            if(headerIconHaIcon) headerIconHaIcon.style.filter = `drop-shadow(0 0 6px ${color})`;
+        } else if(headerIcon) {
+            // Reset to raised state when off
+            headerIcon.style.background = 'linear-gradient(145deg, rgba(35, 38, 45, 1), rgba(28, 30, 35, 1))';
+            headerIcon.style.color = 'rgba(255,255,255,0.4)';
+            headerIcon.style.boxShadow = '4px 4px 10px rgba(0, 0, 0, 0.5), -2px -2px 6px rgba(255, 255, 255, 0.03), inset 0 1px 2px rgba(255, 255, 255, 0.05)';
+            if(headerIconHaIcon) headerIconHaIcon.style.filter = 'none';
         }
     }
   
@@ -416,11 +424,12 @@ class PrismLedCard extends HTMLElement {
                   inset 0 1px 2px rgba(255, 255, 255, 0.05);
           }
           .power-btn ha-icon {
+              width: 22px;
+              height: 22px;
+              --mdc-icon-size: 22px;
               display: flex;
               align-items: center;
               justify-content: center;
-              width: 100%;
-              height: 100%;
           }
           .power-btn.active {
               background: linear-gradient(145deg, rgba(25, 27, 30, 1), rgba(30, 32, 38, 1));
@@ -458,43 +467,113 @@ class PrismLedCard extends HTMLElement {
               color: white;
           }
           
-          /* Wheel */
+          /* Wheel - Neumorphism Recessed Design */
           .wheel-container {
-              width: 100%; aspect-ratio: 1; max-height: 180px; margin: 0 auto;
-              position: relative; display: flex; align-items: center; justify-content: center;
-              cursor: pointer; touch-action: none;
+              width: 200px;
+              height: 200px;
+              margin: 0 auto;
+              position: relative;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              cursor: pointer;
+              touch-action: none;
+              /* Deep Neumorphism Inlet */
+              background: linear-gradient(145deg, rgba(18, 20, 24, 1), rgba(26, 28, 32, 1));
+              border-radius: 50%;
+              box-shadow: 
+                  inset 8px 8px 20px rgba(0, 0, 0, 0.9),
+                  inset -6px -6px 16px rgba(255, 255, 255, 0.03),
+                  0 4px 8px rgba(0, 0, 0, 0.4);
+              border: 1px solid rgba(0, 0, 0, 0.3);
           }
+          
+          /* Color Ring - Thin outer ring */
           .wheel-ring {
-              position: absolute; inset: 0; border-radius: 50%;
+              position: absolute;
+              inset: 10px;
+              border-radius: 50%;
               transition: all 0.5s;
               background: ${wheelGradient};
-              ${!isOn ? 'opacity: 0.2; filter: grayscale(1);' : ''}
-              box-shadow: ${isOn ? '0 10px 30px -5px rgba(0,0,0,0.6), 0 0 20px -5px rgba(0,0,0,0.3)' : 'none'};
+              ${!isOn ? 'opacity: 0.15; filter: grayscale(1);' : ''}
+              /* Create ring effect with mask */
+              -webkit-mask: radial-gradient(transparent 62%, black 63%);
+              mask: radial-gradient(transparent 62%, black 63%);
           }
+          
+          /* Subtle shine overlay */
           .wheel-shine {
-              position: absolute; inset: 0; border-radius: 50%;
-              background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+              position: absolute;
+              inset: 10px;
+              border-radius: 50%;
+              background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%);
               pointer-events: none;
+              -webkit-mask: radial-gradient(transparent 62%, black 63%);
+              mask: radial-gradient(transparent 62%, black 63%);
           }
+          
+          /* Center - Large color preview with Neumorphism */
           .wheel-center {
-              position: absolute; width: 50%; height: 50%; border-radius: 50%;
-              background: #1e2024;
-              box-shadow: 0 5px 15px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.1);
-              border: 1px solid rgba(255,255,255,0.05);
+              position: absolute;
+              width: 120px;
+              height: 120px;
+              border-radius: 50%;
+              background: linear-gradient(145deg, rgba(28, 30, 36, 1), rgba(22, 24, 28, 1));
+              box-shadow: 
+                  6px 6px 14px rgba(0, 0, 0, 0.6),
+                  -4px -4px 10px rgba(255, 255, 255, 0.025),
+                  inset 0 1px 1px rgba(255, 255, 255, 0.05);
+              border: 1px solid rgba(255, 255, 255, 0.04);
               z-index: 10;
-              display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              overflow: hidden;
           }
+          
+          /* Color preview background glow */
           .wheel-center-bg {
-              position: absolute; inset: 0; border-radius: 50%;
-              transition: all 0.3s; opacity: 0; filter: blur(12px);
-              ${isOn ? 'opacity: 0.2;' : ''}
+              position: absolute;
+              inset: -20px;
+              border-radius: 50%;
+              transition: all 0.4s ease;
+              opacity: 0;
+              filter: blur(25px);
+              ${isOn ? 'opacity: 0.35;' : ''}
               background-color: ${color};
           }
-          .wheel-icon {
-              color: rgba(255,255,255,0.7); width: 24px; height: 24px; z-index: 2;
+          
+          /* Inner color indicator ring */
+          .wheel-center::after {
+              content: '';
+              position: absolute;
+              inset: 6px;
+              border-radius: 50%;
+              border: 2px solid ${isOn ? color : 'rgba(255,255,255,0.1)'};
+              opacity: ${isOn ? '0.6' : '0.2'};
+              transition: all 0.4s ease;
+              ${isOn ? `box-shadow: 0 0 15px ${color}40, inset 0 0 10px ${color}20;` : ''}
           }
+          
+          .wheel-icon {
+              color: ${isOn ? color : 'rgba(255,255,255,0.4)'};
+              width: 28px;
+              height: 28px;
+              z-index: 2;
+              transition: all 0.3s ease;
+              ${isOn ? `filter: drop-shadow(0 0 8px ${color}80);` : ''}
+          }
+          
           .wheel-text {
-              font-size: 10px; font-family: monospace; color: rgba(255,255,255,0.4); text-transform: uppercase; z-index: 2;
+              font-size: 11px;
+              font-family: 'SF Mono', 'Roboto Mono', monospace;
+              color: ${isOn ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)'};
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              z-index: 2;
+              transition: all 0.3s ease;
           }
           
           /* Brightness */
@@ -530,7 +609,7 @@ class PrismLedCard extends HTMLElement {
           <div class="header">
               <div class="header-left">
                   <div class="icon-box" id="header-icon-box">
-                      <ha-icon icon="mdi:lightbulb" style="width: 20px; height: 20px;"></ha-icon>
+                      <ha-icon icon="mdi:lightbulb"></ha-icon>
                   </div>
                   <div class="info">
                       <div class="title">${name}</div>
@@ -539,7 +618,7 @@ class PrismLedCard extends HTMLElement {
               </div>
               
               <div id="power-btn" class="power-btn ${isOn ? 'active' : ''}">
-                  <ha-icon icon="mdi:power" style="width: 20px; height: 20px;"></ha-icon>
+                  <ha-icon icon="mdi:power"></ha-icon>
               </div>
           </div>
           

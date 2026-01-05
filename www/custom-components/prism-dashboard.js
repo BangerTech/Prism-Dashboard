@@ -3,7 +3,7 @@
  * https://github.com/BangerTech/Prism-Dashboard
  * 
  * Version: 1.0.0
- * Build Date: 2026-01-05T07:02:29.059Z
+ * Build Date: 2026-01-05T08:02:09.777Z
  * 
  * This file contains all Prism custom cards bundled together.
  * Just add this single file as a resource in Lovelace:
@@ -150,8 +150,34 @@ class PrismButtonCard extends HTMLElement {
     
     const state = entity.state;
     const isActive = this._isActive();
+    const attr = entity.attributes;
     
-    // If active_color is configured and entity is active, use it
+    // For lights: PRIORITY 1 - use actual rgb_color from entity if available
+    if (isActive && this._config.entity.startsWith('light.')) {
+      // Check for rgb_color attribute (set by color picker) - highest priority
+      if (attr.rgb_color && Array.isArray(attr.rgb_color) && attr.rgb_color.length >= 3) {
+        const [r, g, b] = attr.rgb_color;
+        return { color: `rgb(${r}, ${g}, ${b})`, shadow: `rgba(${r}, ${g}, ${b}, 0.6)` };
+      }
+      // Check for hs_color and convert to RGB
+      if (attr.hs_color && Array.isArray(attr.hs_color) && attr.hs_color.length >= 2) {
+        const [h, s] = attr.hs_color;
+        const rgb = this._hsToRgb(h, s, 100);
+        return { color: `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`, shadow: `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.6)` };
+      }
+      // PRIORITY 2: Fallback to active_color from config
+      if (this._config.active_color) {
+        const hex = this._config.active_color;
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return { color: `rgb(${r}, ${g}, ${b})`, shadow: `rgba(${r}, ${g}, ${b}, 0.6)` };
+      }
+      // Default warm white for lights without color
+      return { color: 'rgb(255, 200, 100)', shadow: 'rgba(255, 200, 100, 0.6)' };
+    }
+    
+    // For non-lights: use active_color if configured
     if (isActive && this._config.active_color) {
       const hex = this._config.active_color;
       const r = parseInt(hex.slice(1, 3), 16);
@@ -177,6 +203,32 @@ class PrismButtonCard extends HTMLElement {
       }
     }
     return null;
+  }
+  
+  // Helper: Convert HS color to RGB
+  _hsToRgb(h, s, l) {
+    h = h / 360;
+    s = s / 100;
+    l = l / 100;
+    let r, g, b;
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
   }
 
   _hasBrightnessControl() {
@@ -757,8 +809,34 @@ class PrismButtonLightCard extends HTMLElement {
     
     const state = entity.state;
     const isActive = this._isActive();
+    const attr = entity.attributes;
     
-    // If active_color is configured and entity is active, use it
+    // For lights: PRIORITY 1 - use actual rgb_color from entity if available
+    if (isActive && this._config.entity.startsWith('light.')) {
+      // Check for rgb_color attribute (set by color picker) - highest priority
+      if (attr.rgb_color && Array.isArray(attr.rgb_color) && attr.rgb_color.length >= 3) {
+        const [r, g, b] = attr.rgb_color;
+        return { color: `rgb(${r}, ${g}, ${b})`, shadow: `rgba(${r}, ${g}, ${b}, 0.6)` };
+      }
+      // Check for hs_color and convert to RGB
+      if (attr.hs_color && Array.isArray(attr.hs_color) && attr.hs_color.length >= 2) {
+        const [h, s] = attr.hs_color;
+        const rgb = this._hsToRgb(h, s, 100);
+        return { color: `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`, shadow: `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.6)` };
+      }
+      // PRIORITY 2: Fallback to active_color from config
+      if (this._config.active_color) {
+        const hex = this._config.active_color;
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return { color: `rgb(${r}, ${g}, ${b})`, shadow: `rgba(${r}, ${g}, ${b}, 0.6)` };
+      }
+      // Default warm white for lights without color
+      return { color: 'rgb(255, 200, 100)', shadow: 'rgba(255, 200, 100, 0.6)' };
+    }
+    
+    // For non-lights: use active_color if configured
     if (isActive && this._config.active_color) {
       const hex = this._config.active_color;
       const r = parseInt(hex.slice(1, 3), 16);
@@ -784,6 +862,32 @@ class PrismButtonLightCard extends HTMLElement {
       }
     }
     return null;
+  }
+  
+  // Helper: Convert HS color to RGB
+  _hsToRgb(h, s, l) {
+    h = h / 360;
+    s = s / 100;
+    l = l / 100;
+    let r, g, b;
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
   }
 
   _hasBrightnessControl() {
@@ -969,9 +1073,9 @@ class PrismButtonLightCard extends HTMLElement {
               ${sliderColorStart} 0%,
               ${sliderColorEnd} 100%);
             border-radius: 16px 0 0 16px;
-            /* Icon links in der Mitte ausschneiden - 40px von links, center vertical */
-            mask-image: radial-gradient(circle 28px at 40px center, transparent 0, transparent 28px, black 29px);
-            -webkit-mask-image: radial-gradient(circle 28px at 40px center, transparent 0, transparent 28px, black 29px);
+            /* Icon links in der Mitte ausschneiden - 36px von links (16px padding + 20px half icon), center vertical */
+            mask-image: radial-gradient(circle 25px at 36px center, transparent 0, transparent 25px, black 26px);
+            -webkit-mask-image: radial-gradient(circle 25px at 36px center, transparent 0, transparent 25px, black 26px);
           `}
           transition: ${layout === 'vertical' ? 'height' : 'width'} 0.15s ease-out;
           pointer-events: none;
@@ -993,8 +1097,8 @@ class PrismButtonLightCard extends HTMLElement {
           justify-content: center;
           flex-shrink: 0;
           position: relative;
-          width: 48px;
-          height: 48px;
+          width: 40px;
+          height: 40px;
         }
         
         /* Glassmorphic icon circle with glow */
@@ -2678,15 +2782,18 @@ class PrismHeatLightCard extends HTMLElement {
           box-sizing: border-box;
         }
         .header {
-            display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
+            display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
         }
         .icon-box {
-            width: 42px; height: 42px; border-radius: 50%;
+            width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
             background: rgba(0, 0, 0, 0.05); color: rgba(0, 0, 0, 0.4);
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             flex-shrink: 0;
             transition: all 0.3s ease;
+        }
+        .icon-box ha-icon {
+            width: 22px; height: 22px; --mdc-icon-size: 22px;
         }
         .icon-box.active.heat {
             background: rgba(251, 146, 60, 0.15); color: #fb923c;
@@ -2706,8 +2813,8 @@ class PrismHeatLightCard extends HTMLElement {
         }
 
         .title-area { flex: 1; min-width: 0; overflow: hidden; }
-        .title { font-size: 18px; font-weight: 500; color: #1a1a1a; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .subtitle { font-size: 13px; color: #666; line-height: 1.2; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; line-height: 1.2; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         .status-badge {
             padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase;
@@ -3656,9 +3763,10 @@ class PrismHeatSmallLightCard extends HTMLElement {
         }
         
         .icon-box {
-            width: 38px; 
-            height: 38px; 
-            min-width: 38px;
+            width: 40px; 
+            height: 40px; 
+            min-width: 40px;
+            min-height: 40px;
             border-radius: 50%;
             background: ${isHeating ? 'rgba(249, 115, 22, 0.15)' : 'rgba(0,0,0,0.05)'}; 
             color: ${isHeating ? '#fb923c' : 'rgba(0,0,0,0.4)'};
@@ -3670,10 +3778,12 @@ class PrismHeatSmallLightCard extends HTMLElement {
             ${isHeating ? 'filter: drop-shadow(0 0 6px rgba(251, 146, 60, 0.4));' : ''}
         }
         .icon-box ha-icon {
+            width: 22px;
+            height: 22px;
+            --mdc-icon-size: 22px;
             display: flex;
             align-items: center;
             justify-content: center;
-            --mdc-icon-size: 20px;
             line-height: 0;
         }
         
@@ -3683,16 +3793,16 @@ class PrismHeatSmallLightCard extends HTMLElement {
             justify-content: center;
         }
         .title { 
-            font-size: 15px; 
+            font-size: 1.125rem; 
             font-weight: 700; 
             color: #1a1a1a; 
-            line-height: 1.2; 
+            line-height: 1; 
         }
         .subtitle { 
-            font-size: 12px; 
+            font-size: 0.75rem; 
             font-weight: 500; 
             color: #666; 
-            margin-top: 2px; 
+            margin-top: 4px; 
             display: flex; 
             gap: 6px;
         }
@@ -4517,9 +4627,9 @@ class PrismMediaLightCard extends HTMLElement {
         }
         
         .info { flex: 1; min-width: 0; }
-        .title { font-size: 18px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1a1a1a; }
+        .title { font-size: 1.125rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1a1a1a; line-height: 1; }
         .subtitle-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
-        .subtitle { font-size: 14px; color: rgba(0,0,0,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .subtitle { font-size: 0.75rem; color: rgba(0,0,0,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .state-dot {
             width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
             background: ${isPlaying ? playingColor : isPaused ? '#d97706' : 'rgba(0,0,0,0.2)'};
@@ -5376,16 +5486,19 @@ class PrismCalendarLightCard extends HTMLElement {
         }
         
         .header {
-            display: flex; gap: 20px; align-items: center; margin-bottom: 24px; padding-left: 8px;
+            display: flex; gap: 12px; align-items: center; margin-bottom: 24px; padding-left: 8px;
         }
         .icon-box {
-            width: 42px; height: 42px; border-radius: 50%;
+            width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             flex-shrink: 0;
         }
-        .title { font-size: 18px; font-weight: 500; color: #1a1a1a; }
-        .subtitle { font-size: 12px; font-weight: 500; color: #666; text-transform: uppercase; margin-top: 2px; }
+        .icon-box ha-icon {
+            width: 22px; height: 22px; --mdc-icon-size: 22px;
+        }
+        .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; }
+        .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; text-transform: uppercase; margin-top: 4px; }
         
         .event-list {
             display: flex; flex-direction: column; gap: 12px;
@@ -5976,16 +6089,19 @@ class PrismShutterLightCard extends HTMLElement {
         }
         
         .header {
-            display: flex; gap: 16px; align-items: center; margin-bottom: 24px;
+            display: flex; gap: 12px; align-items: center; margin-bottom: 24px;
         }
         .icon-box {
-            width: 48px; height: 48px; border-radius: 50%;
+            width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
             background: rgba(59, 130, 246, 0.2); color: #60a5fa;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
-        .title { font-size: 18px; font-weight: 500; color: #1a1a1a; }
-        .subtitle { font-size: 12px; font-weight: 500; color: #666; text-transform: uppercase; margin-top: 2px; }
+        .icon-box ha-icon {
+            width: 22px; height: 22px; --mdc-icon-size: 22px;
+        }
+        .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; }
+        .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; text-transform: uppercase; margin-top: 4px; }
         
         /* Inlet Slider Display (Interactive) */
         .slider-track {
@@ -6009,7 +6125,7 @@ class PrismShutterLightCard extends HTMLElement {
             display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
         }
         .control-btn {
-            height: 48px; border-radius: 12px;
+            height: 40px; border-radius: 12px;
             background: linear-gradient(145deg, #f0f0f0, #ffffff);
             border: 1px solid rgba(255,255,255,0.8);
             box-shadow: 
@@ -6673,18 +6789,13 @@ class PrismShutterVerticalLightCard extends HTMLElement {
               width: 100%;
           }
           .icon-box {
-              width: 40px; height: 40px; border-radius: 50%;
+              width: 36px; height: 36px; border-radius: 50%;
               background: rgba(59, 130, 246, 0.2); color: #60a5fa;
               display: flex; align-items: center; justify-content: center;
-              box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
-              position: relative;
+              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
           }
           .icon-box ha-icon {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 100%;
-              height: 100%;
+              width: 18px; height: 18px; --mdc-icon-size: 18px;
           }
           .info {
               text-align: center; width: 100%;
@@ -6726,8 +6837,14 @@ class PrismShutterVerticalLightCard extends HTMLElement {
               width: 100%;
               height: 100%;
           }
-          .control-btn.btn-up, .control-btn.btn-down { height: 36px; }
-          .control-btn.btn-stop { height: 32px; }
+          .control-btn.btn-up, .control-btn.btn-down { height: 32px; }
+          .control-btn.btn-up ha-icon, .control-btn.btn-down ha-icon { 
+              width: 18px; height: 18px; --mdc-icon-size: 18px; 
+          }
+          .control-btn.btn-stop { height: 28px; }
+          .control-btn.btn-stop ha-icon { 
+              width: 14px; height: 14px; --mdc-icon-size: 14px; 
+          }
           
           .control-btn:active {
               background: linear-gradient(145deg, #e6e6e6, #f0f0f0);
@@ -7922,14 +8039,14 @@ class PrismVacuumLightCard extends HTMLElement {
               gap: 12px;
           }
           .header-left { 
-              display: flex; align-items: center; gap: 16px;
+              display: flex; align-items: center; gap: 12px;
               flex: 1;
               min-width: 0;
               overflow: hidden;
           }
           
           .icon-box {
-              width: 48px; height: 48px; border-radius: 50%;
+              width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
               background: ${isActive ? 'rgba(59, 130, 246, 0.15)' : hasError ? 'rgba(220, 38, 38, 0.15)' : 'rgba(0,0,0,0.05)'}; 
               color: ${isActive ? '#2563eb' : hasError ? '#dc2626' : 'rgba(0,0,0,0.4)'};
               display: flex; align-items: center; justify-content: center;
@@ -7939,6 +8056,9 @@ class PrismVacuumLightCard extends HTMLElement {
               ${hasError ? 'filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.4));' : ''}
           }
           .icon-box ha-icon {
+              width: 22px;
+              height: 22px;
+              --mdc-icon-size: 22px;
               display: flex;
               align-items: center;
               justify-content: center;
@@ -7955,13 +8075,13 @@ class PrismVacuumLightCard extends HTMLElement {
               overflow: hidden;
           }
           .title { 
-              font-size: 18px; font-weight: 700; color: #1a1a1a; line-height: 1.2;
+              font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
           }
           .subtitle { 
-              font-size: 12px; font-weight: 500; color: #666; margin-top: 2px;
+              font-size: 0.75rem; font-weight: 500; color: #666; margin-top: 4px;
               display: flex; align-items: center; gap: 8px;
               flex-wrap: wrap;
               overflow: hidden;
@@ -8664,11 +8784,19 @@ class PrismLedCard extends HTMLElement {
             powerBtn.style.color = color;
             powerBtn.style.opacity = 0.6 + (this.localBrightness / 250);
         }
+        const headerIconHaIcon = headerIcon ? headerIcon.querySelector('ha-icon') : null;
         if(headerIcon && this._entity && this._entity.state === 'on') {
-            headerIcon.style.backgroundColor = `${color}33`;
+            // Keep Neumorphism pressed style + add color glow
+            headerIcon.style.background = 'linear-gradient(145deg, rgba(25, 27, 30, 1), rgba(30, 32, 38, 1))';
             headerIcon.style.color = color;
-            headerIcon.style.boxShadow = `0 0 15px ${color}66`;
-            headerIcon.style.opacity = opacity;
+            headerIcon.style.boxShadow = `inset 3px 3px 8px rgba(0, 0, 0, 0.7), inset -2px -2px 4px rgba(255, 255, 255, 0.03), 0 0 12px ${color}50`;
+            if(headerIconHaIcon) headerIconHaIcon.style.filter = `drop-shadow(0 0 6px ${color})`;
+        } else if(headerIcon) {
+            // Reset to raised state when off
+            headerIcon.style.background = 'linear-gradient(145deg, rgba(35, 38, 45, 1), rgba(28, 30, 35, 1))';
+            headerIcon.style.color = 'rgba(255,255,255,0.4)';
+            headerIcon.style.boxShadow = '4px 4px 10px rgba(0, 0, 0, 0.5), -2px -2px 6px rgba(255, 255, 255, 0.03), inset 0 1px 2px rgba(255, 255, 255, 0.05)';
+            if(headerIconHaIcon) headerIconHaIcon.style.filter = 'none';
         }
     }
   
@@ -8760,11 +8888,12 @@ class PrismLedCard extends HTMLElement {
                   inset 0 1px 2px rgba(255, 255, 255, 0.05);
           }
           .power-btn ha-icon {
+              width: 22px;
+              height: 22px;
+              --mdc-icon-size: 22px;
               display: flex;
               align-items: center;
               justify-content: center;
-              width: 100%;
-              height: 100%;
           }
           .power-btn.active {
               background: linear-gradient(145deg, rgba(25, 27, 30, 1), rgba(30, 32, 38, 1));
@@ -8802,43 +8931,113 @@ class PrismLedCard extends HTMLElement {
               color: white;
           }
           
-          /* Wheel */
+          /* Wheel - Neumorphism Recessed Design */
           .wheel-container {
-              width: 100%; aspect-ratio: 1; max-height: 180px; margin: 0 auto;
-              position: relative; display: flex; align-items: center; justify-content: center;
-              cursor: pointer; touch-action: none;
+              width: 200px;
+              height: 200px;
+              margin: 0 auto;
+              position: relative;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              cursor: pointer;
+              touch-action: none;
+              /* Deep Neumorphism Inlet */
+              background: linear-gradient(145deg, rgba(18, 20, 24, 1), rgba(26, 28, 32, 1));
+              border-radius: 50%;
+              box-shadow: 
+                  inset 8px 8px 20px rgba(0, 0, 0, 0.9),
+                  inset -6px -6px 16px rgba(255, 255, 255, 0.03),
+                  0 4px 8px rgba(0, 0, 0, 0.4);
+              border: 1px solid rgba(0, 0, 0, 0.3);
           }
+          
+          /* Color Ring - Thin outer ring */
           .wheel-ring {
-              position: absolute; inset: 0; border-radius: 50%;
+              position: absolute;
+              inset: 10px;
+              border-radius: 50%;
               transition: all 0.5s;
               background: ${wheelGradient};
-              ${!isOn ? 'opacity: 0.2; filter: grayscale(1);' : ''}
-              box-shadow: ${isOn ? '0 10px 30px -5px rgba(0,0,0,0.6), 0 0 20px -5px rgba(0,0,0,0.3)' : 'none'};
+              ${!isOn ? 'opacity: 0.15; filter: grayscale(1);' : ''}
+              /* Create ring effect with mask */
+              -webkit-mask: radial-gradient(transparent 62%, black 63%);
+              mask: radial-gradient(transparent 62%, black 63%);
           }
+          
+          /* Subtle shine overlay */
           .wheel-shine {
-              position: absolute; inset: 0; border-radius: 50%;
-              background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+              position: absolute;
+              inset: 10px;
+              border-radius: 50%;
+              background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%);
               pointer-events: none;
+              -webkit-mask: radial-gradient(transparent 62%, black 63%);
+              mask: radial-gradient(transparent 62%, black 63%);
           }
+          
+          /* Center - Large color preview with Neumorphism */
           .wheel-center {
-              position: absolute; width: 50%; height: 50%; border-radius: 50%;
-              background: #1e2024;
-              box-shadow: 0 5px 15px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.1);
-              border: 1px solid rgba(255,255,255,0.05);
+              position: absolute;
+              width: 120px;
+              height: 120px;
+              border-radius: 50%;
+              background: linear-gradient(145deg, rgba(28, 30, 36, 1), rgba(22, 24, 28, 1));
+              box-shadow: 
+                  6px 6px 14px rgba(0, 0, 0, 0.6),
+                  -4px -4px 10px rgba(255, 255, 255, 0.025),
+                  inset 0 1px 1px rgba(255, 255, 255, 0.05);
+              border: 1px solid rgba(255, 255, 255, 0.04);
               z-index: 10;
-              display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              overflow: hidden;
           }
+          
+          /* Color preview background glow */
           .wheel-center-bg {
-              position: absolute; inset: 0; border-radius: 50%;
-              transition: all 0.3s; opacity: 0; filter: blur(12px);
-              ${isOn ? 'opacity: 0.2;' : ''}
+              position: absolute;
+              inset: -20px;
+              border-radius: 50%;
+              transition: all 0.4s ease;
+              opacity: 0;
+              filter: blur(25px);
+              ${isOn ? 'opacity: 0.35;' : ''}
               background-color: ${color};
           }
-          .wheel-icon {
-              color: rgba(255,255,255,0.7); width: 24px; height: 24px; z-index: 2;
+          
+          /* Inner color indicator ring */
+          .wheel-center::after {
+              content: '';
+              position: absolute;
+              inset: 6px;
+              border-radius: 50%;
+              border: 2px solid ${isOn ? color : 'rgba(255,255,255,0.1)'};
+              opacity: ${isOn ? '0.6' : '0.2'};
+              transition: all 0.4s ease;
+              ${isOn ? `box-shadow: 0 0 15px ${color}40, inset 0 0 10px ${color}20;` : ''}
           }
+          
+          .wheel-icon {
+              color: ${isOn ? color : 'rgba(255,255,255,0.4)'};
+              width: 28px;
+              height: 28px;
+              z-index: 2;
+              transition: all 0.3s ease;
+              ${isOn ? `filter: drop-shadow(0 0 8px ${color}80);` : ''}
+          }
+          
           .wheel-text {
-              font-size: 10px; font-family: monospace; color: rgba(255,255,255,0.4); text-transform: uppercase; z-index: 2;
+              font-size: 11px;
+              font-family: 'SF Mono', 'Roboto Mono', monospace;
+              color: ${isOn ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)'};
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              z-index: 2;
+              transition: all 0.3s ease;
           }
           
           /* Brightness */
@@ -8874,7 +9073,7 @@ class PrismLedCard extends HTMLElement {
           <div class="header">
               <div class="header-left">
                   <div class="icon-box" id="header-icon-box">
-                      <ha-icon icon="mdi:lightbulb" style="width: 20px; height: 20px;"></ha-icon>
+                      <ha-icon icon="mdi:lightbulb"></ha-icon>
                   </div>
                   <div class="info">
                       <div class="title">${name}</div>
@@ -8883,7 +9082,7 @@ class PrismLedCard extends HTMLElement {
               </div>
               
               <div id="power-btn" class="power-btn ${isOn ? 'active' : ''}">
-                  <ha-icon icon="mdi:power" style="width: 20px; height: 20px;"></ha-icon>
+                  <ha-icon icon="mdi:power"></ha-icon>
               </div>
           </div>
           
@@ -9316,19 +9515,22 @@ class PrismLedLightCard extends HTMLElement {
           .header {
               display: flex; justify-content: space-between; align-items: flex-start;
           }
-          .header-left { display: flex; align-items: center; gap: 16px; }
+          .header-left { display: flex; align-items: center; gap: 12px; }
           
           .icon-box {
-              width: 48px; height: 48px; border-radius: 50%;
+              width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
               background: rgba(0,0,0,0.05); 
               color: rgba(0,0,0,0.4);
               display: flex; align-items: center; justify-content: center;
               transition: all 0.5s ease;
           }
+          .icon-box ha-icon {
+              width: 22px; height: 22px; --mdc-icon-size: 22px;
+          }
           
           .info { display: flex; flex-direction: column; }
-          .title { font-size: 18px; font-weight: 700; color: #1a1a1a; line-height: 1.2; }
-          .subtitle { font-size: 14px; font-weight: 500; color: #666; margin-top: 4px; }
+          .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; }
+          .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; margin-top: 4px; }
           
           .power-btn {
               width: 48px; height: 48px; border-radius: 16px;

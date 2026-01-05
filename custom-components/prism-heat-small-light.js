@@ -173,9 +173,10 @@ class PrismHeatSmallLightCard extends HTMLElement {
         }
         
         .icon-box {
-            width: 38px; 
-            height: 38px; 
-            min-width: 38px;
+            width: 40px; 
+            height: 40px; 
+            min-width: 40px;
+            min-height: 40px;
             border-radius: 50%;
             background: ${isHeating ? 'rgba(249, 115, 22, 0.15)' : 'rgba(0,0,0,0.05)'}; 
             color: ${isHeating ? '#fb923c' : 'rgba(0,0,0,0.4)'};
@@ -187,10 +188,12 @@ class PrismHeatSmallLightCard extends HTMLElement {
             ${isHeating ? 'filter: drop-shadow(0 0 6px rgba(251, 146, 60, 0.4));' : ''}
         }
         .icon-box ha-icon {
+            width: 22px;
+            height: 22px;
+            --mdc-icon-size: 22px;
             display: flex;
             align-items: center;
             justify-content: center;
-            --mdc-icon-size: 20px;
             line-height: 0;
         }
         
@@ -200,16 +203,16 @@ class PrismHeatSmallLightCard extends HTMLElement {
             justify-content: center;
         }
         .title { 
-            font-size: 15px; 
+            font-size: 1.125rem; 
             font-weight: 700; 
             color: #1a1a1a; 
-            line-height: 1.2; 
+            line-height: 1; 
         }
         .subtitle { 
-            font-size: 12px; 
+            font-size: 0.75rem; 
             font-weight: 500; 
             color: #666; 
-            margin-top: 2px; 
+            margin-top: 4px; 
             display: flex; 
             gap: 6px;
         }
