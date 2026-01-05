@@ -442,8 +442,26 @@ class PrismBambuCard extends HTMLElement {
                      this.getEntityStateForDevice(deviceEntities, 'stage') || 'unavailable';
     
     const statusLower = stateStr.toLowerCase();
-    const isPrinting = ['printing', 'prepare', 'running', 'druckt', 'vorbereiten'].includes(statusLower);
-    const isPaused = ['paused', 'pause', 'pausiert'].includes(statusLower);
+    
+    // Extended pause states - includes layer pause, user pause, waiting states
+    const pauseStates = ['paused', 'pause', 'pausiert', 'waiting', 'user_pause', 'user pause', 
+                         'layer_pause', 'layer pause', 'filament_change', 'filament change',
+                         'suspended', 'on hold', 'halted', 'm400_pause'];
+    const printingStates = ['printing', 'prepare', 'running', 'druckt', 'vorbereiten', 'busy'];
+    const idleStates = ['idle', 'standby', 'ready', 'finished', 'complete', 'stopped', 'cancelled', 
+                        'error', 'offline', 'unavailable', 'slicing', 'unknown'];
+    
+    let isPrinting = printingStates.includes(statusLower);
+    let isPaused = pauseStates.includes(statusLower);
+    
+    // Smart detection: If progress is between 0-100 and status is unknown, assume paused
+    if (!isPrinting && !isPaused && progress > 0 && progress < 100) {
+      if (!idleStates.includes(statusLower)) {
+        isPaused = true;
+        PrismBambuCard.log('Smart pause detection - status:', stateStr, 'progress:', progress);
+      }
+    }
+    
     const isIdle = !isPrinting && !isPaused;
 
     // Remaining time
@@ -1135,24 +1153,100 @@ class PrismBambuCard extends HTMLElement {
   }
 
   handlePause() {
-    if (!this._hass || !this._deviceEntities['print_status']) return;
-    // Open more-info for the print status entity
-    const event = new CustomEvent('hass-more-info', {
-      bubbles: true,
-      composed: true,
-      detail: { entityId: this._deviceEntities['print_status'].entity_id }
-    });
-    this.dispatchEvent(event);
+    if (!this._hass) return;
+    
+    const deviceId = this.config?.printer;
+    const data = this.getPrinterData();
+    
+    // Bambu Lab has SEPARATE buttons for pause and resume
+    // German: druckvorgang_anhalten (pause), druckvorgang_fortsetzen (resume)
+    // English: pause, resume
+    let btn = null;
+    
+    if (data.isPaused) {
+      // Need to RESUME - find resume button
+      const resumePatterns = ['druckvorgang_fortsetzen', 'resume_print', 'resume'];
+      for (const pattern of resumePatterns) {
+        btn = this.findEntityByPatternForDevice(deviceId, pattern, 'button');
+        if (btn) break;
+      }
+      if (!btn) {
+        for (const pattern of resumePatterns) {
+          btn = this.findEntityByPattern(pattern, 'button');
+          if (btn) break;
+        }
+      }
+    } else if (data.isPrinting) {
+      // Need to PAUSE - find pause button
+      const pausePatterns = ['druckvorgang_anhalten', 'pause_print', 'pause'];
+      for (const pattern of pausePatterns) {
+        btn = this.findEntityByPatternForDevice(deviceId, pattern, 'button');
+        if (btn) break;
+      }
+      if (!btn) {
+        for (const pattern of pausePatterns) {
+          btn = this.findEntityByPattern(pattern, 'button');
+          if (btn) break;
+        }
+      }
+    }
+    
+    PrismBambuCard.log('handlePause - isPaused:', data.isPaused, 'isPrinting:', data.isPrinting, 'Found entity:', btn);
+    
+    if (btn) {
+      this._hass.callService('button', 'press', { entity_id: btn });
+      PrismBambuCard.log('Called button.press for:', btn);
+    } else {
+      // Fallback: Open more-info dialog
+      PrismBambuCard.log('No pause/resume button found, opening more-info dialog');
+      if (this._deviceEntities['print_status']) {
+        const event = new CustomEvent('hass-more-info', {
+          bubbles: true,
+          composed: true,
+          detail: { entityId: this._deviceEntities['print_status'].entity_id }
+        });
+        this.dispatchEvent(event);
+      }
+    }
   }
 
   handleStop() {
-    if (!this._hass || !this._deviceEntities['print_status']) return;
-    const event = new CustomEvent('hass-more-info', {
-      bubbles: true,
-      composed: true,
-      detail: { entityId: this._deviceEntities['print_status'].entity_id }
-    });
-    this.dispatchEvent(event);
+    if (!this._hass) return;
+    
+    const deviceId = this.config?.printer;
+    
+    // German: druckvorgang_beenden, English: stop_print, stop
+    const stopPatterns = ['druckvorgang_beenden', 'stop_print', 'stop'];
+    let stopBtn = null;
+    
+    for (const pattern of stopPatterns) {
+      stopBtn = this.findEntityByPatternForDevice(deviceId, pattern, 'button');
+      if (stopBtn) break;
+    }
+    
+    if (!stopBtn) {
+      for (const pattern of stopPatterns) {
+        stopBtn = this.findEntityByPattern(pattern, 'button');
+        if (stopBtn) break;
+      }
+    }
+    
+    PrismBambuCard.log('handleStop - Found entity:', stopBtn);
+    
+    if (stopBtn) {
+      this._hass.callService('button', 'press', { entity_id: stopBtn });
+      PrismBambuCard.log('Called button.press for:', stopBtn);
+    } else {
+      // Fallback: Open more-info dialog
+      if (this._deviceEntities['print_status']) {
+        const event = new CustomEvent('hass-more-info', {
+          bubbles: true,
+          composed: true,
+          detail: { entityId: this._deviceEntities['print_status'].entity_id }
+        });
+        this.dispatchEvent(event);
+      }
+    }
   }
 
   handleSpeed() {
@@ -3064,9 +3158,27 @@ class PrismBambuCard extends HTMLElement {
     
     // Determine if printer is actively printing (support German status names too)
     const statusLower = stateStr.toLowerCase();
-    const isPrinting = ['printing', 'prepare', 'running', 'druckt', 'vorbereiten'].includes(statusLower);
-    const isPaused = ['paused', 'pause', 'pausiert'].includes(statusLower);
-    const isIdle = !isPrinting && !isPaused; // Everything else is idle
+    
+    // Extended pause states - includes layer pause, user pause, waiting states
+    const pauseStates = ['paused', 'pause', 'pausiert', 'waiting', 'user_pause', 'user pause', 
+                         'layer_pause', 'layer pause', 'filament_change', 'filament change',
+                         'suspended', 'on hold', 'halted', 'm400_pause'];
+    const printingStates = ['printing', 'prepare', 'running', 'druckt', 'vorbereiten', 'busy'];
+    const idleStates = ['idle', 'standby', 'ready', 'finished', 'complete', 'stopped', 'cancelled', 
+                        'error', 'offline', 'unavailable', 'slicing', 'unknown'];
+    
+    let isPrinting = printingStates.includes(statusLower);
+    let isPaused = pauseStates.includes(statusLower);
+    
+    // Smart detection: If progress is between 0-100 and status is unknown, assume paused
+    if (!isPrinting && !isPaused && progress > 0 && progress < 100) {
+      if (!idleStates.includes(statusLower)) {
+        isPaused = true;
+        PrismBambuCard.log('Main Card Smart pause detection - status:', stateStr, 'progress:', progress);
+      }
+    }
+    
+    const isIdle = !isPrinting && !isPaused;
     
     // Get remaining time - format it nicely (only if printing)
     const remainingTimeEntity = this._deviceEntities['remaining_time'];
@@ -4684,15 +4796,16 @@ class PrismBambuCard extends HTMLElement {
         .btn-home:hover:not(:disabled) ha-icon {
             filter: drop-shadow(0 0 4px rgba(0, 174, 66, 0.5));
         }
-        /* Primary button (Pause/Resume) - always slightly pressed */
+        /* Primary button (Pause/Resume) - Default: raised (for Resume) */
         .btn-primary {
             grid-column: span 2;
-            background: linear-gradient(145deg, #1c1e24, #25282e);
+            background: linear-gradient(145deg, #2d3038, #22252b);
             color: #00AE42;
             gap: 8px;
             box-shadow: 
-                inset 3px 3px 6px rgba(0, 0, 0, 0.5),
-                inset -2px -2px 4px rgba(255, 255, 255, 0.03);
+                3px 3px 6px rgba(0, 0, 0, 0.4),
+                -2px -2px 4px rgba(255, 255, 255, 0.03),
+                inset 1px 1px 2px rgba(255, 255, 255, 0.05);
         }
         .btn-primary ha-icon {
             filter: drop-shadow(0 0 4px rgba(0, 174, 66, 0.5));
@@ -4708,6 +4821,16 @@ class PrismBambuCard extends HTMLElement {
             box-shadow: 
                 inset 4px 4px 8px rgba(0, 0, 0, 0.6),
                 inset -2px -2px 4px rgba(255, 255, 255, 0.02);
+        }
+        /* Primary button when printing - pressed/inset state */
+        .btn-primary.printing {
+            background: linear-gradient(145deg, #1c1e24, #25282e);
+            box-shadow: 
+                inset 3px 3px 6px rgba(0, 0, 0, 0.5),
+                inset -2px -2px 4px rgba(255, 255, 255, 0.03);
+        }
+        .btn-primary.printing ha-icon {
+            filter: drop-shadow(0 0 6px rgba(0, 174, 66, 0.7));
         }
         .btn:disabled {
             opacity: 0.3;
@@ -4987,7 +5110,7 @@ class PrismBambuCard extends HTMLElement {
             <button class="btn btn-secondary btn-stop" ${data.isIdle ? 'disabled' : ''}>
                 <ha-icon icon="mdi:stop"></ha-icon>
             </button>
-            <button class="btn btn-primary btn-pause" ${data.isIdle ? 'disabled' : ''}>
+            <button class="btn btn-primary btn-pause ${data.isPrinting ? 'printing' : ''}" ${data.isIdle ? 'disabled' : ''}>
                 <ha-icon icon="${data.isPaused ? 'mdi:play' : 'mdi:pause'}"></ha-icon>
                 ${data.isPaused ? 'Resume Print' : data.isPrinting ? 'Pause Print' : 'Control'}
             </button>
