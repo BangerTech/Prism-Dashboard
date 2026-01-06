@@ -308,7 +308,7 @@ class PrismButtonCard extends HTMLElement {
         :host {
           display: block;
         }
-        ha-card {
+        :host > ha-card {
           background: ${isActive ? 'rgba(20, 20, 20, 0.6)' : 'rgba(30, 32, 36, 0.6)'} !important;
           backdrop-filter: blur(12px) !important;
           -webkit-backdrop-filter: blur(12px) !important;
@@ -327,16 +327,16 @@ class PrismButtonCard extends HTMLElement {
           transform: ${isActive ? 'translateY(2px)' : 'none'};
           cursor: pointer;
         }
-        ha-card:hover {
+        :host > ha-card:hover {
           box-shadow: ${isActive 
             ? 'inset 2px 2px 5px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1)' 
             : '0 12px 24px -5px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08)'} !important;
         }
-        ha-card:active {
+        :host > ha-card:active {
           transform: scale(0.98) ${isActive ? 'translateY(2px)' : ''};
         }
         
-        .card-content {
+        :host > ha-card .card-content {
           display: flex;
           flex-direction: ${layout === 'vertical' ? 'column' : 'row'};
           align-items: center;
@@ -431,7 +431,7 @@ class PrismButtonCard extends HTMLElement {
           align-items: center;
           justify-content: center;
         }
-        ha-icon {
+        :host > ha-card ha-icon {
           --mdc-icon-size: 22px;
           width: 22px;
           height: 22px;

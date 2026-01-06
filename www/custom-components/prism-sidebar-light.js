@@ -13,6 +13,20 @@ class PrismSidebarLightCard extends HTMLElement {
         this.forecastSubscriber = null; // For weather forecast subscription
     }
 
+    // Format energy value with max 2 decimal places
+    _formatEnergyValue(value, unit) {
+        if (value === undefined || value === null || value === 'unavailable' || value === 'unknown') {
+            return '-- ' + (unit || 'kW');
+        }
+        const num = parseFloat(value);
+        if (isNaN(num)) {
+            return '-- ' + (unit || 'kW');
+        }
+        // Round to max 2 decimal places, remove trailing zeros
+        const formatted = num.toFixed(2).replace(/\.?0+$/, '');
+        return `${formatted} ${unit || 'kW'}`;
+    }
+
     static getStubConfig() {
         return {
             camera_entity: "camera.example",
@@ -306,13 +320,13 @@ class PrismSidebarLightCard extends HTMLElement {
         const calIconEl = this.shadowRoot?.getElementById('cal-icon');
 
         if (gridEl && gridState) {
-            gridEl.textContent = `${gridState.state} ${gridState.attributes.unit_of_measurement || 'kW'}`;
+            gridEl.textContent = this._formatEnergyValue(gridState.state, gridState.attributes.unit_of_measurement);
         }
         if (solarEl && solarState) {
-            solarEl.textContent = `${solarState.state} ${solarState.attributes.unit_of_measurement || 'kW'}`;
+            solarEl.textContent = this._formatEnergyValue(solarState.state, solarState.attributes.unit_of_measurement);
         }
         if (homeEl && homeState) {
-            homeEl.textContent = `${homeState.state} ${homeState.attributes.unit_of_measurement || 'kW'}`;
+            homeEl.textContent = this._formatEnergyValue(homeState.state, homeState.attributes.unit_of_measurement);
         }
         
         // Get temperature from the configured temperature entity, not weather
@@ -799,7 +813,7 @@ class PrismSidebarLightCard extends HTMLElement {
                 margin-top: 24px;
             }
             .energy-pill {
-                height: 64px;
+                height: 72px;
                 border-radius: 16px;
                 background: linear-gradient(145deg, #e8e8e8, #f5f5f5);
                 border: 1px solid rgba(0, 0, 0, 0.05);
@@ -808,11 +822,23 @@ class PrismSidebarLightCard extends HTMLElement {
                     inset -3px -3px 8px rgba(255,255,255,0.9);
                 display: flex; flex-direction: column; align-items: center; justify-content: center;
                 cursor: pointer; transition: background 0.3s;
-                padding-top: 8px;
-                gap: 4px;
+                padding: 8px 4px;
+                gap: 2px;
+                overflow: hidden;
             }
             .energy-pill:hover { background: rgba(240, 240, 240, 0.8); }
-            .pill-val { font-size: 12px; font-family: monospace; font-weight: bold; color: rgba(0, 0, 0, 0.9); }
+            .pill-val { 
+                font-size: 11px; 
+                font-family: monospace; 
+                font-weight: bold; 
+                color: rgba(0, 0, 0, 0.9); 
+                text-align: center;
+                width: 100%;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                padding: 0 2px;
+            }
             .pill-label { font-size: 9px; text-transform: uppercase; color: rgba(0, 0, 0, 0.3); margin-top: 2px; }
 
             @keyframes pulse {
