@@ -371,8 +371,8 @@ class PrismSidebarLightCard extends HTMLElement {
             }
         }
 
-        // Update weather forecast - rebuild entire forecast grid
-        this.updateForecastGrid();
+        // Note: Forecast is updated via subscription, not here
+        // updateForecastGrid() is called only once on initial render
     }
 
     // Check if weather entity supports forecast features (like clock-weather-card does)
@@ -392,11 +392,13 @@ class PrismSidebarLightCard extends HTMLElement {
     async updateForecastGrid() {
         if (!this._hass) return;
         
+        // Skip if already subscribed (prevent multiple subscriptions)
+        if (this.forecastSubscriber) return;
+        
         const weatherState = this._hass.states[this.weatherEntity];
         const forecastGridEl = this.shadowRoot?.querySelector('.forecast-grid');
         
         if (!forecastGridEl || !weatherState) {
-            console.warn('Prism Sidebar Light: Missing forecast grid or weather entity:', this.weatherEntity);
             return;
         }
         
@@ -407,24 +409,10 @@ class PrismSidebarLightCard extends HTMLElement {
             // Legacy: Get forecast from attributes
             if (weatherState.attributes.forecast && weatherState.attributes.forecast.length > 0) {
                 forecast = weatherState.attributes.forecast;
-                console.log('Prism Sidebar Light: Using forecast from attributes (legacy)');
             }
         } else {
             // Modern: Use subscribeMessage (like clock-weather-card does)
-            // Based on: https://github.com/pkissling/clock-weather-card
             try {
-                console.log('Prism Sidebar Light: Subscribing to forecast via subscribeMessage for', this.weatherEntity);
-                
-                // Unsubscribe from previous subscription
-                if (this.forecastSubscriber) {
-                    try {
-                        await this.forecastSubscriber();
-                    } catch (e) {
-                        // Ignore errors when unsubscribing
-                    }
-                    this.forecastSubscriber = null;
-                }
-                
                 // Subscribe to forecast updates
                 const callback = (event) => {
                     if (event && event.forecast && Array.isArray(event.forecast)) {
@@ -440,17 +428,14 @@ class PrismSidebarLightCard extends HTMLElement {
                 };
                 
                 this.forecastSubscriber = await this._hass.connection.subscribeMessage(callback, message, { resubscribe: false });
-                console.log('Prism Sidebar Light: Successfully subscribed to forecast');
                 
                 // Wait a bit for the first callback
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
             } catch (error) {
-                console.error('Prism Sidebar Light: Error subscribing to forecast:', error);
                 // Fallback to attributes if subscription fails
                 if (weatherState.attributes.forecast && weatherState.attributes.forecast.length > 0) {
                     forecast = weatherState.attributes.forecast;
-                    console.log('Prism Sidebar Light: Fallback to attributes after subscription error');
                 }
             }
         }
@@ -459,11 +444,7 @@ class PrismSidebarLightCard extends HTMLElement {
         if (forecast && forecast.length > 0) {
             this.renderForecastGrid(forecast, forecastGridEl);
         } else {
-            // Show helpful message if no forecast available
-            console.warn('Prism Sidebar Light: No forecast data available for', this.weatherEntity);
-            console.log('Prism Sidebar Light: Available weather attributes:', Object.keys(weatherState.attributes));
-            console.log('Prism Sidebar Light: Supported features:', weatherState.attributes.supported_features);
-            
+            // Show placeholder if no forecast available
             if (forecastGridEl) {
                 forecastGridEl.innerHTML = `
                     <div style="grid-column: 1 / -1; text-align: center; color: rgba(0,0,0,0.5); padding: 20px;">
@@ -484,8 +465,6 @@ class PrismSidebarLightCard extends HTMLElement {
         
         const forecastCount = this.forecastDays || 3;
         const forecastSlice = forecast.slice(0, forecastCount);
-        
-        console.log(`Prism Sidebar Light: Rendering forecast with ${forecastSlice.length} days`);
         
         // Rebuild the entire forecast grid
         forecastGridEl.innerHTML = forecastSlice.map((day, i) => {
@@ -601,9 +580,14 @@ class PrismSidebarLightCard extends HTMLElement {
                 height: 100%;
                 box-sizing: border-box;
             }
+            :host {
+                display: block;
+                height: 100%;
+            }
             .sidebar {
                 width: 100%;
-                height: 100%;
+                min-height: 100%;
+                height: auto;
                 display: flex;
                 flex-direction: column;
                 padding: 24px;
@@ -830,8 +814,11 @@ class PrismSidebarLightCard extends HTMLElement {
                 display: flex; flex-direction: column; align-items: center; justify-content: center;
                 cursor: pointer; transition: background 0.3s;
                 padding: 8px 4px;
-                gap: 2px;
+                gap: 4px;
                 overflow: hidden;
+            }
+            .energy-pill ha-icon {
+                margin-bottom: 2px;
             }
             .energy-pill:hover { background: rgba(240, 240, 240, 0.8); }
             .pill-val { 
