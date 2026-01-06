@@ -4,11 +4,126 @@
 
 ---
 
+### prism-room
+
+A compact room overview card with temperature, humidity, grouped entities, and status icons. Click to open a popup with all room devices grouped by type.
+
+<img width="400" alt="prism-room" src="images/prism-room.jpg" />
+
+**With transparent background:**
+
+<img width="400" alt="prism-room-transparent" src="images/prism-room(nobackground).jpg" />
+
+**Features:**
+- ✅ **Compact Room Card**: Shows room icon, name, temperature, and humidity
+- ✅ **Grouped Entities**: Organize lights, climate, motion sensors, media players, covers, switches, fans, and other entities in separate groups
+- ✅ **Status Icons with Badges**: Shows grouped entities with badge counters (e.g., "3 lights on")
+- ✅ **Unique Colors**: Each entity type has its own distinct color
+- ✅ **Hide Card Background**: Optional transparent mode (show only icons and text)
+- ✅ **Grouped Popup**: Click card to open popup with all entities, grouped by type
+- ✅ **Two-Column Layout**: Popup displays up to 2 groups side by side (responsive)
+- ✅ **Real-time Updates**: Popup updates automatically when entity states change
+- ✅ **Interactive Entities**: Tap to toggle, long-press for more-info dialog
+- ✅ **Neumorphism Design**: Modern neumorphism effects for all icons and buttons
+
+**Usage:**
+
+```yaml
+type: custom:prism-room
+name: "Living Room"
+icon: mdi:sofa
+hide_card_background: false  # Optional: true = transparent background (only icons/text)
+temperature_entity: sensor.living_room_temperature
+humidity_entity: sensor.living_room_humidity
+
+# Grouped entities (displayed in popup grouped by type)
+light_entities:
+  - light.living_room_ceiling
+  - light.living_room_floor_lamp
+  - light.living_room_spots
+
+climate_entities:
+  - climate.living_room
+
+motion_entities:
+  - binary_sensor.living_room_motion
+
+media_entities:
+  - media_player.living_room_tv
+
+cover_entities:
+  - cover.living_room_blinds
+
+switch_entities:
+  - switch.living_room_outlet
+
+fan_entities:
+  - fan.living_room_fan
+
+other_entities:
+  - scene.living_room_evening
+other_entities_icon: mdi:palette  # Optional: Custom icon for "Other" group
+```
+
+**Status Icon Colors:**
+
+| Icon | Entity Type | Color | Hex |
+|------|-------------|-------|-----|
+| 🔥 Heating | Climate | Orange | `#fb923c` |
+| 💡 Lights | Lights | Yellow | `#ffc864` |
+| 🪟 Covers | Covers/Blinds | Cyan | `#22d3ee` |
+| 🔌 Switches | Switches | Green | `#4ade80` |
+| 🌀 Fans | Fans | Sky Blue | `#38bdf8` |
+| 🚶 Motion | Motion Sensors | Indigo | `#818cf8` |
+| 🎵 Media | Media Players | Purple | `#a78bfa` |
+| ⚙️ Other | Other Entities | Gray | `#94a3b8` |
+
+**Popup Groups:**
+
+Entities are automatically grouped and displayed in the popup:
+1. **Lights** (Lichter)
+2. **Climate** (Heizungen)
+3. **Motion Sensors** (Bewegungsmelder)
+4. **Media Players** (Mediaplayer)
+5. **Covers** (Rollläden)
+6. **Switches** (Schalter)
+7. **Fans** (Ventilatoren)
+8. **Other** (Sonstige)
+
+**Interactions:**
+
+- **Card Click**: Opens popup with all grouped entities
+- **Entity Click in Popup**: Toggles the entity (lights, switches, fans, etc.)
+- **Entity Long-Press**: Opens Home Assistant's more-info dialog
+- **Climate Toggle**: Switches between heat/off modes
+- **Covers**: Opens/closes blinds
+- **Scenes/Scripts**: Activates when clicked
+
+**Transparent Background Mode:**
+
+Set `hide_card_background: true` to remove the glassmorphism background and display only the content (icon, name, status icons). Perfect for minimalist dashboards or when embedding the card in a colored container.
+
+---
+
 ### prism-heat
 
-A custom thermostat knob card with glassmorphism design.
+A custom thermostat knob card with glassmorphism design and optional compact mode.
 
-<img width="400" alt="prism-heat" src="https://github.com/user-attachments/assets/5a3a4adb-b228-4696-8dff-768e417fc38f" />
+**Normal Mode:**
+
+<img width="400" alt="prism-heat" src="images/prism-heater.png" />
+
+**Compact Mode:**
+
+<img width="400" alt="prism-heat-compact" src="images/prism-heat(compactmode).jpg" />
+
+**Features:**
+- ✅ **Circular Thermostat Knob**: Drag to adjust temperature
+- ✅ **Current & Target Temperature**: Shows both temperatures in the knob
+- ✅ **Mode Buttons**: Off/Manual/Auto modes
+- ✅ **Compact Mode**: Optional mode showing only the knob (no card wrapper)
+- ✅ **Color Glow**: Active heating shows orange glow effect
+- ✅ **Touch/Mouse Support**: Smooth drag interaction
 
 **Usage:**
 ```yaml
@@ -16,6 +131,7 @@ A custom thermostat knob card with glassmorphism design.
   entity: climate.living_room
   name: Living Room
   color: "#fb923c"
+  compact_mode: false  # Optional: true for minimalistic knob only
 ```
 
 ---
@@ -24,7 +140,7 @@ A custom thermostat knob card with glassmorphism design.
 
 A compact heating card with inlet styling and simple temperature controls.
 
-<img width="400" alt="prism-heat-small" src="https://github.com/user-attachments/assets/992f981e-bbb2-4af8-b41f-06602d49e206" />
+<img width="400" alt="prism-heat-small" src="images/prism-heat-small.png" />
 
 **Usage:**
 ```yaml
@@ -77,7 +193,7 @@ A glassmorphism-styled entity button card with neumorphism effects, glowing icon
 
 A media player card with glassmorphism design and inlet styling.
 
-<img width="400" alt="prism-media" src="https://github.com/user-attachments/assets/5429e0f0-268f-496e-8ccb-2485fbc9bd30" />
+<img width="400" alt="prism-media" src="images/prism-media.png" />
 
 **Usage:**
 ```yaml
@@ -109,7 +225,7 @@ A calendar card with glassmorphism design for displaying upcoming events.
 
 A horizontal shutter card with inlet slider and glassmorphism design.
 
-<img width="400" alt="prism-shutter" src="https://github.com/user-attachments/assets/eb905a66-b1be-456d-a729-7d3d24434d48" />
+<img width="400" alt="prism-shutter" src="images/prism-shutter.png" />
 
 **Usage:**
 ```yaml
@@ -154,7 +270,7 @@ A vacuum robot card with inlet styling, animation, and suction power control.
 
 An LED light card with interactive color wheel, white temperature control, and brightness adjustment.
 
-<img width="400" alt="prism-led" src="images/prism-led.png" />
+<img width="400" alt="prism-led" src="images/prism-led.jpg" />
 
 **Usage:**
 ```yaml
@@ -765,107 +881,6 @@ calendar_entity: calendar.events
 ```
 
 **Note:** If multiple cameras are configured, they automatically rotate. The rotation interval can be set between 3 and 60 seconds.
-
----
-
-### prism-room
-
-A compact room overview card with temperature, humidity, grouped entities, and status icons. Click to open a popup with all room devices grouped by type.
-
-<img width="400" alt="prism-room" src="images/prism-room.jpg" />
-
-**With transparent background:**
-
-<img width="400" alt="prism-room-transparent" src="images/prism-room(nobackground).jpg" />
-
-**Features:**
-- ✅ **Compact Room Card**: Shows room icon, name, temperature, and humidity
-- ✅ **Grouped Entities**: Organize lights, climate, motion sensors, media players, covers, switches, fans, and other entities in separate groups
-- ✅ **Status Icons with Badges**: Shows grouped entities with badge counters (e.g., "3 lights on")
-- ✅ **Unique Colors**: Each entity type has its own distinct color
-- ✅ **Hide Card Background**: Optional transparent mode (show only icons and text)
-- ✅ **Grouped Popup**: Click card to open popup with all entities, grouped by type
-- ✅ **Two-Column Layout**: Popup displays up to 2 groups side by side (responsive)
-- ✅ **Real-time Updates**: Popup updates automatically when entity states change
-- ✅ **Interactive Entities**: Tap to toggle, long-press for more-info dialog
-- ✅ **Neumorphism Design**: Modern neumorphism effects for all icons and buttons
-
-**Usage:**
-
-```yaml
-type: custom:prism-room
-name: "Living Room"
-icon: mdi:sofa
-hide_card_background: false  # Optional: true = transparent background (only icons/text)
-temperature_entity: sensor.living_room_temperature
-humidity_entity: sensor.living_room_humidity
-
-# Grouped entities (displayed in popup grouped by type)
-light_entities:
-  - light.living_room_ceiling
-  - light.living_room_floor_lamp
-  - light.living_room_spots
-
-climate_entities:
-  - climate.living_room
-
-motion_entities:
-  - binary_sensor.living_room_motion
-
-media_entities:
-  - media_player.living_room_tv
-
-cover_entities:
-  - cover.living_room_blinds
-
-switch_entities:
-  - switch.living_room_outlet
-
-fan_entities:
-  - fan.living_room_fan
-
-other_entities:
-  - scene.living_room_evening
-other_entities_icon: mdi:palette  # Optional: Custom icon for "Other" group
-```
-
-**Status Icon Colors:**
-
-| Icon | Entity Type | Color | Hex |
-|------|-------------|-------|-----|
-| 🔥 Heating | Climate | Orange | `#fb923c` |
-| 💡 Lights | Lights | Yellow | `#ffc864` |
-| 🪟 Covers | Covers/Blinds | Cyan | `#22d3ee` |
-| 🔌 Switches | Switches | Green | `#4ade80` |
-| 🌀 Fans | Fans | Sky Blue | `#38bdf8` |
-| 🚶 Motion | Motion Sensors | Indigo | `#818cf8` |
-| 🎵 Media | Media Players | Purple | `#a78bfa` |
-| ⚙️ Other | Other Entities | Gray | `#94a3b8` |
-
-**Popup Groups:**
-
-Entities are automatically grouped and displayed in the popup:
-1. **Lights** (Lichter)
-2. **Climate** (Heizungen)
-3. **Motion Sensors** (Bewegungsmelder)
-4. **Media Players** (Mediaplayer)
-5. **Covers** (Rollläden)
-6. **Switches** (Schalter)
-7. **Fans** (Ventilatoren)
-8. **Other** (Sonstige)
-
-**Interactions:**
-
-- **Card Click**: Opens popup with all grouped entities
-- **Entity Click in Popup**: Toggles the entity (lights, switches, fans, etc.)
-- **Entity Long-Press**: Opens Home Assistant's more-info dialog
-- **Climate Toggle**: Switches between heat/off modes
-- **Covers**: Opens/closes blinds
-- **Scenes/Scripts**: Activates when clicked
-
-**Transparent Background Mode:**
-
-Set `hide_card_background: true` to remove the glassmorphism background and display only the content (icon, name, status icons). Perfect for minimalist dashboards or when embedding the card in a colored container.
 
 ---
 
