@@ -3,7 +3,7 @@
  * https://github.com/BangerTech/Prism-Dashboard
  * 
  * Version: 1.5.9
- * Build Date: 2026-01-06T18:50:22.925Z
+ * Build Date: 2026-01-06T18:54:54.074Z
  * 
  * This file contains all Prism custom cards bundled together.
  * Just add this single file as a resource in Lovelace:
@@ -427,29 +427,42 @@ class PrismButtonCard extends HTMLElement {
         ha-card .brightness-slider {
           position: absolute;
           ${layout === 'vertical' ? `
-            /* Vertical: von unten nach oben - OHNE Ausschnitt */
-            bottom: 0;
-            left: 0;
-            right: 0;
+            /* Vertical: von unten nach oben - mit weichen Rändern */
+            bottom: 5px;
+            left: 5px;
+            right: 5px;
             height: ${showSlider ? brightness : 0}%;
             width: auto;
             background: linear-gradient(0deg, 
               ${sliderColorStart} 0%,
               ${sliderColorEnd} 100%);
-            border-radius: 0 0 16px 16px;
+            border-radius: 0 0 12px 12px;
+            /* Weiche Ränder links, rechts und unten */
+            mask-image: linear-gradient(to right, transparent 0%, black 12px, black calc(100% - 12px), transparent 100%),
+                        linear-gradient(to top, transparent 0%, black 12px);
+            mask-composite: intersect;
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 12px, black calc(100% - 12px), transparent 100%),
+                               linear-gradient(to top, transparent 0%, black 12px);
+            -webkit-mask-composite: source-in;
           ` : `
-            /* Horizontal: von links nach rechts - MIT Icon-Ausschnitt */
-            top: 0;
-            left: 0;
-            bottom: 0;
+            /* Horizontal: von links nach rechts - MIT Icon-Ausschnitt und weichen Rändern */
+            top: 5px;
+            left: 5px;
+            bottom: 5px;
             width: ${showSlider ? brightness : 0}%;
             background: linear-gradient(90deg, 
               ${sliderColorStart} 0%,
               ${sliderColorEnd} 100%);
-            border-radius: 16px 0 0 16px;
-            /* Icon links in der Mitte ausschneiden - 36px von links (16px padding + 20px half icon), center vertical */
-            mask-image: radial-gradient(circle 25px at 36px center, transparent 0, transparent 25px, black 26px);
-            -webkit-mask-image: radial-gradient(circle 25px at 36px center, transparent 0, transparent 25px, black 26px);
+            border-radius: 12px 0 0 12px;
+            /* Weiche Ränder oben, unten, links + Icon-Ausschnitt */
+            mask-image: radial-gradient(circle 25px at 31px center, transparent 0, transparent 25px, black 26px),
+                        linear-gradient(to bottom, transparent 0%, black 10px, black calc(100% - 10px), transparent 100%),
+                        linear-gradient(to right, transparent 0%, black 10px, black 100%);
+            mask-composite: intersect;
+            -webkit-mask-image: radial-gradient(circle 25px at 31px center, transparent 0, transparent 25px, black 26px),
+                               linear-gradient(to bottom, transparent 0%, black 10px, black calc(100% - 10px), transparent 100%),
+                               linear-gradient(to right, transparent 0%, black 10px, black 100%);
+            -webkit-mask-composite: source-in;
           `}
           transition: ${layout === 'vertical' ? 'height' : 'width'} 0.15s ease-out;
           pointer-events: none;
@@ -1214,29 +1227,42 @@ class PrismButtonLightCard extends HTMLElement {
         ha-card .brightness-slider {
           position: absolute;
           ${layout === 'vertical' ? `
-            /* Vertical: von unten nach oben - OHNE Ausschnitt */
-            bottom: 0;
-            left: 0;
-            right: 0;
+            /* Vertical: von unten nach oben - mit weichen Rändern */
+            bottom: 5px;
+            left: 5px;
+            right: 5px;
             height: ${showSlider ? brightness : 0}%;
             width: auto;
             background: linear-gradient(0deg, 
               ${sliderColorStart} 0%,
               ${sliderColorEnd} 100%);
-            border-radius: 0 0 16px 16px;
+            border-radius: 0 0 12px 12px;
+            /* Weiche Ränder links, rechts und unten */
+            mask-image: linear-gradient(to right, transparent 0%, black 12px, black calc(100% - 12px), transparent 100%),
+                        linear-gradient(to top, transparent 0%, black 12px);
+            mask-composite: intersect;
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 12px, black calc(100% - 12px), transparent 100%),
+                               linear-gradient(to top, transparent 0%, black 12px);
+            -webkit-mask-composite: source-in;
           ` : `
-            /* Horizontal: von links nach rechts - MIT Icon-Ausschnitt */
-            top: 0;
-            left: 0;
-            bottom: 0;
+            /* Horizontal: von links nach rechts - MIT Icon-Ausschnitt und weichen Rändern */
+            top: 5px;
+            left: 5px;
+            bottom: 5px;
             width: ${showSlider ? brightness : 0}%;
             background: linear-gradient(90deg, 
               ${sliderColorStart} 0%,
               ${sliderColorEnd} 100%);
-            border-radius: 16px 0 0 16px;
-            /* Icon links in der Mitte ausschneiden - 36px von links (16px padding + 20px half icon), center vertical */
-            mask-image: radial-gradient(circle 25px at 36px center, transparent 0, transparent 25px, black 26px);
-            -webkit-mask-image: radial-gradient(circle 25px at 36px center, transparent 0, transparent 25px, black 26px);
+            border-radius: 12px 0 0 12px;
+            /* Weiche Ränder oben, unten, links + Icon-Ausschnitt */
+            mask-image: radial-gradient(circle 25px at 31px center, transparent 0, transparent 25px, black 26px),
+                        linear-gradient(to bottom, transparent 0%, black 10px, black calc(100% - 10px), transparent 100%),
+                        linear-gradient(to right, transparent 0%, black 10px, black 100%);
+            mask-composite: intersect;
+            -webkit-mask-image: radial-gradient(circle 25px at 31px center, transparent 0, transparent 25px, black 26px),
+                               linear-gradient(to bottom, transparent 0%, black 10px, black calc(100% - 10px), transparent 100%),
+                               linear-gradient(to right, transparent 0%, black 10px, black 100%);
+            -webkit-mask-composite: source-in;
           `}
           transition: ${layout === 'vertical' ? 'height' : 'width'} 0.15s ease-out;
           pointer-events: none;
