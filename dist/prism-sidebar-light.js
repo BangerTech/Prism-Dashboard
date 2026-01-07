@@ -7,9 +7,6 @@ class PrismSidebarLightCard extends HTMLElement {
         this.hasRendered = false;
         this.currentCameraIndex = 0;
         this.cameraEntities = [];
-        this.temperatureHistory = [];
-        this.temperatureHistoryWithTime = []; // Store data with timestamps
-        this.historyLoading = false;
         this.forecastSubscriber = null; // For weather forecast subscription
     }
 
@@ -114,6 +111,12 @@ class PrismSidebarLightCard extends HTMLElement {
                     selector: { entity: { domain: "calendar" } }
                 },
                 {
+                    name: "graph_hours",
+                    label: "Graph hours to show (requires mini-graph-card from HACS)",
+                    selector: { number: { min: 1, max: 168, step: 1, unit_of_measurement: "h" } },
+                    default: 24
+                },
+                {
                     name: "custom_card",
                     label: "Custom card (YAML)",
                     selector: { object: {} }
@@ -138,6 +141,9 @@ class PrismSidebarLightCard extends HTMLElement {
         this.calendarEntity = this.config.calendar_entity || 'calendar.example';
         this.temperatureTitle = this.config.temperature_title || 'Outdoor';
         this.customCardConfig = this.config.custom_card || null;
+        
+        // Graph settings (uses mini-graph-card)
+        this.graphHours = this.config.graph_hours || 24;
         
         // Custom width (optional)
         this.sidebarWidth = this.config.width || null;
@@ -193,10 +199,6 @@ class PrismSidebarLightCard extends HTMLElement {
             this.startClock();
             this.startCameraRotation();
             if (this._hass) {
-                // Fetch new temperature history if entity changed
-                if (prevTemperatureEntity !== this.temperatureEntity) {
-                    this.fetchTemperatureHistory();
-                }
                 this.updateValues();
             }
         } else if (this.hasRendered) {
@@ -221,7 +223,6 @@ class PrismSidebarLightCard extends HTMLElement {
             this.hasRendered = true;
             this.startClock();
             this.startCameraRotation();
-            this.fetchTemperatureHistory();
             // Initial forecast update
             setTimeout(() => this.updateForecastGrid(), 100);
         } else {
@@ -231,6 +232,98 @@ class PrismSidebarLightCard extends HTMLElement {
         // Update custom card hass
         if (this._customCardElement && this._customCardElement.hass !== undefined) {
             this._customCardElement.hass = hass;
+        }
+        
+        // Insert mini-graph-card (needs hass to be available first)
+        if (!this._miniGraphCardElement) {
+            this._insertMiniGraphCard();
+        }
+        
+        // Update mini-graph-card hass
+        if (this._miniGraphCardElement && this._miniGraphCardElement.hass !== undefined) {
+            this._miniGraphCardElement.hass = hass;
+        }
+    }
+    
+    _createMiniGraphCard() {
+        if (!this.temperatureEntity || !this._hass) return null;
+        
+        // Check if mini-graph-card is available
+        if (!customElements.get('mini-graph-card')) {
+            console.warn('mini-graph-card is not installed. Please install it via HACS.');
+            return null;
+        }
+        
+        // Verify entity exists
+        if (!this._hass.states[this.temperatureEntity]) {
+            console.warn(`Entity ${this.temperatureEntity} not found`);
+            return null;
+        }
+        
+        try {
+            const element = document.createElement('mini-graph-card');
+            element.setConfig({
+                type: 'custom:mini-graph-card',
+                entities: [{ entity: this.temperatureEntity }],
+                hours_to_show: this.graphHours || 24,
+                points_per_hour: 4,
+                line_width: 1.5,
+                line_color: '#3b82f6',
+                height: 105,
+                show: {
+                    name: false,
+                    icon: false,
+                    state: true,
+                    labels: false,
+                    legend: false,
+                    fill: true,
+                    extrema: false,
+                    points: false,
+                },
+                align_state: 'center',
+                font_size: 32,
+                font_size_header: 10,
+                color_thresholds: [
+                    { value: -10, color: '#3b82f6' },
+                    { value: 0, color: '#60a5fa' },
+                    { value: 10, color: '#4ade80' },
+                    { value: 20, color: '#fb923c' },
+                    { value: 30, color: '#f87171' },
+                ],
+            });
+            element.hass = this._hass;
+            return element;
+        } catch (error) {
+            console.error('Error creating mini-graph-card:', error);
+            return null;
+        }
+    }
+    
+    _insertMiniGraphCard() {
+        if (!this._hass) return;
+        
+        const miniGraphSlot = this.shadowRoot?.getElementById('mini-graph-slot');
+        if (!miniGraphSlot) return;
+        
+        // Don't recreate if already exists
+        if (this._miniGraphCardElement && miniGraphSlot.contains(this._miniGraphCardElement)) {
+            return;
+        }
+        
+        miniGraphSlot.innerHTML = '';
+        const miniGraphCard = this._createMiniGraphCard();
+        if (miniGraphCard) {
+            this._miniGraphCardElement = miniGraphCard;
+            miniGraphSlot.appendChild(miniGraphCard);
+        } else {
+            // Show fallback message if mini-graph-card not available
+            miniGraphSlot.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: rgba(0,0,0,0.5); font-size: 12px;">
+                    <ha-icon icon="mdi:alert-circle-outline" style="margin-bottom: 8px;"></ha-icon>
+                    <div>mini-graph-card nicht installiert</div>
+                    <div style="font-size: 10px; margin-top: 4px;">Installiere es über HACS</div>
+                </div>
+            `;
         }
     }
     
@@ -586,15 +679,6 @@ class PrismSidebarLightCard extends HTMLElement {
 
 
     render() {
-        // Use temperature history data for graph
-        let graphData = [1.2, 1.5, 2.1, 2.8, 2.5, 1.9, 1.4, 1.0, 0.8]; // Default
-        if (this.temperatureHistory && this.temperatureHistory.length > 0) {
-            graphData = this.temperatureHistory;
-        }
-        const graphPaths = this.generateGraphPath(graphData, 280, 60);
-        const graphFillPath = graphPaths.fill || '';
-        const graphLinePath = graphPaths.line || '';
-
         // Get entity states for preview/display
         const cameraEntity = this.getCurrentCameraEntity();
         const cameraState = this._hass?.states[cameraEntity];
@@ -657,7 +741,7 @@ class PrismSidebarLightCard extends HTMLElement {
                 height: auto;
                 display: flex;
                 flex-direction: column;
-                padding: 24px;
+                padding: 16px;
                 box-sizing: border-box;
                 background: rgba(255, 255, 255, 0.6);
                 backdrop-filter: blur(24px);
@@ -790,69 +874,40 @@ class PrismSidebarLightCard extends HTMLElement {
                 min-height: 0;
             }
             .section-title {
-                font-size: 12px; font-weight: 700; color: rgba(0, 0, 0, 0.3);
+                font-size: 11px; font-weight: 700; color: rgba(0, 0, 0, 0.35);
                 text-transform: uppercase; letter-spacing: 2px;
                 margin-bottom: 4px;
                 text-align: center;
             }
-            .current-temp-box {
-                display: flex; align-items: center; justify-content: center;
-                margin-bottom: 8px;
-            }
-            .temp-val { font-size: 48px; font-weight: 300; color: #1a1a1a; }
-            .temp-unit { font-size: 20px; color: rgba(0, 0, 0, 0.4); margin-top: -10px; margin-left: 4px; }
             
-            .graph-container {
-                height: 80px; 
-                width: 100%; 
-                margin-bottom: 24px; 
-                position: relative;
-                padding: 12px 0;
-                overflow: hidden;
-                border-radius: 12px;
-                background: rgba(240, 240, 240, 0.5);
-                border: 1px solid rgba(59, 130, 246, 0.15);
-            }
-            .graph-container svg {
-                display: block;
+            /* Mini Graph Card Container */
+            .mini-graph-container {
                 width: 100%;
-                height: 100%;
+                margin-bottom: 16px;
+                border-radius: 0;
                 overflow: visible;
+                cursor: pointer;
             }
-            .graph-container svg path {
-                vector-effect: non-scaling-stroke;
-                transition: all 0.3s ease;
+            .mini-graph-container mini-graph-card {
+                --card-background-color: transparent !important;
+                --ha-card-background: transparent !important;
+                --ha-card-box-shadow: none !important;
+                --ha-card-border-width: 0 !important;
             }
-            .graph-tooltip {
-                position: absolute;
-                background: rgba(255, 255, 255, 0.95);
-                color: #1a1a1a;
-                padding: 8px 12px;
-                border-radius: 8px;
-                font-size: 12px;
-                pointer-events: none;
-                opacity: 0;
-                transition: opacity 0.2s;
-                z-index: 1000;
-                white-space: nowrap;
-                border: 1px solid rgba(59, 130, 246, 0.3);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            .mini-graph-container ha-card {
+                background: transparent !important;
+                box-shadow: none !important;
+                border: none !important;
             }
-            .graph-tooltip.visible {
-                opacity: 1;
+            .mini-graph-container .header {
+                display: none !important;
             }
-            .graph-tooltip-time {
-                font-size: 10px;
-                opacity: 0.6;
-                margin-top: 2px;
+            .mini-graph-container .states {
+                justify-content: center !important;
+                padding: 0 !important;
             }
-            .graph-point {
-                pointer-events: none;
-                opacity: 0;
-                transition: opacity 0.2s;
-            }
-            .graph-point.visible {
-                opacity: 1;
+            .mini-graph-container .state {
+                text-align: center !important;
             }
             .forecast-grid {
                 display: grid; 
@@ -873,44 +928,124 @@ class PrismSidebarLightCard extends HTMLElement {
                 overflow: hidden;
             }
 
-            /* Energy Footer */
-            .energy-grid {
-                display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
-                margin-top: auto;
-                padding-top: 24px;
-                flex-shrink: 0;
-            }
-            .energy-pill {
-                height: 72px;
-                border-radius: 16px;
-                background: linear-gradient(145deg, #e8e8e8, #f5f5f5);
-                border: 1px solid rgba(0, 0, 0, 0.05);
-                box-shadow: 
-                    inset 3px 3px 8px rgba(0,0,0,0.1),
-                    inset -3px -3px 8px rgba(255,255,255,0.9);
-                display: flex; flex-direction: column; align-items: center; justify-content: center;
-                cursor: pointer; transition: background 0.3s;
-                padding: 8px 4px;
-                gap: 4px;
-                overflow: hidden;
-            }
-            .energy-pill ha-icon {
-                margin-bottom: 2px;
-            }
-            .energy-pill:hover { background: rgba(240, 240, 240, 0.8); }
-            .pill-val { 
-                font-size: 11px; 
-                font-family: monospace; 
-                font-weight: bold; 
-                color: rgba(0, 0, 0, 0.9); 
-                text-align: center;
+            /* Energy Footer - Animated Flow Style (Light Theme) */
+            .energy-flow-bar {
+                display: flex;
+                align-items: stretch;
                 width: 100%;
-                white-space: nowrap;
+                margin-top: auto;
+                flex-shrink: 0;
+                border-radius: 14px;
                 overflow: hidden;
-                text-overflow: ellipsis;
-                padding: 0 2px;
+                background: rgba(255, 255, 255, 0.7);
+                border: 1px solid rgba(0, 0, 0, 0.06);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             }
-            .pill-label { font-size: 9px; text-transform: uppercase; color: rgba(0, 0, 0, 0.3); margin-top: 2px; }
+            
+            .energy-flow-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 12px 4px;
+                position: relative;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                min-width: 0;
+            }
+            
+            .energy-flow-item:hover {
+                background: rgba(0, 0, 0, 0.03);
+            }
+            
+            .energy-flow-item:not(:last-child)::after {
+                content: '';
+                position: absolute;
+                right: 0;
+                top: 20%;
+                height: 60%;
+                width: 1px;
+                background: rgba(0, 0, 0, 0.08);
+            }
+            
+            .energy-flow-item .flow-icon-wrapper {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 20px;
+                height: 20px;
+                margin-bottom: 4px;
+            }
+            
+            .energy-flow-item .flow-icon {
+                --mdc-icon-size: 16px;
+                opacity: 0.6;
+            }
+            
+            .energy-flow-item.grid .flow-icon { color: #4a7ab8; }
+            .energy-flow-item.solar .flow-icon { color: #b8923d; }
+            .energy-flow-item.home .flow-icon { color: #7a65a8; }
+            
+            .energy-flow-item .flow-val {
+                font-size: 11px;
+                font-weight: 700;
+                font-family: 'SF Mono', Monaco, monospace;
+                color: rgba(0, 0, 0, 0.85);
+                white-space: nowrap;
+                text-align: center;
+                line-height: 1.2;
+            }
+            
+            .energy-flow-item .flow-label {
+                font-size: 8px;
+                text-transform: uppercase;
+                color: rgba(0, 0, 0, 0.4);
+                margin-top: 2px;
+                letter-spacing: 0.5px;
+            }
+            
+            .energy-flow-item .glow-line {
+                position: absolute;
+                bottom: 0;
+                left: 10%;
+                right: 10%;
+                height: 2px;
+                border-radius: 2px;
+            }
+            
+            .energy-flow-item.grid .glow-line {
+                background: linear-gradient(90deg, transparent, rgba(74, 122, 184, 0.5), transparent);
+                box-shadow: 0 0 6px rgba(74, 122, 184, 0.25);
+                animation: glow-pulse-grid 3s ease-in-out infinite;
+            }
+            
+            .energy-flow-item.solar .glow-line {
+                background: linear-gradient(90deg, transparent, rgba(184, 146, 61, 0.5), transparent);
+                box-shadow: 0 0 6px rgba(184, 146, 61, 0.25);
+                animation: glow-pulse-solar 3s ease-in-out infinite;
+            }
+            
+            .energy-flow-item.home .glow-line {
+                background: linear-gradient(90deg, transparent, rgba(122, 101, 168, 0.5), transparent);
+                box-shadow: 0 0 6px rgba(122, 101, 168, 0.25);
+                animation: glow-pulse-home 3s ease-in-out infinite;
+            }
+            
+            @keyframes glow-pulse-grid {
+                0%, 100% { opacity: 0.4; box-shadow: 0 0 4px rgba(74, 122, 184, 0.15); }
+                50% { opacity: 0.8; box-shadow: 0 0 10px rgba(74, 122, 184, 0.3); }
+            }
+            
+            @keyframes glow-pulse-solar {
+                0%, 100% { opacity: 0.4; box-shadow: 0 0 4px rgba(184, 146, 61, 0.15); }
+                50% { opacity: 0.8; box-shadow: 0 0 10px rgba(184, 146, 61, 0.3); }
+            }
+            
+            @keyframes glow-pulse-home {
+                0%, 100% { opacity: 0.4; box-shadow: 0 0 4px rgba(122, 101, 168, 0.15); }
+                50% { opacity: 0.8; box-shadow: 0 0 10px rgba(122, 101, 168, 0.3); }
+            }
 
             @keyframes pulse {
                 0% { opacity: 1; }
@@ -955,65 +1090,10 @@ class PrismSidebarLightCard extends HTMLElement {
             ${showTemperature || showForecast ? `
             <div class="weather-box">
                 <div class="section-title">${this.temperatureTitle}</div>
-                <div class="current-temp-box" id="weather-temp-box" style="cursor: pointer;">
-                    <span class="temp-val" id="val-temp">${currentTemp}</span>
-                    <span class="temp-unit">°C</span>
-                </div>
                 
-                <div class="graph-container" id="temp-graph-container" style="cursor: pointer;">
-                    <svg width="100%" height="100%" viewBox="0 0 280 60" preserveAspectRatio="none">
-                        <defs>
-                            <linearGradient id="grad-sidebar-light-${Date.now()}" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.5" />
-                                <stop offset="40%" style="stop-color:#3b82f6;stop-opacity:0.25" />
-                                <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0" />
-                            </linearGradient>
-                            <filter id="shadow-sidebar-light-${Date.now()}">
-                                <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-                                <feOffset dx="0" dy="1" result="offsetblur"/>
-                                <feComponentTransfer>
-                                    <feFuncA type="linear" slope="0.3"/>
-                                </feComponentTransfer>
-                                <feMerge>
-                                    <feMergeNode/>
-                                    <feMergeNode in="SourceGraphic"/>
-                                </feMerge>
-                            </filter>
-                        </defs>
-                        <!-- Fill area (closed path) -->
-                        <path d="${graphFillPath}" 
-                              fill="url(#grad-sidebar-light-${Date.now()})" 
-                              stroke="none" 
-                              opacity="0.9" />
-                        <!-- Line only (no fill, just the curve) -->
-                        <path d="${graphLinePath}" 
-                              fill="none" 
-                              stroke="#3b82f6" 
-                              stroke-width="2.5" 
-                              stroke-linecap="round" 
-                              stroke-linejoin="round" 
-                              filter="url(#shadow-sidebar-light-${Date.now()})" />
-                        <!-- Hover point indicator -->
-                        <circle class="graph-point" 
-                                id="graph-hover-point" 
-                                r="4" 
-                                fill="#3b82f6" 
-                                stroke="white" 
-                                stroke-width="2" 
-                                cx="0" 
-                                cy="0" />
-                        <!-- Transparent overlay for mouse events -->
-                        <rect id="graph-overlay" 
-                              width="280" 
-                              height="60" 
-                              fill="transparent" 
-                              style="cursor: crosshair;" />
-                    </svg>
-                    <!-- Tooltip -->
-                    <div class="graph-tooltip" id="graph-tooltip">
-                        <div class="graph-tooltip-temp"></div>
-                        <div class="graph-tooltip-time"></div>
-                    </div>
+                <!-- Mini Graph Card Container -->
+                <div class="mini-graph-container" id="mini-graph-slot">
+                    <!-- mini-graph-card will be inserted here -->
                 </div>
 
                 ${showForecast ? `
@@ -1067,23 +1147,32 @@ class PrismSidebarLightCard extends HTMLElement {
             <div class="custom-card-container" id="custom-card-slot"></div>
             ` : ''}
 
-            <!-- Energy Footer -->
+            <!-- Energy Footer - Flow Style -->
             ${showEnergy ? `
-            <div class="energy-grid">
-                <div class="energy-pill" id="energy-grid">
-                    <ha-icon icon="mdi:flash" style="width: 16px; height: 16px; color: rgba(0,0,0,0.3);"></ha-icon>
-                    <span class="pill-val" id="val-grid">${gridValue}</span>
-                    <span class="pill-label">Grid</span>
+            <div class="energy-flow-bar">
+                <div class="energy-flow-item grid" id="energy-grid">
+                    <div class="flow-icon-wrapper">
+                        <ha-icon class="flow-icon" icon="mdi:transmission-tower"></ha-icon>
+                    </div>
+                    <span class="flow-val" id="val-grid">${gridValue}</span>
+                    <span class="flow-label">Grid</span>
+                    <div class="glow-line"></div>
                 </div>
-                <div class="energy-pill" id="energy-solar">
-                    <ha-icon icon="mdi:solar-power" style="width: 16px; height: 16px; color: rgba(0,0,0,0.3);"></ha-icon>
-                    <span class="pill-val" id="val-solar">${solarValue}</span>
-                    <span class="pill-label">Solar</span>
+                <div class="energy-flow-item solar" id="energy-solar">
+                    <div class="flow-icon-wrapper">
+                        <ha-icon class="flow-icon" icon="mdi:solar-power-variant"></ha-icon>
+                    </div>
+                    <span class="flow-val" id="val-solar">${solarValue}</span>
+                    <span class="flow-label">Solar</span>
+                    <div class="glow-line"></div>
                 </div>
-                <div class="energy-pill" id="energy-home">
-                    <ha-icon icon="mdi:home" style="width: 16px; height: 16px; color: rgba(0,0,0,0.3);"></ha-icon>
-                    <span class="pill-val" id="val-home">${homeValue}</span>
-                    <span class="pill-label">Home</span>
+                <div class="energy-flow-item home" id="energy-home">
+                    <div class="flow-icon-wrapper">
+                        <ha-icon class="flow-icon" icon="mdi:home-lightning-bolt"></ha-icon>
+                    </div>
+                    <span class="flow-val" id="val-home">${homeValue}</span>
+                    <span class="flow-label">Home</span>
+                    <div class="glow-line"></div>
                 </div>
             </div>
             ` : ''}
@@ -1115,9 +1204,6 @@ class PrismSidebarLightCard extends HTMLElement {
         const energyGrid = this.shadowRoot?.getElementById('energy-grid');
         const energySolar = this.shadowRoot?.getElementById('energy-solar');
         const energyHome = this.shadowRoot?.getElementById('energy-home');
-        const graphOverlay = this.shadowRoot?.getElementById('graph-overlay');
-        const weatherTempBox = this.shadowRoot?.getElementById('weather-temp-box');
-        const tempGraphContainer = this.shadowRoot?.getElementById('temp-graph-container');
 
         if (cameraBox) {
             cameraBox.addEventListener('click', () => this._handleCameraClick());
@@ -1135,20 +1221,10 @@ class PrismSidebarLightCard extends HTMLElement {
             energyHome.addEventListener('click', () => this._handleEnergyClick(this.homeEntity));
         }
         
-        // Weather click - opens weather entity more-info
-        if (weatherTempBox) {
-            weatherTempBox.addEventListener('click', () => this._handleWeatherClick());
-        }
-        
-        // Graph click - opens temperature sensor more-info
-        if (tempGraphContainer) {
-            tempGraphContainer.addEventListener('click', () => this._handleTempGraphClick());
-        }
-        
-        // Graph hover events
-        if (graphOverlay) {
-            graphOverlay.addEventListener('mousemove', (e) => this._handleGraphHover(e));
-            graphOverlay.addEventListener('mouseleave', () => this._handleGraphLeave());
+        // Mini graph container click - opens weather popup
+        const miniGraphSlot = this.shadowRoot?.getElementById('mini-graph-slot');
+        if (miniGraphSlot) {
+            miniGraphSlot.addEventListener('click', () => this._handleWeatherClick());
         }
         
         // Forecast grid click - opens weather popup
@@ -1896,242 +1972,6 @@ class PrismSidebarLightCard extends HTMLElement {
             });
             this.dispatchEvent(event);
         });
-    }
-
-    _handleTempGraphClick() {
-        if (!this._hass || !this.temperatureEntity) return;
-        const event = new CustomEvent('hass-more-info', {
-            bubbles: true,
-            composed: true,
-            detail: { entityId: this.temperatureEntity }
-        });
-        this.dispatchEvent(event);
-    }
-
-    _handleGraphHover(e) {
-        if (!this.temperatureHistoryWithTime || this.temperatureHistoryWithTime.length === 0) return;
-        
-        const svg = e.currentTarget.ownerSVGElement;
-        if (!svg) return;
-        
-        // Get mouse position relative to SVG
-        const rect = svg.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const svgWidth = 280;
-        
-        // Calculate which data point is closest
-        const dataLength = this.temperatureHistoryWithTime.length;
-        const stepX = dataLength > 1 ? svgWidth / (dataLength - 1) : 0;
-        const index = Math.round(x / stepX);
-        const clampedIndex = Math.max(0, Math.min(dataLength - 1, index));
-        
-        const dataPoint = this.temperatureHistoryWithTime[clampedIndex];
-        if (!dataPoint) return;
-        
-        // Calculate Y position for the point (same logic as generateGraphPath)
-        const graphData = this.temperatureHistory;
-        const dataMax = Math.max(...graphData);
-        const dataMin = Math.min(...graphData);
-        const dataRange = dataMax - dataMin;
-        const padding = Math.max(dataRange * 0.2, 2);
-        const max = dataMax + padding;
-        const min = dataMin - padding;
-        const range = max - min;
-        
-        const normalized = (dataPoint.temp - min) / range;
-        const margin = 60 * 0.05;
-        const y = margin + (60 - 2 * margin) * (1 - normalized);
-        const pointX = clampedIndex * stepX;
-        
-        // Update point position
-        const point = this.shadowRoot?.getElementById('graph-hover-point');
-        if (point) {
-            point.setAttribute('cx', pointX);
-            point.setAttribute('cy', y);
-            point.classList.add('visible');
-        }
-        
-        // Update tooltip
-        const tooltip = this.shadowRoot?.getElementById('graph-tooltip');
-        const tooltipTemp = tooltip?.querySelector('.graph-tooltip-temp');
-        const tooltipTime = tooltip?.querySelector('.graph-tooltip-time');
-        
-        if (tooltip && tooltipTemp && tooltipTime) {
-            tooltipTemp.textContent = `${dataPoint.temp.toFixed(1)}°C`;
-            tooltipTime.textContent = dataPoint.time.toLocaleString('de-DE', {
-                day: '2-digit',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            // Position tooltip
-            const tooltipRect = tooltip.getBoundingClientRect();
-            let tooltipX = e.clientX - rect.left + 10;
-            let tooltipY = e.clientY - rect.top - tooltipRect.height - 10;
-            
-            // Keep tooltip in bounds
-            if (tooltipX + tooltipRect.width > rect.width) {
-                tooltipX = e.clientX - rect.left - tooltipRect.width - 10;
-            }
-            if (tooltipY < 0) {
-                tooltipY = e.clientY - rect.top + 10;
-            }
-            
-            tooltip.style.left = `${tooltipX}px`;
-            tooltip.style.top = `${tooltipY}px`;
-            tooltip.classList.add('visible');
-        }
-    }
-
-    _handleGraphLeave() {
-        const point = this.shadowRoot?.getElementById('graph-hover-point');
-        const tooltip = this.shadowRoot?.getElementById('graph-tooltip');
-        
-        if (point) {
-            point.classList.remove('visible');
-        }
-        if (tooltip) {
-            tooltip.classList.remove('visible');
-        }
-    }
-
-    // Fetch temperature history data from Home Assistant
-    async fetchTemperatureHistory() {
-        if (this.historyLoading || !this._hass || !this.temperatureEntity) return;
-        
-        this.historyLoading = true;
-        
-        try {
-            // Calculate timestamps (last 7 days = 168 hours)
-            const endTime = new Date();
-            const startTime = new Date(endTime.getTime() - (168 * 60 * 60 * 1000)); // 168 hours ago
-            
-            // Format timestamps for Home Assistant API
-            const startISO = startTime.toISOString();
-            const endISO = endTime.toISOString();
-            
-            // Call Home Assistant History API
-            const response = await this._hass.callWS({
-                type: 'history/history_during_period',
-                start_time: startISO,
-                end_time: endISO,
-                entity_ids: [this.temperatureEntity],
-                minimal_response: true,
-                no_attributes: true,
-                significant_changes_only: true
-            });
-            
-            // History API returns an object with entity IDs as keys
-            const historyData = response[this.temperatureEntity];
-            if (historyData && historyData.length > 0) {
-                // Sample data points (e.g., one per hour) to avoid too many points
-                const sampleRate = Math.max(1, Math.floor(historyData.length / 168));
-                const sampledDataWithTime = historyData
-                    .filter((_, index) => index % sampleRate === 0)
-                    .map(entry => ({
-                        temp: parseFloat(entry.s),
-                        time: entry.lu ? new Date(entry.lu * 1000) : new Date()
-                    }))
-                    .filter(item => !isNaN(item.temp));
-                
-                if (sampledDataWithTime.length > 0) {
-                    this.temperatureHistoryWithTime = sampledDataWithTime;
-                    this.temperatureHistory = sampledDataWithTime.map(item => item.temp);
-                    // Re-render to update the graph
-                    this.render();
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching temperature history:', error);
-            // Fallback: use current temperature state if available
-            if (this._hass.states[this.temperatureEntity]) {
-                const currentTemp = parseFloat(this._hass.states[this.temperatureEntity].state);
-                if (!isNaN(currentTemp)) {
-                    const now = new Date();
-                    this.temperatureHistory = [currentTemp, currentTemp, currentTemp, currentTemp, currentTemp];
-                    // Also set temperatureHistoryWithTime for tooltip support
-                    this.temperatureHistoryWithTime = this.temperatureHistory.map((temp, i) => ({
-                        temp,
-                        time: new Date(now.getTime() - (4 - i) * 60 * 60 * 1000) // Hourly backwards
-                    }));
-                }
-            }
-        } finally {
-            this.historyLoading = false;
-        }
-    }
-
-    // Helper to create smooth SVG path from data points with curved lines
-    generateGraphPath(data, width, height) {
-        if (!data || data.length === 0) return { line: '', fill: '' };
-        
-        // Calculate range with padding for better visualization
-        const dataMax = Math.max(...data);
-        const dataMin = Math.min(...data);
-        const dataRange = dataMax - dataMin;
-        
-        // Add padding: 20% of range, minimum 2 units
-        const padding = Math.max(dataRange * 0.2, 2);
-        const max = dataMax + padding;
-        const min = dataMin - padding;
-        const range = max - min;
-        
-        // Ensure we have a valid range
-        if (range <= 0) {
-            const midY = height / 2;
-            return { 
-                line: `M 0,${midY} L ${width},${midY}`,
-                fill: `M 0,${midY} L ${width},${midY} L ${width},${height} L 0,${height} Z`
-            };
-        }
-        
-        const stepX = data.length > 1 ? width / (data.length - 1) : 0;
-        
-        // Build line points with proper Y scaling (inverted: higher values = lower Y)
-        const points = data.map((val, i) => {
-            const x = i * stepX;
-            // Calculate Y: higher temp = lower Y position (closer to top)
-            const normalized = (val - min) / range;
-            // Add small margin at top and bottom (5% of height)
-            const margin = height * 0.05;
-            const y = margin + (height - 2 * margin) * (1 - normalized);
-            return [x, y];
-        });
-
-        if (points.length === 0) return { line: '', fill: '' };
-        
-        // Create smooth curve using Catmull-Rom spline
-        const [firstX, firstY] = points[0];
-        let linePath = `M ${firstX},${firstY} `;
-        
-        if (points.length === 1) {
-            // Single point - just draw horizontal line
-            linePath += `L ${width},${firstY}`;
-        } else if (points.length === 2) {
-            // Two points - straight line
-            const [x, y] = points[1];
-            linePath += `L ${x},${y}`;
-        } else {
-            // Multiple points - use smooth curves
-            for (let i = 0; i < points.length - 1; i++) {
-                const [x0, y0] = points[i];
-                const [x1, y1] = points[i + 1];
-                
-                // Control points for smooth bezier curve
-                const tension = 0.3; // Smoothness factor (0 = sharp, 1 = very smooth)
-                const d = Math.abs(x1 - x0) * tension;
-                
-                linePath += `C ${x0 + d},${y0} ${x1 - d},${y1} ${x1},${y1} `;
-            }
-        }
-        
-        // Create fill path (closed area under the curve)
-        const [lastX, lastY] = points[points.length - 1];
-        let fillPath = linePath; // Start with the same curve
-        fillPath += ` L ${lastX},${height} L ${firstX},${height} Z`; // Close at bottom
-        
-        return { line: linePath.trim(), fill: fillPath.trim() };
     }
 
     // Translation helper - English default, German if HA is set to German

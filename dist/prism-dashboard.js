@@ -3,7 +3,7 @@
  * https://github.com/BangerTech/Prism-Dashboard
  * 
  * Version: 1.5.9
- * Build Date: 2026-01-07T09:07:44.368Z
+ * Build Date: 2026-01-07T14:15:14.735Z
  * 
  * This file contains all Prism custom cards bundled together.
  * Just add this single file as a resource in Lovelace:
@@ -35,7 +35,15 @@ class PrismButtonCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: "light.example_light", name: "Example", icon: "mdi:lightbulb", layout: "horizontal", active_color: "#ffc864" }
+    return { 
+      entity: "light.example_light", 
+      name: "Example", 
+      icon: "mdi:lightbulb", 
+      layout: "horizontal", 
+      active_color: "#ffc864",
+      show_brightness_slider: true,
+      show_state: true
+    }
   }
 
   static getConfigForm() {
@@ -67,36 +75,53 @@ class PrismButtonCard extends HTMLElement {
           selector: { color_rgb: {} }
         },
         {
+          name: "show_state",
+          label: "Show State (on/off/% below name)",
+          default: true,
+          selector: { boolean: {} }
+        },
+        {
           name: "show_brightness_slider",
+          label: "Show Brightness Slider (for lights)",
+          default: true,
           selector: { boolean: {} }
         },
         {
           name: "slider_entity",
-          selector: { entity: {} }
+          label: "Slider Entity (optional, separate entity for brightness)",
+          selector: { entity: { domain: "light" } }
         },
         {
+          type: "expandable",
           name: "",
-          type: "divider"
-        },
-        {
-          name: "use_as_popup",
-          selector: { boolean: {} }
-        },
-        {
-          name: "popup_icon",
-          selector: { icon: {} }
-        },
-        {
-          name: "popup_title",
-          selector: { text: {} }
-        },
-        {
-          name: "status_entity",
-          selector: { entity: {} }
-        },
-        {
-          name: "popup_cards",
-          selector: { object: {} }
+          title: "🪟 Popup Mode",
+          schema: [
+            {
+              name: "use_as_popup",
+              label: "Use as Popup Trigger (opens popup instead of toggle)",
+              selector: { boolean: {} }
+            },
+            {
+              name: "popup_icon",
+              label: "Popup Icon",
+              selector: { icon: {} }
+            },
+            {
+              name: "popup_title",
+              label: "Popup Title",
+              selector: { text: {} }
+            },
+            {
+              name: "status_entity",
+              label: "Status Entity (show state of this entity on button)",
+              selector: { entity: {} }
+            },
+            {
+              name: "popup_cards",
+              label: "Popup Cards (YAML config for cards inside popup)",
+              selector: { object: {} }
+            }
+          ]
         }
       ]
     };
@@ -118,6 +143,10 @@ class PrismButtonCard extends HTMLElement {
     // Default show_brightness_slider to true for lights
     if (this._config.show_brightness_slider === undefined) {
       this._config.show_brightness_slider = true;
+    }
+    // Default show_state to true (backward compatibility)
+    if (this._config.show_state === undefined) {
+      this._config.show_state = true;
     }
     // Normalize active_color (convert RGB arrays to hex if needed)
     if (this._config.active_color) {
@@ -349,13 +378,16 @@ class PrismButtonCard extends HTMLElement {
   }
 
   _handleTap() {
-    if (!this._hass || !this._config.entity) return;
+    if (!this._hass) return;
     
-    // POPUP MODE: Open popup instead of toggling
+    // POPUP MODE: Open popup instead of toggling (entity not required)
     if (this._config.use_as_popup && this._config.popup_cards) {
       this._openPrismPopup();
       return;
     }
+    
+    // For non-popup mode, entity is required
+    if (!this._config.entity) return;
     
     const domain = this._config.entity.split('.')[0];
     const entity = this._hass.states[this._config.entity];
@@ -742,6 +774,9 @@ class PrismButtonCard extends HTMLElement {
     // State display - show brightness percentage if available
     const stateDisplay = (isActive && hasBrightness && brightness > 0) ? `${brightness}%` : state;
     
+    // Show state option (default: true)
+    const showState = this._config.show_state !== false;
+    
     // Get the color for the brightness slider - subtle but visible
     const sliderColor = iconColor ? iconColor.color : 'rgb(255, 200, 100)';
     const sliderOpacityStart = 0.08; // Dezent auf der linken Seite
@@ -919,13 +954,17 @@ class PrismButtonCard extends HTMLElement {
           ${layout === 'vertical' ? 'text-align: center;' : ''}
           position: relative;
           z-index: 10;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          ${layout === 'horizontal' ? 'height: 40px;' : ''}
         }
         ha-card .name {
           font-size: 1.125rem;
           font-weight: 700;
           color: rgba(255, 255, 255, 0.9);
-          line-height: 1;
-          margin-bottom: 4px;
+          line-height: 1.2;
+          ${showState ? 'margin-bottom: 2px;' : 'margin-bottom: 0;'}
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -935,9 +974,27 @@ class PrismButtonCard extends HTMLElement {
           font-weight: 500;
           color: rgba(255, 255, 255, 0.6);
           text-transform: capitalize;
+          line-height: 1.2;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          ${!showState ? 'display: none;' : ''}
+        }
+        
+        /* Responsive: Tablet */
+        @media (max-width: 1024px) {
+          ha-card .card-content {
+            padding: 14px;
+            gap: 14px;
+          }
+        }
+        
+        /* Responsive: Mobile */
+        @media (max-width: 600px) {
+          ha-card .card-content {
+            padding: 12px;
+            gap: 12px;
+          }
         }
       </style>
       <ha-card>
@@ -1194,7 +1251,15 @@ class PrismButtonLightCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: "light.example_light", name: "Example", icon: "mdi:lightbulb", layout: "horizontal", active_color: "#ffc864" }
+    return { 
+      entity: "light.example_light", 
+      name: "Example", 
+      icon: "mdi:lightbulb", 
+      layout: "horizontal", 
+      active_color: "#ffc864",
+      show_brightness_slider: true,
+      show_state: true
+    }
   }
 
   static getConfigForm() {
@@ -1226,36 +1291,53 @@ class PrismButtonLightCard extends HTMLElement {
           selector: { color_rgb: {} }
         },
         {
+          name: "show_state",
+          label: "Show State (on/off/% below name)",
+          default: true,
+          selector: { boolean: {} }
+        },
+        {
           name: "show_brightness_slider",
+          label: "Show Brightness Slider (for lights)",
+          default: true,
           selector: { boolean: {} }
         },
         {
           name: "slider_entity",
-          selector: { entity: {} }
+          label: "Slider Entity (optional, separate entity for brightness)",
+          selector: { entity: { domain: "light" } }
         },
         {
+          type: "expandable",
           name: "",
-          type: "divider"
-        },
-        {
-          name: "use_as_popup",
-          selector: { boolean: {} }
-        },
-        {
-          name: "popup_icon",
-          selector: { icon: {} }
-        },
-        {
-          name: "popup_title",
-          selector: { text: {} }
-        },
-        {
-          name: "status_entity",
-          selector: { entity: {} }
-        },
-        {
-          name: "popup_cards",
-          selector: { object: {} }
+          title: "🪟 Popup Mode",
+          schema: [
+            {
+              name: "use_as_popup",
+              label: "Use as Popup Trigger (opens popup instead of toggle)",
+              selector: { boolean: {} }
+            },
+            {
+              name: "popup_icon",
+              label: "Popup Icon",
+              selector: { icon: {} }
+            },
+            {
+              name: "popup_title",
+              label: "Popup Title",
+              selector: { text: {} }
+            },
+            {
+              name: "status_entity",
+              label: "Status Entity (show state of this entity on button)",
+              selector: { entity: {} }
+            },
+            {
+              name: "popup_cards",
+              label: "Popup Cards (YAML config for cards inside popup)",
+              selector: { object: {} }
+            }
+          ]
         }
       ]
     };
@@ -1277,6 +1359,10 @@ class PrismButtonLightCard extends HTMLElement {
     // Default show_brightness_slider to true for lights
     if (this._config.show_brightness_slider === undefined) {
       this._config.show_brightness_slider = true;
+    }
+    // Default show_state to true (backward compatibility)
+    if (this._config.show_state === undefined) {
+      this._config.show_state = true;
     }
     // Normalize active_color (convert RGB arrays to hex if needed)
     if (this._config.active_color) {
@@ -1507,13 +1593,16 @@ class PrismButtonLightCard extends HTMLElement {
   }
 
   _handleTap() {
-    if (!this._hass || !this._config.entity) return;
+    if (!this._hass) return;
     
-    // POPUP MODE: Open popup instead of toggling
+    // POPUP MODE: Open popup instead of toggling (entity not required)
     if (this._config.use_as_popup && this._config.popup_cards) {
       this._openPrismPopup();
       return;
     }
+    
+    // For non-popup mode, entity is required
+    if (!this._config.entity) return;
     
     const domain = this._config.entity.split('.')[0];
     const entity = this._hass.states[this._config.entity];
@@ -1900,6 +1989,9 @@ class PrismButtonLightCard extends HTMLElement {
     // State display - show brightness percentage if available
     const stateDisplay = (showSlider && brightness > 0) ? `${brightness}%` : state;
     
+    // Show state option (default: true)
+    const showState = this._config.show_state !== false;
+    
     // Get the color for the brightness slider - very subtle opacity
     const sliderColor = iconColor ? iconColor.color : 'rgb(255, 200, 100)';
     const sliderOpacityStart = 0.08; // Dezent auf der linken Seite
@@ -2104,13 +2196,18 @@ class PrismButtonLightCard extends HTMLElement {
           min-width: 0;
           overflow: hidden;
           ${layout === 'vertical' ? 'text-align: center;' : ''}
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          ${layout === 'horizontal' ? 'height: 40px;' : ''}
         }
         
         ha-card .name {
           font-size: 15px;
           font-weight: 700;
           color: #1a1a1a;
-          margin-bottom: 4px;
+          line-height: 1.2;
+          ${showState ? 'margin-bottom: 2px;' : 'margin-bottom: 0;'}
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -2122,9 +2219,27 @@ class PrismButtonLightCard extends HTMLElement {
           font-weight: 500;
           color: #666;
           text-transform: capitalize;
+          line-height: 1.2;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          ${!showState ? 'display: none;' : ''}
+        }
+        
+        /* Responsive: Tablet */
+        @media (max-width: 1024px) {
+          ha-card .card-content {
+            padding: 14px;
+            gap: 14px;
+          }
+        }
+        
+        /* Responsive: Mobile */
+        @media (max-width: 600px) {
+          ha-card .card-content {
+            padding: 12px;
+            gap: 12px;
+          }
         }
       </style>
       <ha-card>
@@ -4618,6 +4733,17 @@ class PrismHeatSmallCard extends HTMLElement {
     }
   }
 
+  // Open More-Info Dialog on long-press / right-click
+  _handleHold() {
+    if (!this._hass || !this.config.entity) return;
+    const event = new CustomEvent('hass-more-info', {
+      bubbles: true,
+      composed: true,
+      detail: { entityId: this.config.entity }
+    });
+    this.dispatchEvent(event);
+  }
+
   setupListeners() {
     this.shadowRoot.querySelectorAll('.control-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -4625,6 +4751,46 @@ class PrismHeatSmallCard extends HTMLElement {
         this.changeTemp(action);
       });
     });
+
+    // Long-press / Right-click for More Info on header
+    const header = this.shadowRoot.querySelector('.header');
+    if (header) {
+      let longPressTimer = null;
+      let touchMoved = false;
+
+      // Touch: Long-press detection
+      header.addEventListener('touchstart', (e) => {
+        touchMoved = false;
+        longPressTimer = setTimeout(() => {
+          if (!touchMoved) {
+            e.preventDefault();
+            this._handleHold();
+          }
+        }, 500);
+      }, { passive: true });
+
+      header.addEventListener('touchmove', () => {
+        touchMoved = true;
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      header.addEventListener('touchend', () => {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      // Mouse: Right-click (contextmenu)
+      header.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this._handleHold();
+      });
+    }
   }
 
   changeTemp(action) {
@@ -5133,6 +5299,17 @@ class PrismHeatSmallLightCard extends HTMLElement {
     }
   }
 
+  // Open More-Info Dialog on long-press / right-click
+  _handleHold() {
+    if (!this._hass || !this.config.entity) return;
+    const event = new CustomEvent('hass-more-info', {
+      bubbles: true,
+      composed: true,
+      detail: { entityId: this.config.entity }
+    });
+    this.dispatchEvent(event);
+  }
+
   setupListeners() {
     this.shadowRoot.querySelectorAll('.control-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -5140,6 +5317,46 @@ class PrismHeatSmallLightCard extends HTMLElement {
         this.changeTemp(action);
       });
     });
+
+    // Long-press / Right-click for More Info on header
+    const header = this.shadowRoot.querySelector('.header');
+    if (header) {
+      let longPressTimer = null;
+      let touchMoved = false;
+
+      // Touch: Long-press detection
+      header.addEventListener('touchstart', (e) => {
+        touchMoved = false;
+        longPressTimer = setTimeout(() => {
+          if (!touchMoved) {
+            e.preventDefault();
+            this._handleHold();
+          }
+        }, 500);
+      }, { passive: true });
+
+      header.addEventListener('touchmove', () => {
+        touchMoved = true;
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      header.addEventListener('touchend', () => {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      // Mouse: Right-click (contextmenu)
+      header.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this._handleHold();
+      });
+    }
   }
 
   changeTemp(action) {
@@ -7483,6 +7700,17 @@ class PrismShutterCard extends HTMLElement {
     }
   }
 
+  // Open More-Info Dialog on long-press / right-click
+  _handleHold() {
+    if (!this._hass || !this.config.entity) return;
+    const event = new CustomEvent('hass-more-info', {
+      bubbles: true,
+      composed: true,
+      detail: { entityId: this.config.entity }
+    });
+    this.dispatchEvent(event);
+  }
+
   setupListeners() {
     // Buttons
     this.shadowRoot.querySelectorAll('.control-btn').forEach(btn => {
@@ -7504,6 +7732,46 @@ class PrismShutterCard extends HTMLElement {
     
     document.addEventListener('touchmove', this.onDrag.bind(this), { passive: false });
     document.addEventListener('touchend', this.stopDrag.bind(this));
+
+    // Long-press / Right-click for More Info on header
+    const header = this.shadowRoot.querySelector('.header');
+    if (header) {
+      let longPressTimer = null;
+      let touchMoved = false;
+
+      // Touch: Long-press detection
+      header.addEventListener('touchstart', (e) => {
+        touchMoved = false;
+        longPressTimer = setTimeout(() => {
+          if (!touchMoved) {
+            e.preventDefault();
+            this._handleHold();
+          }
+        }, 500);
+      }, { passive: true });
+
+      header.addEventListener('touchmove', () => {
+        touchMoved = true;
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      header.addEventListener('touchend', () => {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      // Mouse: Right-click (contextmenu)
+      header.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this._handleHold();
+      });
+    }
   }
   
   startDrag(e) {
@@ -7609,18 +7877,18 @@ class PrismShutterCard extends HTMLElement {
           background: rgba(30, 32, 36, 0.6);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
-          border-radius: 16px;
+          border-radius: 20px;
           border: 1px solid rgba(255,255,255,0.05);
           border-top: 1px solid rgba(255, 255, 255, 0.15);
           border-bottom: 1px solid rgba(0, 0, 0, 0.4);
           box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0,0,0,0.3);
-          padding: 20px;
+          padding: 16px;
           color: white;
           user-select: none;
         }
         
         .header {
-            display: flex; gap: 12px; align-items: center; margin-bottom: 24px;
+            display: flex; gap: 12px; align-items: center; margin-bottom: 16px;
         }
         .icon-box {
             width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -7645,7 +7913,7 @@ class PrismShutterCard extends HTMLElement {
         /* Inlet Slider Display (Interactive) */
         .slider-track {
             height: 12px; border-radius: 12px; 
-            margin-bottom: ${hideSlider ? '0' : '24px'};
+            margin-bottom: ${hideSlider ? '0' : '16px'};
             background: rgba(20, 20, 20, 0.8);
             box-shadow: inset 2px 2px 5px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1);
             border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -7697,14 +7965,14 @@ class PrismShutterCard extends HTMLElement {
         /* Responsive: Tablet (768px - 1400px) - includes iPad Pro */
         @media (max-width: 1400px) {
           .card {
-            padding: 16px;
+            padding: 14px;
           }
           .header {
-            margin-bottom: 16px;
+            margin-bottom: 14px;
           }
           .slider-track {
             height: 10px;
-            margin-bottom: ${hideSlider ? '0' : '16px'};
+            margin-bottom: ${hideSlider ? '0' : '14px'};
           }
           .controls {
             gap: 10px;
@@ -7721,11 +7989,11 @@ class PrismShutterCard extends HTMLElement {
         /* Responsive: Mobile (< 768px) */
         @media (max-width: 768px) {
           .card {
-            padding: 14px;
-            border-radius: 14px;
+            padding: 12px;
+            border-radius: 16px;
           }
           .header {
-            margin-bottom: 14px;
+            margin-bottom: 12px;
           }
           .slider-track {
             height: 8px;
@@ -7874,6 +8142,17 @@ class PrismShutterLightCard extends HTMLElement {
     }
   }
 
+  // Open More-Info Dialog on long-press / right-click
+  _handleHold() {
+    if (!this._hass || !this.config.entity) return;
+    const event = new CustomEvent('hass-more-info', {
+      bubbles: true,
+      composed: true,
+      detail: { entityId: this.config.entity }
+    });
+    this.dispatchEvent(event);
+  }
+
   setupListeners() {
     // Buttons
     this.shadowRoot.querySelectorAll('.control-btn').forEach(btn => {
@@ -7895,6 +8174,46 @@ class PrismShutterLightCard extends HTMLElement {
     
     document.addEventListener('touchmove', this.onDrag.bind(this), { passive: false });
     document.addEventListener('touchend', this.stopDrag.bind(this));
+
+    // Long-press / Right-click for More Info on header
+    const header = this.shadowRoot.querySelector('.header');
+    if (header) {
+      let longPressTimer = null;
+      let touchMoved = false;
+
+      // Touch: Long-press detection
+      header.addEventListener('touchstart', (e) => {
+        touchMoved = false;
+        longPressTimer = setTimeout(() => {
+          if (!touchMoved) {
+            e.preventDefault();
+            this._handleHold();
+          }
+        }, 500);
+      }, { passive: true });
+
+      header.addEventListener('touchmove', () => {
+        touchMoved = true;
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      header.addEventListener('touchend', () => {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      // Mouse: Right-click (contextmenu)
+      header.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this._handleHold();
+      });
+    }
   }
   
   startDrag(e) {
@@ -8000,7 +8319,7 @@ class PrismShutterLightCard extends HTMLElement {
           background: rgba(255, 255, 255, 0.65);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
-          border-radius: 16px;
+          border-radius: 20px;
           border: 1px solid rgba(255,255,255,0.6);
           border-top: 1px solid rgba(255, 255, 255, 0.9);
           border-bottom: 1px solid rgba(0, 0, 0, 0.15);
@@ -8008,13 +8327,13 @@ class PrismShutterLightCard extends HTMLElement {
             0 10px 30px -5px rgba(0, 0, 0, 0.15),
             0 4px 10px rgba(0,0,0,0.08),
             inset 0 1px 1px rgba(255,255,255,0.9);
-          padding: 20px;
+          padding: 16px;
           color: #1a1a1a;
           user-select: none;
         }
         
         .header {
-            display: flex; gap: 12px; align-items: center; margin-bottom: 24px;
+            display: flex; gap: 12px; align-items: center; margin-bottom: 16px;
         }
         .icon-box {
             width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -8039,7 +8358,7 @@ class PrismShutterLightCard extends HTMLElement {
         /* Inlet Slider Display (Interactive) */
         .slider-track {
             height: 12px; border-radius: 12px; 
-            margin-bottom: ${hideSlider ? '0' : '24px'};
+            margin-bottom: ${hideSlider ? '0' : '16px'};
             background: linear-gradient(145deg, #e6e6e6, #f8f8f8);
             box-shadow: 
               inset 3px 3px 8px rgba(0,0,0,0.12),
@@ -8083,14 +8402,14 @@ class PrismShutterLightCard extends HTMLElement {
         /* Responsive: Tablet (768px - 1400px) - includes iPad Pro */
         @media (max-width: 1400px) {
           .card {
-            padding: 16px;
+            padding: 14px;
           }
           .header {
-            margin-bottom: 16px;
+            margin-bottom: 14px;
           }
           .slider-track {
             height: 10px;
-            margin-bottom: ${hideSlider ? '0' : '16px'};
+            margin-bottom: ${hideSlider ? '0' : '14px'};
           }
           .controls {
             gap: 10px;
@@ -8107,11 +8426,11 @@ class PrismShutterLightCard extends HTMLElement {
         /* Responsive: Mobile (< 768px) */
         @media (max-width: 768px) {
           .card {
-            padding: 14px;
-            border-radius: 14px;
+            padding: 12px;
+            border-radius: 16px;
           }
           .header {
-            margin-bottom: 14px;
+            margin-bottom: 12px;
           }
           .slider-track {
             height: 8px;
@@ -13115,9 +13434,6 @@ class PrismSidebarCard extends HTMLElement {
         this.hasRendered = false;
         this.currentCameraIndex = 0;
         this.cameraEntities = [];
-        this.temperatureHistory = [];
-        this.temperatureHistoryWithTime = []; // Store data with timestamps
-        this.historyLoading = false;
         this.forecastSubscriber = null; // For weather forecast subscription
     }
 
@@ -13222,6 +13538,12 @@ class PrismSidebarCard extends HTMLElement {
                     selector: { entity: { domain: "calendar" } }
                 },
                 {
+                    name: "graph_hours",
+                    label: "Graph hours to show (requires mini-graph-card from HACS)",
+                    selector: { number: { min: 1, max: 168, step: 1, unit_of_measurement: "h" } },
+                    default: 24
+                },
+                {
                     name: "custom_card",
                     label: "Custom card (YAML)",
                     selector: { object: {} }
@@ -13246,6 +13568,9 @@ class PrismSidebarCard extends HTMLElement {
         this.calendarEntity = this.config.calendar_entity || 'calendar.example';
         this.temperatureTitle = this.config.temperature_title || 'Outdoor';
         this.customCardConfig = this.config.custom_card || null;
+        
+        // Graph settings (uses mini-graph-card)
+        this.graphHours = this.config.graph_hours || 24;
         
         // Custom width (optional)
         this.sidebarWidth = this.config.width || null;
@@ -13301,10 +13626,6 @@ class PrismSidebarCard extends HTMLElement {
             this.startClock();
             this.startCameraRotation();
             if (this._hass) {
-                // Fetch new temperature history if entity changed
-                if (prevTemperatureEntity !== this.temperatureEntity) {
-                    this.fetchTemperatureHistory();
-                }
                 this.updateValues();
             }
         } else if (this.hasRendered) {
@@ -13329,7 +13650,6 @@ class PrismSidebarCard extends HTMLElement {
             this.hasRendered = true;
             this.startClock();
             this.startCameraRotation();
-            this.fetchTemperatureHistory();
             // Initial forecast update
             setTimeout(() => this.updateForecastGrid(), 100);
         } else {
@@ -13339,6 +13659,16 @@ class PrismSidebarCard extends HTMLElement {
         // Update custom card hass
         if (this._customCardElement && this._customCardElement.hass !== undefined) {
             this._customCardElement.hass = hass;
+        }
+        
+        // Insert mini-graph-card (needs hass to be available first)
+        if (!this._miniGraphCardElement) {
+            this._insertMiniGraphCard();
+        }
+        
+        // Update mini-graph-card hass
+        if (this._miniGraphCardElement && this._miniGraphCardElement.hass !== undefined) {
+            this._miniGraphCardElement.hass = hass;
         }
     }
     
@@ -13365,6 +13695,75 @@ class PrismSidebarCard extends HTMLElement {
             return element;
         } catch (error) {
             console.error('Error creating custom card:', error);
+            return null;
+        }
+    }
+    
+    _createMiniGraphCard() {
+        if (!this.temperatureEntity || !this._hass) return null;
+        
+        // Check if mini-graph-card is available
+        if (!customElements.get('mini-graph-card')) {
+            console.warn('mini-graph-card is not installed. Please install it via HACS.');
+            return null;
+        }
+        
+        // Verify entity exists
+        if (!this._hass.states[this.temperatureEntity]) {
+            console.warn(`Entity ${this.temperatureEntity} not found`);
+            return null;
+        }
+        
+        try {
+            const element = document.createElement('mini-graph-card');
+            const config = {
+                entities: [
+                    {
+                        entity: this.temperatureEntity
+                    }
+                ],
+                hours_to_show: this.graphHours || 24,
+                points_per_hour: 4,
+                line_width: 1.5,
+                line_color: '#3b82f6',
+                height: 105,
+                animate: false,
+                font_size: 85,
+                font_size_header: 10,
+                decimals: 1,
+                unit: '°C',
+                align_state: 'center',
+                show: {
+                    fill: true,
+                    icon: false,
+                    name: false,
+                    state: true,
+                    labels: false,
+                    points: false,
+                    legend: false,
+                    average: false,
+                    extrema: false
+                },
+                card_mod: {
+                    style: `
+                        ha-card {
+                            background: transparent !important;
+                            box-shadow: none !important;
+                            border: none !important;
+                        }
+                    `
+                }
+            };
+            
+            element.setConfig(config);
+            element.hass = this._hass;
+            
+            // Apply custom styles directly
+            element.style.cssText = '--ha-card-background: transparent; --ha-card-box-shadow: none; --ha-card-border-width: 0;';
+            
+            return element;
+        } catch (error) {
+            console.error('Error creating mini-graph-card:', error);
             return null;
         }
     }
@@ -13696,14 +14095,6 @@ class PrismSidebarCard extends HTMLElement {
 
     render() {
         // Use temperature history data for graph
-        let graphData = [1.2, 1.5, 2.1, 2.8, 2.5, 1.9, 1.4, 1.0, 0.8]; // Default
-        if (this.temperatureHistory && this.temperatureHistory.length > 0) {
-            graphData = this.temperatureHistory;
-        }
-        const graphPaths = this.generateGraphPath(graphData, 280, 60);
-        const graphFillPath = graphPaths.fill || '';
-        const graphLinePath = graphPaths.line || '';
-
         // Get entity states for preview/display
         const cameraEntity = this.getCurrentCameraEntity();
         const cameraState = this._hass?.states[cameraEntity];
@@ -13766,7 +14157,7 @@ class PrismSidebarCard extends HTMLElement {
                 height: auto;
                 display: flex;
                 flex-direction: column;
-                padding: 24px;
+                padding: 16px;
                 box-sizing: border-box;
                 background: rgba(30, 32, 36, 0.6);
                 backdrop-filter: blur(24px);
@@ -13897,69 +14288,40 @@ class PrismSidebarCard extends HTMLElement {
                 min-height: 0;
             }
             .section-title {
-                font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.3);
+                font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.35);
                 text-transform: uppercase; letter-spacing: 2px;
                 margin-bottom: 4px;
                 text-align: center;
             }
-            .current-temp-box {
-                display: flex; align-items: center; justify-content: center;
-                margin-bottom: 8px;
-            }
-            .temp-val { font-size: 48px; font-weight: 300; color: white; }
-            .temp-unit { font-size: 20px; color: rgba(255, 255, 255, 0.4); margin-top: -10px; margin-left: 4px; }
             
-            .graph-container {
-                height: 80px; 
-                width: 100%; 
-                margin-bottom: 24px; 
-                position: relative;
-                padding: 12px 0;
-                overflow: hidden;
-                border-radius: 12px;
-                background: rgba(20, 20, 20, 0.3);
-                border: 1px solid rgba(59, 130, 246, 0.1);
-            }
-            .graph-container svg {
-                display: block;
+            /* Mini Graph Card Container */
+            .mini-graph-container {
                 width: 100%;
-                height: 100%;
+                margin-bottom: 16px;
+                border-radius: 0;
                 overflow: visible;
+                cursor: pointer;
             }
-            .graph-container svg path {
-                vector-effect: non-scaling-stroke;
-                transition: all 0.3s ease;
+            .mini-graph-container mini-graph-card {
+                --card-background-color: transparent !important;
+                --ha-card-background: transparent !important;
+                --ha-card-box-shadow: none !important;
+                --ha-card-border-width: 0 !important;
             }
-            .graph-tooltip {
-                position: absolute;
-                background: rgba(0, 0, 0, 0.9);
-                color: white;
-                padding: 8px 12px;
-                border-radius: 8px;
-                font-size: 12px;
-                pointer-events: none;
-                opacity: 0;
-                transition: opacity 0.2s;
-                z-index: 1000;
-                white-space: nowrap;
-                border: 1px solid rgba(59, 130, 246, 0.5);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            .mini-graph-container ha-card {
+                background: transparent !important;
+                box-shadow: none !important;
+                border: none !important;
             }
-            .graph-tooltip.visible {
-                opacity: 1;
+            .mini-graph-container .header {
+                display: none !important;
             }
-            .graph-tooltip-time {
-                font-size: 10px;
-                opacity: 0.7;
-                margin-top: 2px;
+            .mini-graph-container .states {
+                justify-content: center !important;
+                padding: 0 !important;
             }
-            .graph-point {
-                pointer-events: none;
-                opacity: 0;
-                transition: opacity 0.2s;
-            }
-            .graph-point.visible {
-                opacity: 1;
+            .mini-graph-container .state {
+                text-align: center !important;
             }
             .forecast-grid {
                 display: grid; 
@@ -13980,42 +14342,123 @@ class PrismSidebarCard extends HTMLElement {
                 overflow: hidden;
             }
 
-            /* Energy Footer */
-            .energy-grid {
-                display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
-                margin-top: auto;
-                padding-top: 24px;
-                flex-shrink: 0;
-            }
-            .energy-pill {
-                height: 72px;
-                border-radius: 16px;
-                background: rgba(20, 20, 20, 0.4);
-                border: 1px solid rgba(255, 255, 255, 0.05);
-                box-shadow: inset 2px 2px 4px rgba(0,0,0,0.3);
-                display: flex; flex-direction: column; align-items: center; justify-content: center;
-                cursor: pointer; transition: background 0.3s;
-                padding: 8px 4px;
-                gap: 4px;
-                overflow: hidden;
-            }
-            .energy-pill ha-icon {
-                margin-bottom: 2px;
-            }
-            .energy-pill:hover { background: rgba(20, 20, 20, 0.6); }
-            .pill-val { 
-                font-size: 11px; 
-                font-family: monospace; 
-                font-weight: bold; 
-                color: rgba(255, 255, 255, 0.9); 
-                text-align: center;
+            /* Energy Footer - Animated Flow Style */
+            .energy-flow-bar {
+                display: flex;
+                align-items: stretch;
                 width: 100%;
-                white-space: nowrap;
+                margin-top: auto;
+                flex-shrink: 0;
+                border-radius: 14px;
                 overflow: hidden;
-                text-overflow: ellipsis;
-                padding: 0 2px;
+                background: rgba(15, 15, 15, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.04);
             }
-            .pill-label { font-size: 9px; text-transform: uppercase; color: rgba(255, 255, 255, 0.3); margin-top: 2px; }
+            
+            .energy-flow-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 12px 4px;
+                position: relative;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                min-width: 0;
+            }
+            
+            .energy-flow-item:hover {
+                background: rgba(255, 255, 255, 0.03);
+            }
+            
+            .energy-flow-item:not(:last-child)::after {
+                content: '';
+                position: absolute;
+                right: 0;
+                top: 20%;
+                height: 60%;
+                width: 1px;
+                background: rgba(255, 255, 255, 0.06);
+            }
+            
+            .energy-flow-item .flow-icon-wrapper {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 20px;
+                height: 20px;
+                margin-bottom: 4px;
+            }
+            
+            .energy-flow-item .flow-icon {
+                --mdc-icon-size: 16px;
+                opacity: 0.5;
+            }
+            
+            .energy-flow-item.grid .flow-icon { color: #6b9bd1; }
+            .energy-flow-item.solar .flow-icon { color: #c9a054; }
+            .energy-flow-item.home .flow-icon { color: #9b85c4; }
+            
+            .energy-flow-item .flow-val {
+                font-size: 11px;
+                font-weight: 700;
+                font-family: 'SF Mono', Monaco, monospace;
+                color: rgba(255, 255, 255, 0.9);
+                white-space: nowrap;
+                text-align: center;
+                line-height: 1.2;
+            }
+            
+            .energy-flow-item .flow-label {
+                font-size: 8px;
+                text-transform: uppercase;
+                color: rgba(255, 255, 255, 0.35);
+                margin-top: 2px;
+                letter-spacing: 0.5px;
+            }
+            
+            .energy-flow-item .glow-line {
+                position: absolute;
+                bottom: 0;
+                left: 10%;
+                right: 10%;
+                height: 2px;
+                border-radius: 2px;
+            }
+            
+            .energy-flow-item.grid .glow-line {
+                background: linear-gradient(90deg, transparent, rgba(107, 155, 209, 0.6), transparent);
+                box-shadow: 0 0 8px rgba(107, 155, 209, 0.3);
+                animation: glow-pulse-grid 3s ease-in-out infinite;
+            }
+            
+            .energy-flow-item.solar .glow-line {
+                background: linear-gradient(90deg, transparent, rgba(201, 160, 84, 0.6), transparent);
+                box-shadow: 0 0 8px rgba(201, 160, 84, 0.3);
+                animation: glow-pulse-solar 3s ease-in-out infinite;
+            }
+            
+            .energy-flow-item.home .glow-line {
+                background: linear-gradient(90deg, transparent, rgba(155, 133, 196, 0.6), transparent);
+                box-shadow: 0 0 8px rgba(155, 133, 196, 0.3);
+                animation: glow-pulse-home 3s ease-in-out infinite;
+            }
+            
+            @keyframes glow-pulse-grid {
+                0%, 100% { opacity: 0.4; box-shadow: 0 0 6px rgba(107, 155, 209, 0.2); }
+                50% { opacity: 0.8; box-shadow: 0 0 12px rgba(107, 155, 209, 0.4); }
+            }
+            
+            @keyframes glow-pulse-solar {
+                0%, 100% { opacity: 0.4; box-shadow: 0 0 6px rgba(201, 160, 84, 0.2); }
+                50% { opacity: 0.8; box-shadow: 0 0 12px rgba(201, 160, 84, 0.4); }
+            }
+            
+            @keyframes glow-pulse-home {
+                0%, 100% { opacity: 0.4; box-shadow: 0 0 6px rgba(155, 133, 196, 0.2); }
+                50% { opacity: 0.8; box-shadow: 0 0 12px rgba(155, 133, 196, 0.4); }
+            }
 
             @keyframes pulse {
                 0% { opacity: 1; }
@@ -14310,65 +14753,10 @@ class PrismSidebarCard extends HTMLElement {
             ${showTemperature || showForecast ? `
             <div class="weather-box">
                 <div class="section-title">${this.temperatureTitle}</div>
-                <div class="current-temp-box" id="weather-temp-box" style="cursor: pointer;">
-                    <span class="temp-val" id="val-temp">${currentTemp}</span>
-                    <span class="temp-unit">°C</span>
-                </div>
                 
-                <div class="graph-container" id="temp-graph-container" style="cursor: pointer;">
-                    <svg width="100%" height="100%" viewBox="0 0 280 60" preserveAspectRatio="none">
-                        <defs>
-                            <linearGradient id="grad-sidebar-${Date.now()}" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.5" />
-                                <stop offset="40%" style="stop-color:#3b82f6;stop-opacity:0.25" />
-                                <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0" />
-                            </linearGradient>
-                            <filter id="shadow-sidebar-${Date.now()}">
-                                <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-                                <feOffset dx="0" dy="1" result="offsetblur"/>
-                                <feComponentTransfer>
-                                    <feFuncA type="linear" slope="0.3"/>
-                                </feComponentTransfer>
-                                <feMerge>
-                                    <feMergeNode/>
-                                    <feMergeNode in="SourceGraphic"/>
-                                </feMerge>
-                            </filter>
-                        </defs>
-                        <!-- Fill area (closed path) -->
-                        <path d="${graphFillPath}" 
-                              fill="url(#grad-sidebar-${Date.now()})" 
-                              stroke="none" 
-                              opacity="0.9" />
-                        <!-- Line only (no fill, just the curve) -->
-                        <path d="${graphLinePath}" 
-                              fill="none" 
-                              stroke="#3b82f6" 
-                              stroke-width="2.5" 
-                              stroke-linecap="round" 
-                              stroke-linejoin="round" 
-                              filter="url(#shadow-sidebar-${Date.now()})" />
-                        <!-- Hover point indicator -->
-                        <circle class="graph-point" 
-                                id="graph-hover-point" 
-                                r="4" 
-                                fill="#3b82f6" 
-                                stroke="white" 
-                                stroke-width="2" 
-                                cx="0" 
-                                cy="0" />
-                        <!-- Transparent overlay for mouse events -->
-                        <rect id="graph-overlay" 
-                              width="280" 
-                              height="60" 
-                              fill="transparent" 
-                              style="cursor: crosshair;" />
-                    </svg>
-                    <!-- Tooltip -->
-                    <div class="graph-tooltip" id="graph-tooltip">
-                        <div class="graph-tooltip-temp"></div>
-                        <div class="graph-tooltip-time"></div>
-                    </div>
+                <!-- Mini Graph Card Container -->
+                <div class="mini-graph-container" id="mini-graph-slot">
+                    <!-- mini-graph-card will be inserted here -->
                 </div>
 
                 ${showForecast ? `
@@ -14422,23 +14810,32 @@ class PrismSidebarCard extends HTMLElement {
             <div class="custom-card-container" id="custom-card-slot"></div>
             ` : ''}
 
-            <!-- Energy Footer -->
+            <!-- Energy Footer - Flow Style -->
             ${showEnergy ? `
-            <div class="energy-grid">
-                <div class="energy-pill" id="energy-grid">
-                    <ha-icon icon="mdi:flash" style="width: 16px; height: 16px; color: rgba(255,255,255,0.3);"></ha-icon>
-                    <span class="pill-val" id="val-grid">${gridValue}</span>
-                    <span class="pill-label">Grid</span>
+            <div class="energy-flow-bar">
+                <div class="energy-flow-item grid" id="energy-grid">
+                    <div class="flow-icon-wrapper">
+                        <ha-icon class="flow-icon" icon="mdi:transmission-tower"></ha-icon>
+                    </div>
+                    <span class="flow-val" id="val-grid">${gridValue}</span>
+                    <span class="flow-label">Grid</span>
+                    <div class="glow-line"></div>
                 </div>
-                <div class="energy-pill" id="energy-solar">
-                    <ha-icon icon="mdi:solar-power" style="width: 16px; height: 16px; color: rgba(255,255,255,0.3);"></ha-icon>
-                    <span class="pill-val" id="val-solar">${solarValue}</span>
-                    <span class="pill-label">Solar</span>
+                <div class="energy-flow-item solar" id="energy-solar">
+                    <div class="flow-icon-wrapper">
+                        <ha-icon class="flow-icon" icon="mdi:solar-power-variant"></ha-icon>
+                    </div>
+                    <span class="flow-val" id="val-solar">${solarValue}</span>
+                    <span class="flow-label">Solar</span>
+                    <div class="glow-line"></div>
                 </div>
-                <div class="energy-pill" id="energy-home">
-                    <ha-icon icon="mdi:home" style="width: 16px; height: 16px; color: rgba(255,255,255,0.3);"></ha-icon>
-                    <span class="pill-val" id="val-home">${homeValue}</span>
-                    <span class="pill-label">Home</span>
+                <div class="energy-flow-item home" id="energy-home">
+                    <div class="flow-icon-wrapper">
+                        <ha-icon class="flow-icon" icon="mdi:home-lightning-bolt"></ha-icon>
+                    </div>
+                    <span class="flow-val" id="val-home">${homeValue}</span>
+                    <span class="flow-label">Home</span>
+                    <div class="glow-line"></div>
                 </div>
             </div>
             ` : ''}
@@ -14462,6 +14859,36 @@ class PrismSidebarCard extends HTMLElement {
                 }
             }
         }
+        
+        // Mini-graph-card will be inserted in _insertMiniGraphCard() after hass is available
+    }
+    
+    _insertMiniGraphCard() {
+        if (!this._hass) return;
+        
+        const miniGraphSlot = this.shadowRoot?.getElementById('mini-graph-slot');
+        if (!miniGraphSlot) return;
+        
+        // Don't recreate if already exists
+        if (this._miniGraphCardElement && miniGraphSlot.contains(this._miniGraphCardElement)) {
+            return;
+        }
+        
+        miniGraphSlot.innerHTML = '';
+        const miniGraphCard = this._createMiniGraphCard();
+        if (miniGraphCard) {
+            this._miniGraphCardElement = miniGraphCard;
+            miniGraphSlot.appendChild(miniGraphCard);
+        } else {
+            // Show fallback message if mini-graph-card not available
+            miniGraphSlot.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: rgba(255,255,255,0.5); font-size: 12px;">
+                    <ha-icon icon="mdi:alert-circle-outline" style="margin-bottom: 8px;"></ha-icon>
+                    <div>mini-graph-card nicht installiert</div>
+                    <div style="font-size: 10px; margin-top: 4px;">Installiere es über HACS</div>
+                </div>
+            `;
+        }
     }
 
     setupListeners() {
@@ -14470,9 +14897,6 @@ class PrismSidebarCard extends HTMLElement {
         const energyGrid = this.shadowRoot?.getElementById('energy-grid');
         const energySolar = this.shadowRoot?.getElementById('energy-solar');
         const energyHome = this.shadowRoot?.getElementById('energy-home');
-        const graphOverlay = this.shadowRoot?.getElementById('graph-overlay');
-        const weatherTempBox = this.shadowRoot?.getElementById('weather-temp-box');
-        const tempGraphContainer = this.shadowRoot?.getElementById('temp-graph-container');
 
         if (cameraBox) {
             cameraBox.addEventListener('click', () => this._handleCameraClick());
@@ -14490,20 +14914,10 @@ class PrismSidebarCard extends HTMLElement {
             energyHome.addEventListener('click', () => this._handleEnergyClick(this.homeEntity));
         }
         
-        // Weather click - opens weather entity more-info
-        if (weatherTempBox) {
-            weatherTempBox.addEventListener('click', () => this._handleWeatherClick());
-        }
-        
-        // Graph click - opens temperature sensor more-info
-        if (tempGraphContainer) {
-            tempGraphContainer.addEventListener('click', () => this._handleTempGraphClick());
-        }
-        
-        // Graph hover events
-        if (graphOverlay) {
-            graphOverlay.addEventListener('mousemove', (e) => this._handleGraphHover(e));
-            graphOverlay.addEventListener('mouseleave', () => this._handleGraphLeave());
+        // Mini graph container click - opens weather popup
+        const miniGraphSlot = this.shadowRoot?.getElementById('mini-graph-slot');
+        if (miniGraphSlot) {
+            miniGraphSlot.addEventListener('click', () => this._handleWeatherClick());
         }
         
         // Forecast grid click - opens weather popup
@@ -14898,242 +15312,6 @@ class PrismSidebarCard extends HTMLElement {
         });
     }
 
-    _handleTempGraphClick() {
-        if (!this._hass || !this.temperatureEntity) return;
-        const event = new CustomEvent('hass-more-info', {
-            bubbles: true,
-            composed: true,
-            detail: { entityId: this.temperatureEntity }
-        });
-        this.dispatchEvent(event);
-    }
-
-    _handleGraphHover(e) {
-        if (!this.temperatureHistoryWithTime || this.temperatureHistoryWithTime.length === 0) return;
-        
-        const svg = e.currentTarget.ownerSVGElement;
-        if (!svg) return;
-        
-        // Get mouse position relative to SVG
-        const rect = svg.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const svgWidth = 280;
-        
-        // Calculate which data point is closest
-        const dataLength = this.temperatureHistoryWithTime.length;
-        const stepX = dataLength > 1 ? svgWidth / (dataLength - 1) : 0;
-        const index = Math.round(x / stepX);
-        const clampedIndex = Math.max(0, Math.min(dataLength - 1, index));
-        
-        const dataPoint = this.temperatureHistoryWithTime[clampedIndex];
-        if (!dataPoint) return;
-        
-        // Calculate Y position for the point (same logic as generateGraphPath)
-        const graphData = this.temperatureHistory;
-        const dataMax = Math.max(...graphData);
-        const dataMin = Math.min(...graphData);
-        const dataRange = dataMax - dataMin;
-        const padding = Math.max(dataRange * 0.2, 2);
-        const max = dataMax + padding;
-        const min = dataMin - padding;
-        const range = max - min;
-        
-        const normalized = (dataPoint.temp - min) / range;
-        const margin = 60 * 0.05;
-        const y = margin + (60 - 2 * margin) * (1 - normalized);
-        const pointX = clampedIndex * stepX;
-        
-        // Update point position
-        const point = this.shadowRoot?.getElementById('graph-hover-point');
-        if (point) {
-            point.setAttribute('cx', pointX);
-            point.setAttribute('cy', y);
-            point.classList.add('visible');
-        }
-        
-        // Update tooltip
-        const tooltip = this.shadowRoot?.getElementById('graph-tooltip');
-        const tooltipTemp = tooltip?.querySelector('.graph-tooltip-temp');
-        const tooltipTime = tooltip?.querySelector('.graph-tooltip-time');
-        
-        if (tooltip && tooltipTemp && tooltipTime) {
-            tooltipTemp.textContent = `${dataPoint.temp.toFixed(1)}°C`;
-            tooltipTime.textContent = dataPoint.time.toLocaleString('de-DE', {
-                day: '2-digit',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            // Position tooltip
-            const tooltipRect = tooltip.getBoundingClientRect();
-            let tooltipX = e.clientX - rect.left + 10;
-            let tooltipY = e.clientY - rect.top - tooltipRect.height - 10;
-            
-            // Keep tooltip in bounds
-            if (tooltipX + tooltipRect.width > rect.width) {
-                tooltipX = e.clientX - rect.left - tooltipRect.width - 10;
-            }
-            if (tooltipY < 0) {
-                tooltipY = e.clientY - rect.top + 10;
-            }
-            
-            tooltip.style.left = `${tooltipX}px`;
-            tooltip.style.top = `${tooltipY}px`;
-            tooltip.classList.add('visible');
-        }
-    }
-
-    _handleGraphLeave() {
-        const point = this.shadowRoot?.getElementById('graph-hover-point');
-        const tooltip = this.shadowRoot?.getElementById('graph-tooltip');
-        
-        if (point) {
-            point.classList.remove('visible');
-        }
-        if (tooltip) {
-            tooltip.classList.remove('visible');
-        }
-    }
-
-    // Fetch temperature history data from Home Assistant
-    async fetchTemperatureHistory() {
-        if (this.historyLoading || !this._hass || !this.temperatureEntity) return;
-        
-        this.historyLoading = true;
-        
-        try {
-            // Calculate timestamps (last 7 days = 168 hours)
-            const endTime = new Date();
-            const startTime = new Date(endTime.getTime() - (168 * 60 * 60 * 1000)); // 168 hours ago
-            
-            // Format timestamps for Home Assistant API
-            const startISO = startTime.toISOString();
-            const endISO = endTime.toISOString();
-            
-            // Call Home Assistant History API
-            const response = await this._hass.callWS({
-                type: 'history/history_during_period',
-                start_time: startISO,
-                end_time: endISO,
-                entity_ids: [this.temperatureEntity],
-                minimal_response: true,
-                no_attributes: true,
-                significant_changes_only: true
-            });
-            
-            // History API returns an object with entity IDs as keys
-            const historyData = response[this.temperatureEntity];
-            if (historyData && historyData.length > 0) {
-                // Sample data points (e.g., one per hour) to avoid too many points
-                const sampleRate = Math.max(1, Math.floor(historyData.length / 168));
-                const sampledDataWithTime = historyData
-                    .filter((_, index) => index % sampleRate === 0)
-                    .map(entry => ({
-                        temp: parseFloat(entry.s),
-                        time: entry.lu ? new Date(entry.lu * 1000) : new Date()
-                    }))
-                    .filter(item => !isNaN(item.temp));
-                
-                if (sampledDataWithTime.length > 0) {
-                    this.temperatureHistoryWithTime = sampledDataWithTime;
-                    this.temperatureHistory = sampledDataWithTime.map(item => item.temp);
-                    // Re-render to update the graph
-                    this.render();
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching temperature history:', error);
-            // Fallback: use current temperature state if available
-            if (this._hass.states[this.temperatureEntity]) {
-                const currentTemp = parseFloat(this._hass.states[this.temperatureEntity].state);
-                if (!isNaN(currentTemp)) {
-                    const now = new Date();
-                    this.temperatureHistory = [currentTemp, currentTemp, currentTemp, currentTemp, currentTemp];
-                    // Also set temperatureHistoryWithTime for tooltip support
-                    this.temperatureHistoryWithTime = this.temperatureHistory.map((temp, i) => ({
-                        temp,
-                        time: new Date(now.getTime() - (4 - i) * 60 * 60 * 1000) // Hourly backwards
-                    }));
-                }
-            }
-        } finally {
-            this.historyLoading = false;
-        }
-    }
-
-    // Helper to create smooth SVG path from data points with curved lines
-    generateGraphPath(data, width, height) {
-        if (!data || data.length === 0) return { line: '', fill: '' };
-        
-        // Calculate range with padding for better visualization
-        const dataMax = Math.max(...data);
-        const dataMin = Math.min(...data);
-        const dataRange = dataMax - dataMin;
-        
-        // Add padding: 20% of range, minimum 2 units
-        const padding = Math.max(dataRange * 0.2, 2);
-        const max = dataMax + padding;
-        const min = dataMin - padding;
-        const range = max - min;
-        
-        // Ensure we have a valid range
-        if (range <= 0) {
-            const midY = height / 2;
-            return { 
-                line: `M 0,${midY} L ${width},${midY}`,
-                fill: `M 0,${midY} L ${width},${midY} L ${width},${height} L 0,${height} Z`
-            };
-        }
-        
-        const stepX = data.length > 1 ? width / (data.length - 1) : 0;
-        
-        // Build line points with proper Y scaling (inverted: higher values = lower Y)
-        const points = data.map((val, i) => {
-            const x = i * stepX;
-            // Calculate Y: higher temp = lower Y position (closer to top)
-            const normalized = (val - min) / range;
-            // Add small margin at top and bottom (5% of height)
-            const margin = height * 0.05;
-            const y = margin + (height - 2 * margin) * (1 - normalized);
-            return [x, y];
-        });
-
-        if (points.length === 0) return { line: '', fill: '' };
-        
-        // Create smooth curve using Catmull-Rom spline
-        const [firstX, firstY] = points[0];
-        let linePath = `M ${firstX},${firstY} `;
-        
-        if (points.length === 1) {
-            // Single point - just draw horizontal line
-            linePath += `L ${width},${firstY}`;
-        } else if (points.length === 2) {
-            // Two points - straight line
-            const [x, y] = points[1];
-            linePath += `L ${x},${y}`;
-        } else {
-            // Multiple points - use smooth curves
-            for (let i = 0; i < points.length - 1; i++) {
-                const [x0, y0] = points[i];
-                const [x1, y1] = points[i + 1];
-                
-                // Control points for smooth bezier curve
-                const tension = 0.3; // Smoothness factor (0 = sharp, 1 = very smooth)
-                const d = Math.abs(x1 - x0) * tension;
-                
-                linePath += `C ${x0 + d},${y0} ${x1 - d},${y1} ${x1},${y1} `;
-            }
-        }
-        
-        // Create fill path (closed area under the curve)
-        const [lastX, lastY] = points[points.length - 1];
-        let fillPath = linePath; // Start with the same curve
-        fillPath += ` L ${lastX},${height} L ${firstX},${height} Z`; // Close at bottom
-        
-        return { line: linePath.trim(), fill: fillPath.trim() };
-    }
-
     // Translation helper - English default, German if HA is set to German
     _t(key) {
         const lang = this._hass?.language || this._hass?.locale?.language || 'en';
@@ -15178,9 +15356,6 @@ class PrismSidebarLightCard extends HTMLElement {
         this.hasRendered = false;
         this.currentCameraIndex = 0;
         this.cameraEntities = [];
-        this.temperatureHistory = [];
-        this.temperatureHistoryWithTime = []; // Store data with timestamps
-        this.historyLoading = false;
         this.forecastSubscriber = null; // For weather forecast subscription
     }
 
@@ -15285,6 +15460,12 @@ class PrismSidebarLightCard extends HTMLElement {
                     selector: { entity: { domain: "calendar" } }
                 },
                 {
+                    name: "graph_hours",
+                    label: "Graph hours to show (requires mini-graph-card from HACS)",
+                    selector: { number: { min: 1, max: 168, step: 1, unit_of_measurement: "h" } },
+                    default: 24
+                },
+                {
                     name: "custom_card",
                     label: "Custom card (YAML)",
                     selector: { object: {} }
@@ -15309,6 +15490,9 @@ class PrismSidebarLightCard extends HTMLElement {
         this.calendarEntity = this.config.calendar_entity || 'calendar.example';
         this.temperatureTitle = this.config.temperature_title || 'Outdoor';
         this.customCardConfig = this.config.custom_card || null;
+        
+        // Graph settings (uses mini-graph-card)
+        this.graphHours = this.config.graph_hours || 24;
         
         // Custom width (optional)
         this.sidebarWidth = this.config.width || null;
@@ -15364,10 +15548,6 @@ class PrismSidebarLightCard extends HTMLElement {
             this.startClock();
             this.startCameraRotation();
             if (this._hass) {
-                // Fetch new temperature history if entity changed
-                if (prevTemperatureEntity !== this.temperatureEntity) {
-                    this.fetchTemperatureHistory();
-                }
                 this.updateValues();
             }
         } else if (this.hasRendered) {
@@ -15392,7 +15572,6 @@ class PrismSidebarLightCard extends HTMLElement {
             this.hasRendered = true;
             this.startClock();
             this.startCameraRotation();
-            this.fetchTemperatureHistory();
             // Initial forecast update
             setTimeout(() => this.updateForecastGrid(), 100);
         } else {
@@ -15402,6 +15581,98 @@ class PrismSidebarLightCard extends HTMLElement {
         // Update custom card hass
         if (this._customCardElement && this._customCardElement.hass !== undefined) {
             this._customCardElement.hass = hass;
+        }
+        
+        // Insert mini-graph-card (needs hass to be available first)
+        if (!this._miniGraphCardElement) {
+            this._insertMiniGraphCard();
+        }
+        
+        // Update mini-graph-card hass
+        if (this._miniGraphCardElement && this._miniGraphCardElement.hass !== undefined) {
+            this._miniGraphCardElement.hass = hass;
+        }
+    }
+    
+    _createMiniGraphCard() {
+        if (!this.temperatureEntity || !this._hass) return null;
+        
+        // Check if mini-graph-card is available
+        if (!customElements.get('mini-graph-card')) {
+            console.warn('mini-graph-card is not installed. Please install it via HACS.');
+            return null;
+        }
+        
+        // Verify entity exists
+        if (!this._hass.states[this.temperatureEntity]) {
+            console.warn(`Entity ${this.temperatureEntity} not found`);
+            return null;
+        }
+        
+        try {
+            const element = document.createElement('mini-graph-card');
+            element.setConfig({
+                type: 'custom:mini-graph-card',
+                entities: [{ entity: this.temperatureEntity }],
+                hours_to_show: this.graphHours || 24,
+                points_per_hour: 4,
+                line_width: 1.5,
+                line_color: '#3b82f6',
+                height: 105,
+                show: {
+                    name: false,
+                    icon: false,
+                    state: true,
+                    labels: false,
+                    legend: false,
+                    fill: true,
+                    extrema: false,
+                    points: false,
+                },
+                align_state: 'center',
+                font_size: 32,
+                font_size_header: 10,
+                color_thresholds: [
+                    { value: -10, color: '#3b82f6' },
+                    { value: 0, color: '#60a5fa' },
+                    { value: 10, color: '#4ade80' },
+                    { value: 20, color: '#fb923c' },
+                    { value: 30, color: '#f87171' },
+                ],
+            });
+            element.hass = this._hass;
+            return element;
+        } catch (error) {
+            console.error('Error creating mini-graph-card:', error);
+            return null;
+        }
+    }
+    
+    _insertMiniGraphCard() {
+        if (!this._hass) return;
+        
+        const miniGraphSlot = this.shadowRoot?.getElementById('mini-graph-slot');
+        if (!miniGraphSlot) return;
+        
+        // Don't recreate if already exists
+        if (this._miniGraphCardElement && miniGraphSlot.contains(this._miniGraphCardElement)) {
+            return;
+        }
+        
+        miniGraphSlot.innerHTML = '';
+        const miniGraphCard = this._createMiniGraphCard();
+        if (miniGraphCard) {
+            this._miniGraphCardElement = miniGraphCard;
+            miniGraphSlot.appendChild(miniGraphCard);
+        } else {
+            // Show fallback message if mini-graph-card not available
+            miniGraphSlot.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: rgba(0,0,0,0.5); font-size: 12px;">
+                    <ha-icon icon="mdi:alert-circle-outline" style="margin-bottom: 8px;"></ha-icon>
+                    <div>mini-graph-card nicht installiert</div>
+                    <div style="font-size: 10px; margin-top: 4px;">Installiere es über HACS</div>
+                </div>
+            `;
         }
     }
     
@@ -15757,15 +16028,6 @@ class PrismSidebarLightCard extends HTMLElement {
 
 
     render() {
-        // Use temperature history data for graph
-        let graphData = [1.2, 1.5, 2.1, 2.8, 2.5, 1.9, 1.4, 1.0, 0.8]; // Default
-        if (this.temperatureHistory && this.temperatureHistory.length > 0) {
-            graphData = this.temperatureHistory;
-        }
-        const graphPaths = this.generateGraphPath(graphData, 280, 60);
-        const graphFillPath = graphPaths.fill || '';
-        const graphLinePath = graphPaths.line || '';
-
         // Get entity states for preview/display
         const cameraEntity = this.getCurrentCameraEntity();
         const cameraState = this._hass?.states[cameraEntity];
@@ -15828,7 +16090,7 @@ class PrismSidebarLightCard extends HTMLElement {
                 height: auto;
                 display: flex;
                 flex-direction: column;
-                padding: 24px;
+                padding: 16px;
                 box-sizing: border-box;
                 background: rgba(255, 255, 255, 0.6);
                 backdrop-filter: blur(24px);
@@ -15961,69 +16223,40 @@ class PrismSidebarLightCard extends HTMLElement {
                 min-height: 0;
             }
             .section-title {
-                font-size: 12px; font-weight: 700; color: rgba(0, 0, 0, 0.3);
+                font-size: 11px; font-weight: 700; color: rgba(0, 0, 0, 0.35);
                 text-transform: uppercase; letter-spacing: 2px;
                 margin-bottom: 4px;
                 text-align: center;
             }
-            .current-temp-box {
-                display: flex; align-items: center; justify-content: center;
-                margin-bottom: 8px;
-            }
-            .temp-val { font-size: 48px; font-weight: 300; color: #1a1a1a; }
-            .temp-unit { font-size: 20px; color: rgba(0, 0, 0, 0.4); margin-top: -10px; margin-left: 4px; }
             
-            .graph-container {
-                height: 80px; 
-                width: 100%; 
-                margin-bottom: 24px; 
-                position: relative;
-                padding: 12px 0;
-                overflow: hidden;
-                border-radius: 12px;
-                background: rgba(240, 240, 240, 0.5);
-                border: 1px solid rgba(59, 130, 246, 0.15);
-            }
-            .graph-container svg {
-                display: block;
+            /* Mini Graph Card Container */
+            .mini-graph-container {
                 width: 100%;
-                height: 100%;
+                margin-bottom: 16px;
+                border-radius: 0;
                 overflow: visible;
+                cursor: pointer;
             }
-            .graph-container svg path {
-                vector-effect: non-scaling-stroke;
-                transition: all 0.3s ease;
+            .mini-graph-container mini-graph-card {
+                --card-background-color: transparent !important;
+                --ha-card-background: transparent !important;
+                --ha-card-box-shadow: none !important;
+                --ha-card-border-width: 0 !important;
             }
-            .graph-tooltip {
-                position: absolute;
-                background: rgba(255, 255, 255, 0.95);
-                color: #1a1a1a;
-                padding: 8px 12px;
-                border-radius: 8px;
-                font-size: 12px;
-                pointer-events: none;
-                opacity: 0;
-                transition: opacity 0.2s;
-                z-index: 1000;
-                white-space: nowrap;
-                border: 1px solid rgba(59, 130, 246, 0.3);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            .mini-graph-container ha-card {
+                background: transparent !important;
+                box-shadow: none !important;
+                border: none !important;
             }
-            .graph-tooltip.visible {
-                opacity: 1;
+            .mini-graph-container .header {
+                display: none !important;
             }
-            .graph-tooltip-time {
-                font-size: 10px;
-                opacity: 0.6;
-                margin-top: 2px;
+            .mini-graph-container .states {
+                justify-content: center !important;
+                padding: 0 !important;
             }
-            .graph-point {
-                pointer-events: none;
-                opacity: 0;
-                transition: opacity 0.2s;
-            }
-            .graph-point.visible {
-                opacity: 1;
+            .mini-graph-container .state {
+                text-align: center !important;
             }
             .forecast-grid {
                 display: grid; 
@@ -16044,44 +16277,124 @@ class PrismSidebarLightCard extends HTMLElement {
                 overflow: hidden;
             }
 
-            /* Energy Footer */
-            .energy-grid {
-                display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
-                margin-top: auto;
-                padding-top: 24px;
-                flex-shrink: 0;
-            }
-            .energy-pill {
-                height: 72px;
-                border-radius: 16px;
-                background: linear-gradient(145deg, #e8e8e8, #f5f5f5);
-                border: 1px solid rgba(0, 0, 0, 0.05);
-                box-shadow: 
-                    inset 3px 3px 8px rgba(0,0,0,0.1),
-                    inset -3px -3px 8px rgba(255,255,255,0.9);
-                display: flex; flex-direction: column; align-items: center; justify-content: center;
-                cursor: pointer; transition: background 0.3s;
-                padding: 8px 4px;
-                gap: 4px;
-                overflow: hidden;
-            }
-            .energy-pill ha-icon {
-                margin-bottom: 2px;
-            }
-            .energy-pill:hover { background: rgba(240, 240, 240, 0.8); }
-            .pill-val { 
-                font-size: 11px; 
-                font-family: monospace; 
-                font-weight: bold; 
-                color: rgba(0, 0, 0, 0.9); 
-                text-align: center;
+            /* Energy Footer - Animated Flow Style (Light Theme) */
+            .energy-flow-bar {
+                display: flex;
+                align-items: stretch;
                 width: 100%;
-                white-space: nowrap;
+                margin-top: auto;
+                flex-shrink: 0;
+                border-radius: 14px;
                 overflow: hidden;
-                text-overflow: ellipsis;
-                padding: 0 2px;
+                background: rgba(255, 255, 255, 0.7);
+                border: 1px solid rgba(0, 0, 0, 0.06);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             }
-            .pill-label { font-size: 9px; text-transform: uppercase; color: rgba(0, 0, 0, 0.3); margin-top: 2px; }
+            
+            .energy-flow-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 12px 4px;
+                position: relative;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                min-width: 0;
+            }
+            
+            .energy-flow-item:hover {
+                background: rgba(0, 0, 0, 0.03);
+            }
+            
+            .energy-flow-item:not(:last-child)::after {
+                content: '';
+                position: absolute;
+                right: 0;
+                top: 20%;
+                height: 60%;
+                width: 1px;
+                background: rgba(0, 0, 0, 0.08);
+            }
+            
+            .energy-flow-item .flow-icon-wrapper {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 20px;
+                height: 20px;
+                margin-bottom: 4px;
+            }
+            
+            .energy-flow-item .flow-icon {
+                --mdc-icon-size: 16px;
+                opacity: 0.6;
+            }
+            
+            .energy-flow-item.grid .flow-icon { color: #4a7ab8; }
+            .energy-flow-item.solar .flow-icon { color: #b8923d; }
+            .energy-flow-item.home .flow-icon { color: #7a65a8; }
+            
+            .energy-flow-item .flow-val {
+                font-size: 11px;
+                font-weight: 700;
+                font-family: 'SF Mono', Monaco, monospace;
+                color: rgba(0, 0, 0, 0.85);
+                white-space: nowrap;
+                text-align: center;
+                line-height: 1.2;
+            }
+            
+            .energy-flow-item .flow-label {
+                font-size: 8px;
+                text-transform: uppercase;
+                color: rgba(0, 0, 0, 0.4);
+                margin-top: 2px;
+                letter-spacing: 0.5px;
+            }
+            
+            .energy-flow-item .glow-line {
+                position: absolute;
+                bottom: 0;
+                left: 10%;
+                right: 10%;
+                height: 2px;
+                border-radius: 2px;
+            }
+            
+            .energy-flow-item.grid .glow-line {
+                background: linear-gradient(90deg, transparent, rgba(74, 122, 184, 0.5), transparent);
+                box-shadow: 0 0 6px rgba(74, 122, 184, 0.25);
+                animation: glow-pulse-grid 3s ease-in-out infinite;
+            }
+            
+            .energy-flow-item.solar .glow-line {
+                background: linear-gradient(90deg, transparent, rgba(184, 146, 61, 0.5), transparent);
+                box-shadow: 0 0 6px rgba(184, 146, 61, 0.25);
+                animation: glow-pulse-solar 3s ease-in-out infinite;
+            }
+            
+            .energy-flow-item.home .glow-line {
+                background: linear-gradient(90deg, transparent, rgba(122, 101, 168, 0.5), transparent);
+                box-shadow: 0 0 6px rgba(122, 101, 168, 0.25);
+                animation: glow-pulse-home 3s ease-in-out infinite;
+            }
+            
+            @keyframes glow-pulse-grid {
+                0%, 100% { opacity: 0.4; box-shadow: 0 0 4px rgba(74, 122, 184, 0.15); }
+                50% { opacity: 0.8; box-shadow: 0 0 10px rgba(74, 122, 184, 0.3); }
+            }
+            
+            @keyframes glow-pulse-solar {
+                0%, 100% { opacity: 0.4; box-shadow: 0 0 4px rgba(184, 146, 61, 0.15); }
+                50% { opacity: 0.8; box-shadow: 0 0 10px rgba(184, 146, 61, 0.3); }
+            }
+            
+            @keyframes glow-pulse-home {
+                0%, 100% { opacity: 0.4; box-shadow: 0 0 4px rgba(122, 101, 168, 0.15); }
+                50% { opacity: 0.8; box-shadow: 0 0 10px rgba(122, 101, 168, 0.3); }
+            }
 
             @keyframes pulse {
                 0% { opacity: 1; }
@@ -16126,65 +16439,10 @@ class PrismSidebarLightCard extends HTMLElement {
             ${showTemperature || showForecast ? `
             <div class="weather-box">
                 <div class="section-title">${this.temperatureTitle}</div>
-                <div class="current-temp-box" id="weather-temp-box" style="cursor: pointer;">
-                    <span class="temp-val" id="val-temp">${currentTemp}</span>
-                    <span class="temp-unit">°C</span>
-                </div>
                 
-                <div class="graph-container" id="temp-graph-container" style="cursor: pointer;">
-                    <svg width="100%" height="100%" viewBox="0 0 280 60" preserveAspectRatio="none">
-                        <defs>
-                            <linearGradient id="grad-sidebar-light-${Date.now()}" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.5" />
-                                <stop offset="40%" style="stop-color:#3b82f6;stop-opacity:0.25" />
-                                <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0" />
-                            </linearGradient>
-                            <filter id="shadow-sidebar-light-${Date.now()}">
-                                <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-                                <feOffset dx="0" dy="1" result="offsetblur"/>
-                                <feComponentTransfer>
-                                    <feFuncA type="linear" slope="0.3"/>
-                                </feComponentTransfer>
-                                <feMerge>
-                                    <feMergeNode/>
-                                    <feMergeNode in="SourceGraphic"/>
-                                </feMerge>
-                            </filter>
-                        </defs>
-                        <!-- Fill area (closed path) -->
-                        <path d="${graphFillPath}" 
-                              fill="url(#grad-sidebar-light-${Date.now()})" 
-                              stroke="none" 
-                              opacity="0.9" />
-                        <!-- Line only (no fill, just the curve) -->
-                        <path d="${graphLinePath}" 
-                              fill="none" 
-                              stroke="#3b82f6" 
-                              stroke-width="2.5" 
-                              stroke-linecap="round" 
-                              stroke-linejoin="round" 
-                              filter="url(#shadow-sidebar-light-${Date.now()})" />
-                        <!-- Hover point indicator -->
-                        <circle class="graph-point" 
-                                id="graph-hover-point" 
-                                r="4" 
-                                fill="#3b82f6" 
-                                stroke="white" 
-                                stroke-width="2" 
-                                cx="0" 
-                                cy="0" />
-                        <!-- Transparent overlay for mouse events -->
-                        <rect id="graph-overlay" 
-                              width="280" 
-                              height="60" 
-                              fill="transparent" 
-                              style="cursor: crosshair;" />
-                    </svg>
-                    <!-- Tooltip -->
-                    <div class="graph-tooltip" id="graph-tooltip">
-                        <div class="graph-tooltip-temp"></div>
-                        <div class="graph-tooltip-time"></div>
-                    </div>
+                <!-- Mini Graph Card Container -->
+                <div class="mini-graph-container" id="mini-graph-slot">
+                    <!-- mini-graph-card will be inserted here -->
                 </div>
 
                 ${showForecast ? `
@@ -16238,23 +16496,32 @@ class PrismSidebarLightCard extends HTMLElement {
             <div class="custom-card-container" id="custom-card-slot"></div>
             ` : ''}
 
-            <!-- Energy Footer -->
+            <!-- Energy Footer - Flow Style -->
             ${showEnergy ? `
-            <div class="energy-grid">
-                <div class="energy-pill" id="energy-grid">
-                    <ha-icon icon="mdi:flash" style="width: 16px; height: 16px; color: rgba(0,0,0,0.3);"></ha-icon>
-                    <span class="pill-val" id="val-grid">${gridValue}</span>
-                    <span class="pill-label">Grid</span>
+            <div class="energy-flow-bar">
+                <div class="energy-flow-item grid" id="energy-grid">
+                    <div class="flow-icon-wrapper">
+                        <ha-icon class="flow-icon" icon="mdi:transmission-tower"></ha-icon>
+                    </div>
+                    <span class="flow-val" id="val-grid">${gridValue}</span>
+                    <span class="flow-label">Grid</span>
+                    <div class="glow-line"></div>
                 </div>
-                <div class="energy-pill" id="energy-solar">
-                    <ha-icon icon="mdi:solar-power" style="width: 16px; height: 16px; color: rgba(0,0,0,0.3);"></ha-icon>
-                    <span class="pill-val" id="val-solar">${solarValue}</span>
-                    <span class="pill-label">Solar</span>
+                <div class="energy-flow-item solar" id="energy-solar">
+                    <div class="flow-icon-wrapper">
+                        <ha-icon class="flow-icon" icon="mdi:solar-power-variant"></ha-icon>
+                    </div>
+                    <span class="flow-val" id="val-solar">${solarValue}</span>
+                    <span class="flow-label">Solar</span>
+                    <div class="glow-line"></div>
                 </div>
-                <div class="energy-pill" id="energy-home">
-                    <ha-icon icon="mdi:home" style="width: 16px; height: 16px; color: rgba(0,0,0,0.3);"></ha-icon>
-                    <span class="pill-val" id="val-home">${homeValue}</span>
-                    <span class="pill-label">Home</span>
+                <div class="energy-flow-item home" id="energy-home">
+                    <div class="flow-icon-wrapper">
+                        <ha-icon class="flow-icon" icon="mdi:home-lightning-bolt"></ha-icon>
+                    </div>
+                    <span class="flow-val" id="val-home">${homeValue}</span>
+                    <span class="flow-label">Home</span>
+                    <div class="glow-line"></div>
                 </div>
             </div>
             ` : ''}
@@ -16286,9 +16553,6 @@ class PrismSidebarLightCard extends HTMLElement {
         const energyGrid = this.shadowRoot?.getElementById('energy-grid');
         const energySolar = this.shadowRoot?.getElementById('energy-solar');
         const energyHome = this.shadowRoot?.getElementById('energy-home');
-        const graphOverlay = this.shadowRoot?.getElementById('graph-overlay');
-        const weatherTempBox = this.shadowRoot?.getElementById('weather-temp-box');
-        const tempGraphContainer = this.shadowRoot?.getElementById('temp-graph-container');
 
         if (cameraBox) {
             cameraBox.addEventListener('click', () => this._handleCameraClick());
@@ -16306,20 +16570,10 @@ class PrismSidebarLightCard extends HTMLElement {
             energyHome.addEventListener('click', () => this._handleEnergyClick(this.homeEntity));
         }
         
-        // Weather click - opens weather entity more-info
-        if (weatherTempBox) {
-            weatherTempBox.addEventListener('click', () => this._handleWeatherClick());
-        }
-        
-        // Graph click - opens temperature sensor more-info
-        if (tempGraphContainer) {
-            tempGraphContainer.addEventListener('click', () => this._handleTempGraphClick());
-        }
-        
-        // Graph hover events
-        if (graphOverlay) {
-            graphOverlay.addEventListener('mousemove', (e) => this._handleGraphHover(e));
-            graphOverlay.addEventListener('mouseleave', () => this._handleGraphLeave());
+        // Mini graph container click - opens weather popup
+        const miniGraphSlot = this.shadowRoot?.getElementById('mini-graph-slot');
+        if (miniGraphSlot) {
+            miniGraphSlot.addEventListener('click', () => this._handleWeatherClick());
         }
         
         // Forecast grid click - opens weather popup
@@ -17067,242 +17321,6 @@ class PrismSidebarLightCard extends HTMLElement {
             });
             this.dispatchEvent(event);
         });
-    }
-
-    _handleTempGraphClick() {
-        if (!this._hass || !this.temperatureEntity) return;
-        const event = new CustomEvent('hass-more-info', {
-            bubbles: true,
-            composed: true,
-            detail: { entityId: this.temperatureEntity }
-        });
-        this.dispatchEvent(event);
-    }
-
-    _handleGraphHover(e) {
-        if (!this.temperatureHistoryWithTime || this.temperatureHistoryWithTime.length === 0) return;
-        
-        const svg = e.currentTarget.ownerSVGElement;
-        if (!svg) return;
-        
-        // Get mouse position relative to SVG
-        const rect = svg.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const svgWidth = 280;
-        
-        // Calculate which data point is closest
-        const dataLength = this.temperatureHistoryWithTime.length;
-        const stepX = dataLength > 1 ? svgWidth / (dataLength - 1) : 0;
-        const index = Math.round(x / stepX);
-        const clampedIndex = Math.max(0, Math.min(dataLength - 1, index));
-        
-        const dataPoint = this.temperatureHistoryWithTime[clampedIndex];
-        if (!dataPoint) return;
-        
-        // Calculate Y position for the point (same logic as generateGraphPath)
-        const graphData = this.temperatureHistory;
-        const dataMax = Math.max(...graphData);
-        const dataMin = Math.min(...graphData);
-        const dataRange = dataMax - dataMin;
-        const padding = Math.max(dataRange * 0.2, 2);
-        const max = dataMax + padding;
-        const min = dataMin - padding;
-        const range = max - min;
-        
-        const normalized = (dataPoint.temp - min) / range;
-        const margin = 60 * 0.05;
-        const y = margin + (60 - 2 * margin) * (1 - normalized);
-        const pointX = clampedIndex * stepX;
-        
-        // Update point position
-        const point = this.shadowRoot?.getElementById('graph-hover-point');
-        if (point) {
-            point.setAttribute('cx', pointX);
-            point.setAttribute('cy', y);
-            point.classList.add('visible');
-        }
-        
-        // Update tooltip
-        const tooltip = this.shadowRoot?.getElementById('graph-tooltip');
-        const tooltipTemp = tooltip?.querySelector('.graph-tooltip-temp');
-        const tooltipTime = tooltip?.querySelector('.graph-tooltip-time');
-        
-        if (tooltip && tooltipTemp && tooltipTime) {
-            tooltipTemp.textContent = `${dataPoint.temp.toFixed(1)}°C`;
-            tooltipTime.textContent = dataPoint.time.toLocaleString('de-DE', {
-                day: '2-digit',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            // Position tooltip
-            const tooltipRect = tooltip.getBoundingClientRect();
-            let tooltipX = e.clientX - rect.left + 10;
-            let tooltipY = e.clientY - rect.top - tooltipRect.height - 10;
-            
-            // Keep tooltip in bounds
-            if (tooltipX + tooltipRect.width > rect.width) {
-                tooltipX = e.clientX - rect.left - tooltipRect.width - 10;
-            }
-            if (tooltipY < 0) {
-                tooltipY = e.clientY - rect.top + 10;
-            }
-            
-            tooltip.style.left = `${tooltipX}px`;
-            tooltip.style.top = `${tooltipY}px`;
-            tooltip.classList.add('visible');
-        }
-    }
-
-    _handleGraphLeave() {
-        const point = this.shadowRoot?.getElementById('graph-hover-point');
-        const tooltip = this.shadowRoot?.getElementById('graph-tooltip');
-        
-        if (point) {
-            point.classList.remove('visible');
-        }
-        if (tooltip) {
-            tooltip.classList.remove('visible');
-        }
-    }
-
-    // Fetch temperature history data from Home Assistant
-    async fetchTemperatureHistory() {
-        if (this.historyLoading || !this._hass || !this.temperatureEntity) return;
-        
-        this.historyLoading = true;
-        
-        try {
-            // Calculate timestamps (last 7 days = 168 hours)
-            const endTime = new Date();
-            const startTime = new Date(endTime.getTime() - (168 * 60 * 60 * 1000)); // 168 hours ago
-            
-            // Format timestamps for Home Assistant API
-            const startISO = startTime.toISOString();
-            const endISO = endTime.toISOString();
-            
-            // Call Home Assistant History API
-            const response = await this._hass.callWS({
-                type: 'history/history_during_period',
-                start_time: startISO,
-                end_time: endISO,
-                entity_ids: [this.temperatureEntity],
-                minimal_response: true,
-                no_attributes: true,
-                significant_changes_only: true
-            });
-            
-            // History API returns an object with entity IDs as keys
-            const historyData = response[this.temperatureEntity];
-            if (historyData && historyData.length > 0) {
-                // Sample data points (e.g., one per hour) to avoid too many points
-                const sampleRate = Math.max(1, Math.floor(historyData.length / 168));
-                const sampledDataWithTime = historyData
-                    .filter((_, index) => index % sampleRate === 0)
-                    .map(entry => ({
-                        temp: parseFloat(entry.s),
-                        time: entry.lu ? new Date(entry.lu * 1000) : new Date()
-                    }))
-                    .filter(item => !isNaN(item.temp));
-                
-                if (sampledDataWithTime.length > 0) {
-                    this.temperatureHistoryWithTime = sampledDataWithTime;
-                    this.temperatureHistory = sampledDataWithTime.map(item => item.temp);
-                    // Re-render to update the graph
-                    this.render();
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching temperature history:', error);
-            // Fallback: use current temperature state if available
-            if (this._hass.states[this.temperatureEntity]) {
-                const currentTemp = parseFloat(this._hass.states[this.temperatureEntity].state);
-                if (!isNaN(currentTemp)) {
-                    const now = new Date();
-                    this.temperatureHistory = [currentTemp, currentTemp, currentTemp, currentTemp, currentTemp];
-                    // Also set temperatureHistoryWithTime for tooltip support
-                    this.temperatureHistoryWithTime = this.temperatureHistory.map((temp, i) => ({
-                        temp,
-                        time: new Date(now.getTime() - (4 - i) * 60 * 60 * 1000) // Hourly backwards
-                    }));
-                }
-            }
-        } finally {
-            this.historyLoading = false;
-        }
-    }
-
-    // Helper to create smooth SVG path from data points with curved lines
-    generateGraphPath(data, width, height) {
-        if (!data || data.length === 0) return { line: '', fill: '' };
-        
-        // Calculate range with padding for better visualization
-        const dataMax = Math.max(...data);
-        const dataMin = Math.min(...data);
-        const dataRange = dataMax - dataMin;
-        
-        // Add padding: 20% of range, minimum 2 units
-        const padding = Math.max(dataRange * 0.2, 2);
-        const max = dataMax + padding;
-        const min = dataMin - padding;
-        const range = max - min;
-        
-        // Ensure we have a valid range
-        if (range <= 0) {
-            const midY = height / 2;
-            return { 
-                line: `M 0,${midY} L ${width},${midY}`,
-                fill: `M 0,${midY} L ${width},${midY} L ${width},${height} L 0,${height} Z`
-            };
-        }
-        
-        const stepX = data.length > 1 ? width / (data.length - 1) : 0;
-        
-        // Build line points with proper Y scaling (inverted: higher values = lower Y)
-        const points = data.map((val, i) => {
-            const x = i * stepX;
-            // Calculate Y: higher temp = lower Y position (closer to top)
-            const normalized = (val - min) / range;
-            // Add small margin at top and bottom (5% of height)
-            const margin = height * 0.05;
-            const y = margin + (height - 2 * margin) * (1 - normalized);
-            return [x, y];
-        });
-
-        if (points.length === 0) return { line: '', fill: '' };
-        
-        // Create smooth curve using Catmull-Rom spline
-        const [firstX, firstY] = points[0];
-        let linePath = `M ${firstX},${firstY} `;
-        
-        if (points.length === 1) {
-            // Single point - just draw horizontal line
-            linePath += `L ${width},${firstY}`;
-        } else if (points.length === 2) {
-            // Two points - straight line
-            const [x, y] = points[1];
-            linePath += `L ${x},${y}`;
-        } else {
-            // Multiple points - use smooth curves
-            for (let i = 0; i < points.length - 1; i++) {
-                const [x0, y0] = points[i];
-                const [x1, y1] = points[i + 1];
-                
-                // Control points for smooth bezier curve
-                const tension = 0.3; // Smoothness factor (0 = sharp, 1 = very smooth)
-                const d = Math.abs(x1 - x0) * tension;
-                
-                linePath += `C ${x0 + d},${y0} ${x1 - d},${y1} ${x1},${y1} `;
-            }
-        }
-        
-        // Create fill path (closed area under the curve)
-        const [lastX, lastY] = points[points.length - 1];
-        let fillPath = linePath; // Start with the same curve
-        fillPath += ` L ${lastX},${height} L ${firstX},${height} Z`; // Close at bottom
-        
-        return { line: linePath.trim(), fill: fillPath.trim() };
     }
 
     // Translation helper - English default, German if HA is set to German
@@ -31762,6 +31780,8 @@ class PrismRoomCard extends HTMLElement {
       hide_card_background: false,
       temperature_entity: "",
       humidity_entity: "",
+      show_climate_placeholder: false,
+      show_status_placeholder: false,
       light_entities: [],
       climate_entities: [],
       motion_entities: [],
@@ -31809,6 +31829,16 @@ class PrismRoomCard extends HTMLElement {
         {
           name: "humidity_entity",
           selector: { entity: { domain: "sensor" } }
+        },
+        {
+          name: "show_climate_placeholder",
+          label: "Show placeholder for temperature/humidity (consistent card height)",
+          selector: { boolean: {} }
+        },
+        {
+          name: "show_status_placeholder",
+          label: "Show placeholder for status icons (consistent card height)",
+          selector: { boolean: {} }
         },
         {
           name: "active_color",
@@ -31931,6 +31961,8 @@ class PrismRoomCard extends HTMLElement {
       icon_size: config.icon_size || 42,
       name_size: config.name_size || 1.125,
       hide_card_background: config.hide_card_background || false,
+      show_climate_placeholder: config.show_climate_placeholder || false,
+      show_status_placeholder: config.show_status_placeholder || false,
       light_entities: config.light_entities || [],
       climate_entities: config.climate_entities || [],
       motion_entities: config.motion_entities || [],
@@ -32561,6 +32593,11 @@ class PrismRoomCard extends HTMLElement {
           font-size: calc(var(--name-size, 1.125rem) * 0.65);
           font-weight: 500;
           color: rgba(255, 255, 255, 0.6);
+          line-height: 1.4;
+        }
+        
+        .prism-room-card .state.placeholder {
+          min-height: calc(var(--name-size, 1.125rem) * 0.65 * 1.4);
         }
         
         /* Status Icons Row */
@@ -32571,6 +32608,10 @@ class PrismRoomCard extends HTMLElement {
           gap: 8px;
           flex-wrap: wrap;
           margin-top: 4px;
+        }
+        
+        .prism-room-card .status-row.placeholder {
+          min-height: 38px; /* 32px icon + 3px badge overflow + 3px buffer */
         }
         
         .prism-room-card .status-icon {
@@ -32710,7 +32751,16 @@ class PrismRoomCard extends HTMLElement {
     
     const climateEl = this.querySelector('#climate-text');
     if (climateEl) {
-      climateEl.textContent = climateText;
+      if (climateText) {
+        climateEl.textContent = climateText;
+        climateEl.classList.remove('placeholder');
+      } else if (this._config.show_climate_placeholder) {
+        climateEl.textContent = '';
+        climateEl.classList.add('placeholder');
+      } else {
+        climateEl.textContent = '';
+        climateEl.classList.remove('placeholder');
+      }
     }
     
     // Build status icons
@@ -32808,8 +32858,13 @@ class PrismRoomCard extends HTMLElement {
             ${status.badge ? `<div class="status-badge" style="background: ${status.color};">${status.badge}</div>` : ''}
           </div>
         `).join('');
+        statusRow.classList.remove('placeholder');
+      } else if (this._config.show_status_placeholder) {
+        statusRow.innerHTML = '';
+        statusRow.classList.add('placeholder');
       } else {
         statusRow.innerHTML = '';
+        statusRow.classList.remove('placeholder');
       }
     }
   }
@@ -33629,6 +33684,9 @@ class PrismNavigationCard extends HTMLElement {
     this._boundPathChange = () => this._handlePathChange();
     window.addEventListener('popstate', this._boundPathChange);
     window.addEventListener('location-changed', this._boundPathChange);
+    
+    // Setup dialog observer to hide navigation when dialogs are open
+    this._setupDialogObserver();
   }
 
   disconnectedCallback() {
@@ -33639,6 +33697,89 @@ class PrismNavigationCard extends HTMLElement {
       window.removeEventListener('popstate', this._boundPathChange);
       window.removeEventListener('location-changed', this._boundPathChange);
     }
+    
+    // Cleanup dialog observer
+    if (this._dialogObserver) {
+      this._dialogObserver.disconnect();
+      this._dialogObserver = null;
+    }
+    if (this._dialogCheckTimeout) {
+      clearTimeout(this._dialogCheckTimeout);
+    }
+  }
+  
+  _setupDialogObserver() {
+    // Simple and reliable: just check if more-info-dialog has 'open' attribute
+    const checkDialogs = () => {
+      if (!this._externalNav) return;
+      
+      let dialogVisible = false;
+      
+      // Primary check: Look for ha-more-info-dialog with 'open' attribute
+      try {
+        const haRoot = document.querySelector('home-assistant');
+        if (haRoot?.shadowRoot) {
+          const moreInfoDialog = haRoot.shadowRoot.querySelector('ha-more-info-dialog');
+          if (moreInfoDialog && moreInfoDialog.hasAttribute('open')) {
+            dialogVisible = true;
+          }
+          
+          // Also check for ha-dialog with open attribute
+          const haDialogs = haRoot.shadowRoot.querySelectorAll('ha-dialog[open]');
+          if (haDialogs.length > 0) {
+            dialogVisible = true;
+          }
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+      
+      // Secondary check: mdc-dialog--open class in body
+      if (!dialogVisible) {
+        const mdcDialogOpen = document.querySelector('.mdc-dialog--open');
+        if (mdcDialogOpen) {
+          dialogVisible = true;
+        }
+      }
+      
+      // Apply visibility change only if state actually changed
+      const currentlyHidden = this._externalNav.style.visibility === 'hidden';
+      
+      if (dialogVisible && !currentlyHidden) {
+        this._externalNav.style.visibility = 'hidden';
+        this._externalNav.style.opacity = '0';
+      } else if (!dialogVisible && currentlyHidden) {
+        this._externalNav.style.visibility = 'visible';
+        this._externalNav.style.opacity = '1';
+      }
+    };
+    
+    // Create MutationObserver - only watch for 'open' attribute changes
+    this._dialogObserver = new MutationObserver(() => {
+      // Debounce to avoid flicker
+      clearTimeout(this._dialogCheckTimeout);
+      this._dialogCheckTimeout = setTimeout(checkDialogs, 100);
+    });
+    
+    // Observe home-assistant shadow root for dialog changes
+    const setupObserver = () => {
+      try {
+        const haRoot = document.querySelector('home-assistant');
+        if (haRoot?.shadowRoot) {
+          this._dialogObserver.observe(haRoot.shadowRoot, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['open']
+          });
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    };
+    
+    // Setup observer with delay to ensure HA is loaded
+    setTimeout(setupObserver, 500);
   }
 
   _removeExternalNav() {
@@ -33802,11 +33943,12 @@ class PrismNavigationCard extends HTMLElement {
         top: ${topOffset}px;
         left: ${leftOffset};
         right: 0;
-        z-index: 999;
+        z-index: 3;
         display: flex;
         justify-content: center;
         pointer-events: none;
         font-family: system-ui, -apple-system, sans-serif;
+        transition: opacity 0.15s ease, visibility 0.15s ease;
       }
       
       #${this._navId} .nav-container {

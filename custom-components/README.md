@@ -842,6 +842,18 @@ A full-width sidebar card with camera, clock, calendar, weather forecast, and en
 
 <img width="300" alt="prism-sidebar" src="images/prism-sidebar.png" />
 
+**Features:**
+- ✅ **Camera Display**: Shows camera feed with automatic rotation for multiple cameras
+- ✅ **Temperature Graph**: Uses mini-graph-card for accurate temperature visualization
+- ✅ **Weather Forecast**: Displays daily forecast with icons
+- ✅ **Calendar Events**: Shows upcoming calendar events
+- ✅ **Energy Overview**: Grid, solar, and home consumption display
+- ✅ **Clock**: Real-time clock display
+
+**Prerequisites:**
+- **mini-graph-card** must be installed via HACS for the temperature graph to work
+- If mini-graph-card is not installed, a fallback message will be displayed
+
 **Usage (Example with Grid Layout):**
 ```yaml
 type: custom:prism-sidebar
@@ -849,14 +861,34 @@ camera_entity: camera.garden_main
 camera_entity_2: camera.front_door  # Optional: Second camera
 camera_entity_3: camera.backyard    # Optional: Third camera
 rotation_interval: 10               # Optional: Rotation interval in seconds (3-60, default: 10)
+temperature_entity: sensor.outdoor_temperature
 weather_entity: weather.home
 grid_entity: sensor.power_grid
 solar_entity: sensor.power_solar
 home_entity: sensor.power_home
 calendar_entity: calendar.events
+graph_hours: 24                    # Optional: Hours to show in graph (1-168, default: 24)
 ```
 
-**Note:** If multiple cameras are configured, they automatically rotate. The rotation interval can be set between 3 and 60 seconds.
+**Configuration Options:**
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `camera_entity` | entity | No | - | Primary camera entity |
+| `camera_entity_2` | entity | No | - | Second camera (enables rotation) |
+| `camera_entity_3` | entity | No | - | Third camera (enables rotation) |
+| `rotation_interval` | number | No | 10 | Camera rotation interval in seconds (3-60) |
+| `temperature_entity` | entity | No | `sensor.outdoor_temperature` | Temperature sensor for graph |
+| `weather_entity` | entity | No | `weather.example` | Weather entity for forecast |
+| `grid_entity` | entity | No | `sensor.example` | Grid power sensor |
+| `solar_entity` | entity | No | `sensor.example` | Solar power sensor |
+| `home_entity` | entity | No | `sensor.example` | Home consumption sensor |
+| `calendar_entity` | entity | No | `calendar.example` | Calendar entity for events |
+| `graph_hours` | number | No | 24 | Hours to display in temperature graph (1-168) |
+
+**Note:** 
+- If multiple cameras are configured, they automatically rotate. The rotation interval can be set between 3 and 60 seconds.
+- The temperature graph uses **mini-graph-card** (must be installed via HACS). The graph displays the temperature centered with no frame, matching the Prism Dashboard aesthetic.
 
 ---
 
@@ -866,6 +898,15 @@ Light theme version of the sidebar card with bright glassmorphism design.
 
 <img width="300" alt="prism-sidebar-light" src="images/prism-sidebar.png" />
 
+**Features:**
+- ✅ Same features as `prism-sidebar` with light theme styling
+- ✅ **Temperature Graph**: Uses mini-graph-card for accurate temperature visualization
+- ✅ Optimized for light backgrounds and bright dashboards
+
+**Prerequisites:**
+- **mini-graph-card** must be installed via HACS for the temperature graph to work
+- If mini-graph-card is not installed, a fallback message will be displayed
+
 **Usage:**
 ```yaml
 type: custom:prism-sidebar-light
@@ -873,14 +914,22 @@ camera_entity: camera.garden_main
 camera_entity_2: camera.front_door  # Optional: Second camera
 camera_entity_3: camera.backyard    # Optional: Third camera
 rotation_interval: 10               # Optional: Rotation interval in seconds (3-60, default: 10)
+temperature_entity: sensor.outdoor_temperature
 weather_entity: weather.home
 grid_entity: sensor.power_grid
 solar_entity: sensor.power_solar
 home_entity: sensor.power_home
 calendar_entity: calendar.events
+graph_hours: 24                    # Optional: Hours to show in graph (1-168, default: 24)
 ```
 
-**Note:** If multiple cameras are configured, they automatically rotate. The rotation interval can be set between 3 and 60 seconds.
+**Configuration Options:**
+
+Same as `prism-sidebar` (see above). All configuration options are identical, only the visual theme differs.
+
+**Note:** 
+- If multiple cameras are configured, they automatically rotate. The rotation interval can be set between 3 and 60 seconds.
+- The temperature graph uses **mini-graph-card** (must be installed via HACS). The graph displays the temperature centered with no frame, matching the Prism Dashboard aesthetic.
 
 ---
 

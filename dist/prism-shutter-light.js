@@ -75,6 +75,17 @@ class PrismShutterLightCard extends HTMLElement {
     }
   }
 
+  // Open More-Info Dialog on long-press / right-click
+  _handleHold() {
+    if (!this._hass || !this.config.entity) return;
+    const event = new CustomEvent('hass-more-info', {
+      bubbles: true,
+      composed: true,
+      detail: { entityId: this.config.entity }
+    });
+    this.dispatchEvent(event);
+  }
+
   setupListeners() {
     // Buttons
     this.shadowRoot.querySelectorAll('.control-btn').forEach(btn => {
@@ -96,6 +107,46 @@ class PrismShutterLightCard extends HTMLElement {
     
     document.addEventListener('touchmove', this.onDrag.bind(this), { passive: false });
     document.addEventListener('touchend', this.stopDrag.bind(this));
+
+    // Long-press / Right-click for More Info on header
+    const header = this.shadowRoot.querySelector('.header');
+    if (header) {
+      let longPressTimer = null;
+      let touchMoved = false;
+
+      // Touch: Long-press detection
+      header.addEventListener('touchstart', (e) => {
+        touchMoved = false;
+        longPressTimer = setTimeout(() => {
+          if (!touchMoved) {
+            e.preventDefault();
+            this._handleHold();
+          }
+        }, 500);
+      }, { passive: true });
+
+      header.addEventListener('touchmove', () => {
+        touchMoved = true;
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      header.addEventListener('touchend', () => {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      // Mouse: Right-click (contextmenu)
+      header.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this._handleHold();
+      });
+    }
   }
   
   startDrag(e) {
@@ -201,7 +252,7 @@ class PrismShutterLightCard extends HTMLElement {
           background: rgba(255, 255, 255, 0.65);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
-          border-radius: 16px;
+          border-radius: 20px;
           border: 1px solid rgba(255,255,255,0.6);
           border-top: 1px solid rgba(255, 255, 255, 0.9);
           border-bottom: 1px solid rgba(0, 0, 0, 0.15);
@@ -209,13 +260,13 @@ class PrismShutterLightCard extends HTMLElement {
             0 10px 30px -5px rgba(0, 0, 0, 0.15),
             0 4px 10px rgba(0,0,0,0.08),
             inset 0 1px 1px rgba(255,255,255,0.9);
-          padding: 20px;
+          padding: 16px;
           color: #1a1a1a;
           user-select: none;
         }
         
         .header {
-            display: flex; gap: 12px; align-items: center; margin-bottom: 24px;
+            display: flex; gap: 12px; align-items: center; margin-bottom: 16px;
         }
         .icon-box {
             width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -240,7 +291,7 @@ class PrismShutterLightCard extends HTMLElement {
         /* Inlet Slider Display (Interactive) */
         .slider-track {
             height: 12px; border-radius: 12px; 
-            margin-bottom: ${hideSlider ? '0' : '24px'};
+            margin-bottom: ${hideSlider ? '0' : '16px'};
             background: linear-gradient(145deg, #e6e6e6, #f8f8f8);
             box-shadow: 
               inset 3px 3px 8px rgba(0,0,0,0.12),
@@ -284,14 +335,14 @@ class PrismShutterLightCard extends HTMLElement {
         /* Responsive: Tablet (768px - 1400px) - includes iPad Pro */
         @media (max-width: 1400px) {
           .card {
-            padding: 16px;
+            padding: 14px;
           }
           .header {
-            margin-bottom: 16px;
+            margin-bottom: 14px;
           }
           .slider-track {
             height: 10px;
-            margin-bottom: ${hideSlider ? '0' : '16px'};
+            margin-bottom: ${hideSlider ? '0' : '14px'};
           }
           .controls {
             gap: 10px;
@@ -308,11 +359,11 @@ class PrismShutterLightCard extends HTMLElement {
         /* Responsive: Mobile (< 768px) */
         @media (max-width: 768px) {
           .card {
-            padding: 14px;
-            border-radius: 14px;
+            padding: 12px;
+            border-radius: 16px;
           }
           .header {
-            margin-bottom: 14px;
+            margin-bottom: 12px;
           }
           .slider-track {
             height: 8px;

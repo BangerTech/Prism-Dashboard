@@ -18,6 +18,8 @@ class PrismRoomCard extends HTMLElement {
       hide_card_background: false,
       temperature_entity: "",
       humidity_entity: "",
+      show_climate_placeholder: false,
+      show_status_placeholder: false,
       light_entities: [],
       climate_entities: [],
       motion_entities: [],
@@ -65,6 +67,16 @@ class PrismRoomCard extends HTMLElement {
         {
           name: "humidity_entity",
           selector: { entity: { domain: "sensor" } }
+        },
+        {
+          name: "show_climate_placeholder",
+          label: "Show placeholder for temperature/humidity (consistent card height)",
+          selector: { boolean: {} }
+        },
+        {
+          name: "show_status_placeholder",
+          label: "Show placeholder for status icons (consistent card height)",
+          selector: { boolean: {} }
         },
         {
           name: "active_color",
@@ -187,6 +199,8 @@ class PrismRoomCard extends HTMLElement {
       icon_size: config.icon_size || 42,
       name_size: config.name_size || 1.125,
       hide_card_background: config.hide_card_background || false,
+      show_climate_placeholder: config.show_climate_placeholder || false,
+      show_status_placeholder: config.show_status_placeholder || false,
       light_entities: config.light_entities || [],
       climate_entities: config.climate_entities || [],
       motion_entities: config.motion_entities || [],
@@ -817,6 +831,11 @@ class PrismRoomCard extends HTMLElement {
           font-size: calc(var(--name-size, 1.125rem) * 0.65);
           font-weight: 500;
           color: rgba(255, 255, 255, 0.6);
+          line-height: 1.4;
+        }
+        
+        .prism-room-card .state.placeholder {
+          min-height: calc(var(--name-size, 1.125rem) * 0.65 * 1.4);
         }
         
         /* Status Icons Row */
@@ -827,6 +846,10 @@ class PrismRoomCard extends HTMLElement {
           gap: 8px;
           flex-wrap: wrap;
           margin-top: 4px;
+        }
+        
+        .prism-room-card .status-row.placeholder {
+          min-height: 38px; /* 32px icon + 3px badge overflow + 3px buffer */
         }
         
         .prism-room-card .status-icon {
@@ -966,7 +989,16 @@ class PrismRoomCard extends HTMLElement {
     
     const climateEl = this.querySelector('#climate-text');
     if (climateEl) {
-      climateEl.textContent = climateText;
+      if (climateText) {
+        climateEl.textContent = climateText;
+        climateEl.classList.remove('placeholder');
+      } else if (this._config.show_climate_placeholder) {
+        climateEl.textContent = '';
+        climateEl.classList.add('placeholder');
+      } else {
+        climateEl.textContent = '';
+        climateEl.classList.remove('placeholder');
+      }
     }
     
     // Build status icons
@@ -1064,8 +1096,13 @@ class PrismRoomCard extends HTMLElement {
             ${status.badge ? `<div class="status-badge" style="background: ${status.color};">${status.badge}</div>` : ''}
           </div>
         `).join('');
+        statusRow.classList.remove('placeholder');
+      } else if (this._config.show_status_placeholder) {
+        statusRow.innerHTML = '';
+        statusRow.classList.add('placeholder');
       } else {
         statusRow.innerHTML = '';
+        statusRow.classList.remove('placeholder');
       }
     }
   }

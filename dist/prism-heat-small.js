@@ -127,6 +127,17 @@ class PrismHeatSmallCard extends HTMLElement {
     }
   }
 
+  // Open More-Info Dialog on long-press / right-click
+  _handleHold() {
+    if (!this._hass || !this.config.entity) return;
+    const event = new CustomEvent('hass-more-info', {
+      bubbles: true,
+      composed: true,
+      detail: { entityId: this.config.entity }
+    });
+    this.dispatchEvent(event);
+  }
+
   setupListeners() {
     this.shadowRoot.querySelectorAll('.control-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -134,6 +145,46 @@ class PrismHeatSmallCard extends HTMLElement {
         this.changeTemp(action);
       });
     });
+
+    // Long-press / Right-click for More Info on header
+    const header = this.shadowRoot.querySelector('.header');
+    if (header) {
+      let longPressTimer = null;
+      let touchMoved = false;
+
+      // Touch: Long-press detection
+      header.addEventListener('touchstart', (e) => {
+        touchMoved = false;
+        longPressTimer = setTimeout(() => {
+          if (!touchMoved) {
+            e.preventDefault();
+            this._handleHold();
+          }
+        }, 500);
+      }, { passive: true });
+
+      header.addEventListener('touchmove', () => {
+        touchMoved = true;
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      header.addEventListener('touchend', () => {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      // Mouse: Right-click (contextmenu)
+      header.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this._handleHold();
+      });
+    }
   }
 
   changeTemp(action) {

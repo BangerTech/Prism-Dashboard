@@ -75,6 +75,17 @@ class PrismShutterCard extends HTMLElement {
     }
   }
 
+  // Open More-Info Dialog on long-press / right-click
+  _handleHold() {
+    if (!this._hass || !this.config.entity) return;
+    const event = new CustomEvent('hass-more-info', {
+      bubbles: true,
+      composed: true,
+      detail: { entityId: this.config.entity }
+    });
+    this.dispatchEvent(event);
+  }
+
   setupListeners() {
     // Buttons
     this.shadowRoot.querySelectorAll('.control-btn').forEach(btn => {
@@ -96,6 +107,46 @@ class PrismShutterCard extends HTMLElement {
     
     document.addEventListener('touchmove', this.onDrag.bind(this), { passive: false });
     document.addEventListener('touchend', this.stopDrag.bind(this));
+
+    // Long-press / Right-click for More Info on header
+    const header = this.shadowRoot.querySelector('.header');
+    if (header) {
+      let longPressTimer = null;
+      let touchMoved = false;
+
+      // Touch: Long-press detection
+      header.addEventListener('touchstart', (e) => {
+        touchMoved = false;
+        longPressTimer = setTimeout(() => {
+          if (!touchMoved) {
+            e.preventDefault();
+            this._handleHold();
+          }
+        }, 500);
+      }, { passive: true });
+
+      header.addEventListener('touchmove', () => {
+        touchMoved = true;
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      header.addEventListener('touchend', () => {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+
+      // Mouse: Right-click (contextmenu)
+      header.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this._handleHold();
+      });
+    }
   }
   
   startDrag(e) {
@@ -201,18 +252,18 @@ class PrismShutterCard extends HTMLElement {
           background: rgba(30, 32, 36, 0.6);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
-          border-radius: 16px;
+          border-radius: 20px;
           border: 1px solid rgba(255,255,255,0.05);
           border-top: 1px solid rgba(255, 255, 255, 0.15);
           border-bottom: 1px solid rgba(0, 0, 0, 0.4);
           box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0,0,0,0.3);
-          padding: 20px;
+          padding: 16px;
           color: white;
           user-select: none;
         }
         
         .header {
-            display: flex; gap: 12px; align-items: center; margin-bottom: 24px;
+            display: flex; gap: 12px; align-items: center; margin-bottom: 16px;
         }
         .icon-box {
             width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -237,7 +288,7 @@ class PrismShutterCard extends HTMLElement {
         /* Inlet Slider Display (Interactive) */
         .slider-track {
             height: 12px; border-radius: 12px; 
-            margin-bottom: ${hideSlider ? '0' : '24px'};
+            margin-bottom: ${hideSlider ? '0' : '16px'};
             background: rgba(20, 20, 20, 0.8);
             box-shadow: inset 2px 2px 5px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1);
             border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -289,14 +340,14 @@ class PrismShutterCard extends HTMLElement {
         /* Responsive: Tablet (768px - 1400px) - includes iPad Pro */
         @media (max-width: 1400px) {
           .card {
-            padding: 16px;
+            padding: 14px;
           }
           .header {
-            margin-bottom: 16px;
+            margin-bottom: 14px;
           }
           .slider-track {
             height: 10px;
-            margin-bottom: ${hideSlider ? '0' : '16px'};
+            margin-bottom: ${hideSlider ? '0' : '14px'};
           }
           .controls {
             gap: 10px;
@@ -313,11 +364,11 @@ class PrismShutterCard extends HTMLElement {
         /* Responsive: Mobile (< 768px) */
         @media (max-width: 768px) {
           .card {
-            padding: 14px;
-            border-radius: 14px;
+            padding: 12px;
+            border-radius: 16px;
           }
           .header {
-            margin-bottom: 14px;
+            margin-bottom: 12px;
           }
           .slider-track {
             height: 8px;

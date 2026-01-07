@@ -91,7 +91,7 @@ For this dashboard to work, the following frontend integrations must be installe
   Hides Home Assistant header and sidebar for a clean fullscreen look.
 
 - **mini-graph-card**  
-  For temperature and trend graphs.
+  Required for the temperature graph in the sidebar (`prism-sidebar` and `prism-sidebar-light`). The sidebar uses mini-graph-card to display accurate temperature history graphs matching Home Assistant's native graph style.
 
 - **browser_mod**  
   Important for popups (e.g., calendar, vacuum control).

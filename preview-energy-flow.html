@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prism Energy Flow Preview - Gedämpft</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.2.96/css/materialdesignicons.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1c20 0%, #2d3038 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      gap: 40px;
+    }
+    
+    h2 {
+      color: rgba(255,255,255,0.9);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    
+    .subtitle {
+      color: rgba(255,255,255,0.4);
+      font-size: 12px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    
+    /* Simulated Sidebar Container */
+    .sidebar-preview {
+      width: 320px;
+      background: rgba(20, 22, 26, 0.9);
+      border-radius: 24px;
+      padding: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+    
+    .sidebar-header {
+      color: rgba(255,255,255,0.8);
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .sidebar-subtext {
+      color: rgba(255,255,255,0.3);
+      font-size: 12px;
+      margin-bottom: 40px;
+    }
+    
+    /* Energy Flow Bar - NEW MUTED STYLE */
+    .energy-flow-bar {
+      display: flex;
+      align-items: stretch;
+      width: 100%;
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(15, 15, 15, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    
+    .energy-flow-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 8px 16px 8px;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .energy-flow-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    
+    .energy-flow-item:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 20%;
+      height: 60%;
+      width: 1px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    
+    .energy-flow-item .flow-icon {
+      font-size: 18px;
+      margin-bottom: 6px;
+      opacity: 0.6;
+    }
+    
+    .energy-flow-item.grid .flow-icon { color: #6b9bd1; }
+    .energy-flow-item.solar .flow-icon { color: #c9a054; }
+    .energy-flow-item.home .flow-icon { color: #9b85c4; }
+    
+    .energy-flow-item .flow-val {
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'SF Mono', Monaco, monospace;
+      color: rgba(255, 255, 255, 0.85);
+    }
+    
+    .energy-flow-item .flow-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.35);
+      margin-top: 3px;
+      letter-spacing: 0.5px;
+    }
+    
+    .energy-flow-item .glow-line {
+      position: absolute;
+      bottom: 0;
+      left: 10%;
+      right: 10%;
+      height: 2px;
+      border-radius: 2px;
+    }
+    
+    /* Muted Glow Colors */
+    .energy-flow-item.grid .glow-line {
+      background: linear-gradient(90deg, transparent, rgba(107, 155, 209, 0.6), transparent);
+      box-shadow: 0 0 8px rgba(107, 155, 209, 0.3);
+      animation: glow-pulse-grid 3s ease-in-out infinite;
+    }
+    
+    .energy-flow-item.solar .glow-line {
+      background: linear-gradient(90deg, transparent, rgba(201, 160, 84, 0.6), transparent);
+      box-shadow: 0 0 8px rgba(201, 160, 84, 0.3);
+      animation: glow-pulse-solar 3s ease-in-out infinite;
+    }
+    
+    .energy-flow-item.home .glow-line {
+      background: linear-gradient(90deg, transparent, rgba(155, 133, 196, 0.6), transparent);
+      box-shadow: 0 0 8px rgba(155, 133, 196, 0.3);
+      animation: glow-pulse-home 3s ease-in-out infinite;
+    }
+    
+    @keyframes glow-pulse-grid {
+      0%, 100% { opacity: 0.4; box-shadow: 0 0 6px rgba(107, 155, 209, 0.2); }
+      50% { opacity: 0.8; box-shadow: 0 0 12px rgba(107, 155, 209, 0.4); }
+    }
+    
+    @keyframes glow-pulse-solar {
+      0%, 100% { opacity: 0.4; box-shadow: 0 0 6px rgba(201, 160, 84, 0.2); }
+      50% { opacity: 0.8; box-shadow: 0 0 12px rgba(201, 160, 84, 0.4); }
+    }
+    
+    @keyframes glow-pulse-home {
+      0%, 100% { opacity: 0.4; box-shadow: 0 0 6px rgba(155, 133, 196, 0.2); }
+      50% { opacity: 0.8; box-shadow: 0 0 12px rgba(155, 133, 196, 0.4); }
+    }
+    
+    /* Comparison - OLD STYLE */
+    .old-style {
+      margin-top: 40px;
+      padding-top: 40px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .energy-grid-old {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    
+    .energy-pill-old {
+      height: 72px;
+      border-radius: 16px;
+      background: rgba(20, 20, 20, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: inset 2px 2px 4px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 8px 4px;
+      gap: 4px;
+    }
+    
+    .energy-pill-old .pill-icon {
+      font-size: 16px;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 2px;
+    }
+    
+    .energy-pill-old .pill-val {
+      font-size: 11px;
+      font-family: monospace;
+      font-weight: bold;
+      color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .energy-pill-old .pill-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.3);
+      margin-top: 2px;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    
+    .badge.new {
+      background: rgba(107, 155, 209, 0.2);
+      color: #6b9bd1;
+    }
+    
+    .badge.old {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NEW MUTED FLOW STYLE -->
+  <div>
+    <span class="badge new">Neu</span>
+    <h2>Animated Flow - Gedämpft</h2>
+    <p class="subtitle">Dezente Farben mit subtilen Glow-Animationen</p>
+    
+    <div class="sidebar-preview">
+      <div class="sidebar-header">Wohnzimmer</div>
+      <div class="sidebar-subtext">4 Geräte aktiv</div>
+      
+      <div class="energy-flow-bar">
+        <div class="energy-flow-item grid">
+          <span class="flow-icon mdi mdi-transmission-tower"></span>
+          <span class="flow-val">0.42 kW</span>
+          <span class="flow-label">Grid</span>
+          <div class="glow-line"></div>
+        </div>
+        <div class="energy-flow-item solar">
+          <span class="flow-icon mdi mdi-solar-power-variant"></span>
+          <span class="flow-val">3.21 kW</span>
+          <span class="flow-label">Solar</span>
+          <div class="glow-line"></div>
+        </div>
+        <div class="energy-flow-item home">
+          <span class="flow-icon mdi mdi-home-lightning-bolt"></span>
+          <span class="flow-val">2.79 kW</span>
+          <span class="flow-label">Home</span>
+          <div class="glow-line"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- OLD STYLE FOR COMPARISON -->
+  <div class="old-style">
+    <span class="badge old">Vorher</span>
+    <h2>Alter Style - Zum Vergleich</h2>
+    <p class="subtitle">Einfache Pills ohne Animation</p>
+    
+    <div class="sidebar-preview">
+      <div class="sidebar-header">Wohnzimmer</div>
+      <div class="sidebar-subtext">4 Geräte aktiv</div>
+      
+      <div class="energy-grid-old">
+        <div class="energy-pill-old">
+          <span class="pill-icon mdi mdi-flash"></span>
+          <span class="pill-val">0.42 kW</span>
+          <span class="pill-label">Grid</span>
+        </div>
+        <div class="energy-pill-old">
+          <span class="pill-icon mdi mdi-solar-power"></span>
+          <span class="pill-val">3.21 kW</span>
+          <span class="pill-label">Solar</span>
+        </div>
+        <div class="energy-pill-old">
+          <span class="pill-icon mdi mdi-home"></span>
+          <span class="pill-val">2.79 kW</span>
+          <span class="pill-label">Home</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

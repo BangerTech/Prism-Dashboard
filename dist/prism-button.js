@@ -12,7 +12,15 @@ class PrismButtonCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: "light.example_light", name: "Example", icon: "mdi:lightbulb", layout: "horizontal", active_color: "#ffc864" }
+    return { 
+      entity: "light.example_light", 
+      name: "Example", 
+      icon: "mdi:lightbulb", 
+      layout: "horizontal", 
+      active_color: "#ffc864",
+      show_brightness_slider: true,
+      show_state: true
+    }
   }
 
   static getConfigForm() {
@@ -44,36 +52,53 @@ class PrismButtonCard extends HTMLElement {
           selector: { color_rgb: {} }
         },
         {
+          name: "show_state",
+          label: "Show State (on/off/% below name)",
+          default: true,
+          selector: { boolean: {} }
+        },
+        {
           name: "show_brightness_slider",
+          label: "Show Brightness Slider (for lights)",
+          default: true,
           selector: { boolean: {} }
         },
         {
           name: "slider_entity",
-          selector: { entity: {} }
+          label: "Slider Entity (optional, separate entity for brightness)",
+          selector: { entity: { domain: "light" } }
         },
         {
+          type: "expandable",
           name: "",
-          type: "divider"
-        },
-        {
-          name: "use_as_popup",
-          selector: { boolean: {} }
-        },
-        {
-          name: "popup_icon",
-          selector: { icon: {} }
-        },
-        {
-          name: "popup_title",
-          selector: { text: {} }
-        },
-        {
-          name: "status_entity",
-          selector: { entity: {} }
-        },
-        {
-          name: "popup_cards",
-          selector: { object: {} }
+          title: "🪟 Popup Mode",
+          schema: [
+            {
+              name: "use_as_popup",
+              label: "Use as Popup Trigger (opens popup instead of toggle)",
+              selector: { boolean: {} }
+            },
+            {
+              name: "popup_icon",
+              label: "Popup Icon",
+              selector: { icon: {} }
+            },
+            {
+              name: "popup_title",
+              label: "Popup Title",
+              selector: { text: {} }
+            },
+            {
+              name: "status_entity",
+              label: "Status Entity (show state of this entity on button)",
+              selector: { entity: {} }
+            },
+            {
+              name: "popup_cards",
+              label: "Popup Cards (YAML config for cards inside popup)",
+              selector: { object: {} }
+            }
+          ]
         }
       ]
     };
@@ -95,6 +120,10 @@ class PrismButtonCard extends HTMLElement {
     // Default show_brightness_slider to true for lights
     if (this._config.show_brightness_slider === undefined) {
       this._config.show_brightness_slider = true;
+    }
+    // Default show_state to true (backward compatibility)
+    if (this._config.show_state === undefined) {
+      this._config.show_state = true;
     }
     // Normalize active_color (convert RGB arrays to hex if needed)
     if (this._config.active_color) {
@@ -326,13 +355,16 @@ class PrismButtonCard extends HTMLElement {
   }
 
   _handleTap() {
-    if (!this._hass || !this._config.entity) return;
+    if (!this._hass) return;
     
-    // POPUP MODE: Open popup instead of toggling
+    // POPUP MODE: Open popup instead of toggling (entity not required)
     if (this._config.use_as_popup && this._config.popup_cards) {
       this._openPrismPopup();
       return;
     }
+    
+    // For non-popup mode, entity is required
+    if (!this._config.entity) return;
     
     const domain = this._config.entity.split('.')[0];
     const entity = this._hass.states[this._config.entity];
@@ -719,6 +751,9 @@ class PrismButtonCard extends HTMLElement {
     // State display - show brightness percentage if available
     const stateDisplay = (isActive && hasBrightness && brightness > 0) ? `${brightness}%` : state;
     
+    // Show state option (default: true)
+    const showState = this._config.show_state !== false;
+    
     // Get the color for the brightness slider - subtle but visible
     const sliderColor = iconColor ? iconColor.color : 'rgb(255, 200, 100)';
     const sliderOpacityStart = 0.08; // Dezent auf der linken Seite
@@ -896,13 +931,17 @@ class PrismButtonCard extends HTMLElement {
           ${layout === 'vertical' ? 'text-align: center;' : ''}
           position: relative;
           z-index: 10;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          ${layout === 'horizontal' ? 'height: 40px;' : ''}
         }
         ha-card .name {
           font-size: 1.125rem;
           font-weight: 700;
           color: rgba(255, 255, 255, 0.9);
-          line-height: 1;
-          margin-bottom: 4px;
+          line-height: 1.2;
+          ${showState ? 'margin-bottom: 2px;' : 'margin-bottom: 0;'}
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -912,9 +951,27 @@ class PrismButtonCard extends HTMLElement {
           font-weight: 500;
           color: rgba(255, 255, 255, 0.6);
           text-transform: capitalize;
+          line-height: 1.2;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          ${!showState ? 'display: none;' : ''}
+        }
+        
+        /* Responsive: Tablet */
+        @media (max-width: 1024px) {
+          ha-card .card-content {
+            padding: 14px;
+            gap: 14px;
+          }
+        }
+        
+        /* Responsive: Mobile */
+        @media (max-width: 600px) {
+          ha-card .card-content {
+            padding: 12px;
+            gap: 12px;
+          }
         }
       </style>
       <ha-card>

@@ -288,6 +288,9 @@ class PrismNavigationCard extends HTMLElement {
     this._boundPathChange = () => this._handlePathChange();
     window.addEventListener('popstate', this._boundPathChange);
     window.addEventListener('location-changed', this._boundPathChange);
+    
+    // Setup dialog observer to hide navigation when dialogs are open
+    this._setupDialogObserver();
   }
 
   disconnectedCallback() {
@@ -298,6 +301,89 @@ class PrismNavigationCard extends HTMLElement {
       window.removeEventListener('popstate', this._boundPathChange);
       window.removeEventListener('location-changed', this._boundPathChange);
     }
+    
+    // Cleanup dialog observer
+    if (this._dialogObserver) {
+      this._dialogObserver.disconnect();
+      this._dialogObserver = null;
+    }
+    if (this._dialogCheckTimeout) {
+      clearTimeout(this._dialogCheckTimeout);
+    }
+  }
+  
+  _setupDialogObserver() {
+    // Simple and reliable: just check if more-info-dialog has 'open' attribute
+    const checkDialogs = () => {
+      if (!this._externalNav) return;
+      
+      let dialogVisible = false;
+      
+      // Primary check: Look for ha-more-info-dialog with 'open' attribute
+      try {
+        const haRoot = document.querySelector('home-assistant');
+        if (haRoot?.shadowRoot) {
+          const moreInfoDialog = haRoot.shadowRoot.querySelector('ha-more-info-dialog');
+          if (moreInfoDialog && moreInfoDialog.hasAttribute('open')) {
+            dialogVisible = true;
+          }
+          
+          // Also check for ha-dialog with open attribute
+          const haDialogs = haRoot.shadowRoot.querySelectorAll('ha-dialog[open]');
+          if (haDialogs.length > 0) {
+            dialogVisible = true;
+          }
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+      
+      // Secondary check: mdc-dialog--open class in body
+      if (!dialogVisible) {
+        const mdcDialogOpen = document.querySelector('.mdc-dialog--open');
+        if (mdcDialogOpen) {
+          dialogVisible = true;
+        }
+      }
+      
+      // Apply visibility change only if state actually changed
+      const currentlyHidden = this._externalNav.style.visibility === 'hidden';
+      
+      if (dialogVisible && !currentlyHidden) {
+        this._externalNav.style.visibility = 'hidden';
+        this._externalNav.style.opacity = '0';
+      } else if (!dialogVisible && currentlyHidden) {
+        this._externalNav.style.visibility = 'visible';
+        this._externalNav.style.opacity = '1';
+      }
+    };
+    
+    // Create MutationObserver - only watch for 'open' attribute changes
+    this._dialogObserver = new MutationObserver(() => {
+      // Debounce to avoid flicker
+      clearTimeout(this._dialogCheckTimeout);
+      this._dialogCheckTimeout = setTimeout(checkDialogs, 100);
+    });
+    
+    // Observe home-assistant shadow root for dialog changes
+    const setupObserver = () => {
+      try {
+        const haRoot = document.querySelector('home-assistant');
+        if (haRoot?.shadowRoot) {
+          this._dialogObserver.observe(haRoot.shadowRoot, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['open']
+          });
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    };
+    
+    // Setup observer with delay to ensure HA is loaded
+    setTimeout(setupObserver, 500);
   }
 
   _removeExternalNav() {
@@ -461,11 +547,12 @@ class PrismNavigationCard extends HTMLElement {
         top: ${topOffset}px;
         left: ${leftOffset};
         right: 0;
-        z-index: 999;
+        z-index: 3;
         display: flex;
         justify-content: center;
         pointer-events: none;
         font-family: system-ui, -apple-system, sans-serif;
+        transition: opacity 0.15s ease, visibility 0.15s ease;
       }
       
       #${this._navId} .nav-container {
