@@ -3,7 +3,7 @@
  * https://github.com/BangerTech/Prism-Dashboard
  * 
  * Version: 1.5.9
- * Build Date: 2026-01-08T07:46:00.015Z
+ * Build Date: 2026-01-08T10:32:20.213Z
  * 
  * This file contains all Prism custom cards bundled together.
  * Just add this single file as a resource in Lovelace:
@@ -620,6 +620,51 @@ class PrismButtonCard extends HTMLElement {
           border-radius: 12px;
           color: #f87171;
           font-size: 13px;
+        }
+
+        /* Popup Responsive - Tablet/Mobile */
+        @media (max-height: 700px) {
+          .prism-popup {
+            max-height: 90vh;
+          }
+          .prism-popup-content {
+            max-height: calc(90vh - 80px);
+            padding: 12px;
+          }
+          .prism-popup-header {
+            padding: 12px 16px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .prism-popup {
+            width: 95vw;
+            max-width: 95vw;
+            max-height: 85vh;
+          }
+          .prism-popup-content {
+            max-height: calc(85vh - 80px);
+          }
+        }
+
+        @media (max-width: 480px) {
+          #prism-button-popup-overlay {
+            padding: 10px;
+          }
+          .prism-popup {
+            width: 98vw;
+            max-width: 98vw;
+            border-radius: 16px;
+          }
+          .prism-popup-header {
+            padding: 12px 14px;
+          }
+          .prism-popup-title {
+            font-size: 15px;
+          }
+          .prism-popup-content {
+            padding: 10px;
+          }
         }
       </style>
       <div class="prism-popup">
@@ -1835,6 +1880,51 @@ class PrismButtonLightCard extends HTMLElement {
           border-radius: 12px;
           color: #dc2626;
           font-size: 13px;
+        }
+
+        /* Popup Responsive - Tablet/Mobile */
+        @media (max-height: 700px) {
+          .prism-popup-light {
+            max-height: 90vh;
+          }
+          .prism-popup-content-light {
+            max-height: calc(90vh - 80px);
+            padding: 12px;
+          }
+          .prism-popup-header-light {
+            padding: 12px 16px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .prism-popup-light {
+            width: 95vw;
+            max-width: 95vw;
+            max-height: 85vh;
+          }
+          .prism-popup-content-light {
+            max-height: calc(85vh - 80px);
+          }
+        }
+
+        @media (max-width: 480px) {
+          #prism-button-popup-overlay-light {
+            padding: 10px;
+          }
+          .prism-popup-light {
+            width: 98vw;
+            max-width: 98vw;
+            border-radius: 16px;
+          }
+          .prism-popup-header-light {
+            padding: 12px 14px;
+          }
+          .prism-popup-title-light {
+            font-size: 15px;
+          }
+          .prism-popup-content-light {
+            padding: 10px;
+          }
         }
       </style>
       <div class="prism-popup-light">
@@ -13457,6 +13547,7 @@ class PrismSidebarCard extends HTMLElement {
         this.currentCameraIndex = 0;
         this.cameraEntities = [];
         this.forecastSubscriber = null; // For weather forecast subscription
+        this._popupCards = []; // Store references to custom cards in popup for hass updates
     }
 
     // Format energy value with max 2 decimal places
@@ -13497,78 +13588,158 @@ class PrismSidebarCard extends HTMLElement {
                     label: "Sidebar width (optional, e.g. 350px)",
                     selector: { text: {} }
                 },
+                // Camera Section
                 {
-                    name: "camera_entity",
-                    label: "Camera entity",
-                    selector: { entity: { domain: "camera" } }
+                    type: 'expandable',
+                    name: '',
+                    title: '📷 Camera',
+                    schema: [
+                        {
+                            name: "camera_entity",
+                            label: "Camera entity",
+                            selector: { entity: { domain: "camera" } }
+                        },
+                        {
+                            name: "camera_entity_2",
+                            label: "Camera entity 2",
+                            selector: { entity: { domain: "camera" } }
+                        },
+                        {
+                            name: "camera_entity_3",
+                            label: "Camera entity 3",
+                            selector: { entity: { domain: "camera" } }
+                        },
+                        {
+                            name: "rotation_interval",
+                            label: "Rotation interval",
+                            selector: { number: { min: 3, max: 60, step: 1, unit_of_measurement: "s" } },
+                            default: 10
+                        }
+                    ]
                 },
+                // Calendar Section
                 {
-                    name: "camera_entity_2",
-                    label: "Camera entity 2",
-                    selector: { entity: { domain: "camera" } }
+                    type: 'expandable',
+                    name: '',
+                    title: '📅 Calendar',
+                    schema: [
+                        {
+                            name: "calendar_entity",
+                            label: "Calendar entity",
+                            selector: { entity: { domain: "calendar" } }
+                        },
+                        {
+                            name: "use_custom_popup_calendar",
+                            label: "Use Custom Popup",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "popup_cards_calendar",
+                            label: "Custom Popup Cards (YAML - array of card configs)",
+                            selector: { object: {} }
+                        }
+                    ]
                 },
+                // Weather Section
                 {
-                    name: "camera_entity_3",
-                    label: "Camera entity 3",
-                    selector: { entity: { domain: "camera" } }
+                    type: 'expandable',
+                    name: '',
+                    title: '🌤️ Weather',
+                    schema: [
+                        {
+                            name: "temperature_entity",
+                            label: "Temperature entity",
+                            selector: { entity: { domain: "sensor" } }
+                        },
+                        {
+                            name: "temperature_title",
+                            label: "Temperature section title",
+                            selector: { text: {} }
+                        },
+                        {
+                            name: "weather_entity",
+                            label: "Weather entity",
+                            selector: { entity: { domain: "weather" } }
+                        },
+                        {
+                            name: "forecast_days",
+                            label: "Forecast days",
+                            selector: { number: { min: 1, max: 7, step: 1, unit_of_measurement: "days" } },
+                            default: 3
+                        },
+                        {
+                            name: "graph_hours",
+                            label: "Graph hours to show (requires mini-graph-card from HACS)",
+                            selector: { number: { min: 1, max: 168, step: 1, unit_of_measurement: "h" } },
+                            default: 24
+                        },
+                        {
+                            name: "use_custom_popup_weather",
+                            label: "Use Custom Popup",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "popup_cards_weather",
+                            label: "Custom Popup Cards (YAML - array of card configs)",
+                            selector: { object: {} }
+                        }
+                    ]
                 },
+                // Energy Section
                 {
-                    name: "rotation_interval",
-                    label: "Rotation interval",
-                    selector: { number: { min: 3, max: 60, step: 1, unit_of_measurement: "s" } },
-                    default: 10
+                    type: 'expandable',
+                    name: '',
+                    title: '⚡ Energy',
+                    schema: [
+                        {
+                            name: "grid_entity",
+                            label: "Grid entity",
+                            selector: { entity: {} }
+                        },
+                        {
+                            name: "solar_entity",
+                            label: "Solar entity",
+                            selector: { entity: {} }
+                        },
+                        {
+                            name: "home_entity",
+                            label: "Home entity",
+                            selector: { entity: {} }
+                        },
+                        {
+                            name: "use_custom_popup_energy",
+                            label: "Use Custom Popup",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "popup_cards_energy",
+                            label: "Custom Popup Cards (YAML - array of card configs)",
+                            selector: { object: {} }
+                        }
+                    ]
                 },
+                // Custom Card Section
                 {
-                    name: "temperature_entity",
-                    label: "Temperature entity",
-                    selector: { entity: { domain: "sensor" } }
-                },
-                {
-                    name: "temperature_title",
-                    label: "Temperature section title",
-                    selector: { text: {} }
-                },
-                {
-                    name: "weather_entity",
-                    label: "Weather entity",
-                    selector: { entity: { domain: "weather" } }
-                },
-                {
-                    name: "forecast_days",
-                    label: "Forecast days",
-                    selector: { number: { min: 1, max: 7, step: 1, unit_of_measurement: "days" } },
-                    default: 3
-                },
-                {
-                    name: "grid_entity",
-                    label: "Grid entity",
-                    selector: { entity: {} }
-                },
-                {
-                    name: "solar_entity",
-                    label: "Solar entity",
-                    selector: { entity: {} }
-                },
-                {
-                    name: "home_entity",
-                    label: "Home entity",
-                    selector: { entity: {} }
-                },
-                {
-                    name: "calendar_entity",
-                    label: "Calendar entity",
-                    selector: { entity: { domain: "calendar" } }
-                },
-                {
-                    name: "graph_hours",
-                    label: "Graph hours to show (requires mini-graph-card from HACS)",
-                    selector: { number: { min: 1, max: 168, step: 1, unit_of_measurement: "h" } },
-                    default: 24
-                },
-                {
-                    name: "custom_card",
-                    label: "Custom card (YAML)",
-                    selector: { object: {} }
+                    type: 'expandable',
+                    name: '',
+                    title: '🎴 Custom Card',
+                    schema: [
+                        {
+                            name: "custom_card",
+                            label: "Custom card config (YAML)",
+                            selector: { object: {} }
+                        },
+                        {
+                            name: "use_custom_popup_card",
+                            label: "Use Custom Popup (opens popup when clicked)",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "popup_cards_custom",
+                            label: "Custom Popup Cards (YAML - array of card configs)",
+                            selector: { object: {} }
+                        }
+                    ]
                 }
             ]
         };
@@ -13590,6 +13761,19 @@ class PrismSidebarCard extends HTMLElement {
         this.calendarEntity = this.config.calendar_entity || 'calendar.example';
         this.temperatureTitle = this.config.temperature_title || 'Outdoor';
         this.customCardConfig = this.config.custom_card || null;
+        
+        // Custom Popup Configs
+        this.useCustomPopupCalendar = this.config.use_custom_popup_calendar || false;
+        this.popupCardsCalendar = this.config.popup_cards_calendar || null;
+        
+        this.useCustomPopupWeather = this.config.use_custom_popup_weather || false;
+        this.popupCardsWeather = this.config.popup_cards_weather || null;
+        
+        this.useCustomPopupEnergy = this.config.use_custom_popup_energy || false;
+        this.popupCardsEnergy = this.config.popup_cards_energy || null;
+        
+        this.useCustomPopupCard = this.config.use_custom_popup_card || false;
+        this.popupCardsCustom = this.config.popup_cards_custom || null;
         
         // Graph settings (uses mini-graph-card)
         this.graphHours = this.config.graph_hours || 24;
@@ -13691,6 +13875,19 @@ class PrismSidebarCard extends HTMLElement {
         // Update mini-graph-card hass
         if (this._miniGraphCardElement && this._miniGraphCardElement.hass !== undefined) {
             this._miniGraphCardElement.hass = hass;
+        }
+        
+        // Update popup cards hass (if popup is open)
+        if (this._popupCards && this._popupCards.length > 0) {
+            this._popupCards.forEach(card => {
+                if (card) {
+                    try {
+                        card.hass = hass;
+                    } catch (e) {
+                        // Card doesn't support hass updates
+                    }
+                }
+            });
         }
     }
     
@@ -14516,7 +14713,7 @@ class PrismSidebarCard extends HTMLElement {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                z-index: 9999;
+                z-index: 1;
                 animation: fadeIn 0.2s ease;
             }
             @keyframes fadeIn {
@@ -14593,6 +14790,51 @@ class PrismSidebarCard extends HTMLElement {
             }
             .popup-more-info-btn:hover {
                 background: rgba(59, 130, 246, 0.3);
+            }
+
+            /* Popup Responsive - Tablet/Mobile */
+            @media (max-height: 700px) {
+                .popup {
+                    max-height: 90vh;
+                }
+                .popup-content {
+                    max-height: calc(90vh - 110px);
+                    padding: 10px;
+                }
+                .popup-header {
+                    padding: 12px 16px;
+                }
+                .popup-footer {
+                    padding: 10px 12px;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .popup {
+                    width: 95%;
+                    max-height: 85vh;
+                }
+                .popup-content {
+                    max-height: calc(85vh - 110px);
+                    padding: 10px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .popup {
+                    width: 98%;
+                    border-radius: 16px;
+                }
+                .popup-header {
+                    padding: 12px 14px;
+                    font-size: 15px;
+                }
+                .popup-content {
+                    padding: 8px;
+                }
+                .popup-footer {
+                    padding: 8px 10px;
+                }
             }
 
             /* Calendar Popup Styles */
@@ -14824,6 +15066,232 @@ class PrismSidebarCard extends HTMLElement {
                 .mini-graph-container {
                     margin-bottom: 10px;
                 }
+            }
+
+            /* Popup Styles */
+            .popup-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.8);
+                backdrop-filter: blur(10px);
+                z-index: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                animation: fadeIn 0.2s ease;
+            }
+
+            .popup {
+                background: linear-gradient(135deg, rgba(30, 32, 36, 0.98) 0%, rgba(20, 22, 26, 0.98) 100%);
+                border-radius: 24px;
+                max-width: 600px;
+                width: 100%;
+                max-height: 80vh;
+                overflow: hidden;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                animation: slideUp 0.3s ease;
+            }
+
+            .popup-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 20px 24px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.02);
+            }
+
+            .popup-header span {
+                flex: 1;
+                font-size: 18px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+            .popup-close {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                width: 36px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.2s;
+                color: rgba(255, 255, 255, 0.6);
+            }
+
+            .popup-close:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+            .popup-content {
+                padding: 24px;
+                overflow-y: auto;
+                max-height: calc(80vh - 80px);
+            }
+
+            .custom-cards-container {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .popup-footer {
+                padding: 16px 24px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.02);
+                display: flex;
+                justify-content: flex-end;
+            }
+
+            .popup-more-info-btn {
+                background: rgba(122, 101, 168, 0.2);
+                border: 1px solid rgba(122, 101, 168, 0.4);
+                border-radius: 12px;
+                padding: 10px 16px;
+                color: #a78bfa;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                transition: all 0.2s;
+            }
+
+            .popup-more-info-btn:hover {
+                background: rgba(122, 101, 168, 0.3);
+                border-color: rgba(122, 101, 168, 0.6);
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            @keyframes slideUp {
+                from { 
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to { 
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            /* Calendar Popup Styles */
+            .calendar-no-events {
+                text-align: center;
+                padding: 40px 20px;
+                color: rgba(255, 255, 255, 0.4);
+            }
+
+            .calendar-event {
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 12px;
+                border-left: 4px solid #7a65a8;
+            }
+
+            .calendar-event-title {
+                font-size: 16px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.9);
+                margin-bottom: 8px;
+            }
+
+            .calendar-event-time {
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.6);
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            /* Weather Popup Styles */
+            .weather-current {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                margin-bottom: 24px;
+                padding: 20px;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 16px;
+            }
+
+            .weather-current-info {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .weather-current-temp {
+                font-size: 32px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+            .weather-current-condition {
+                font-size: 16px;
+                color: rgba(255, 255, 255, 0.6);
+            }
+
+            .weather-current-details {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.4);
+                margin-top: 4px;
+            }
+
+            .weather-forecast-title {
+                font-size: 14px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.5);
+                margin-bottom: 12px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .weather-forecast-item {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px;
+                background: rgba(255, 255, 255, 0.03);
+                border-radius: 12px;
+                margin-bottom: 8px;
+            }
+
+            .weather-forecast-day {
+                flex: 1;
+                font-size: 14px;
+                font-weight: 500;
+                color: rgba(255, 255, 255, 0.7);
+            }
+
+            .weather-forecast-temps {
+                display: flex;
+                gap: 8px;
+                font-size: 14px;
+            }
+
+            .weather-forecast-high {
+                color: rgba(255, 255, 255, 0.9);
+                font-weight: 600;
+            }
+
+            .weather-forecast-low {
+                color: rgba(255, 255, 255, 0.4);
             }
         </style>
 
@@ -15090,6 +15558,13 @@ class PrismSidebarCard extends HTMLElement {
         if (forecastGrid) {
             forecastGrid.addEventListener('click', () => this._handleWeatherClick());
         }
+        
+        // Custom card click - opens custom popup if enabled
+        const customCardSlot = this.shadowRoot?.getElementById('custom-card-slot');
+        if (customCardSlot && this.useCustomPopupCard && this.popupCardsCustom) {
+            customCardSlot.style.cursor = 'pointer';
+            customCardSlot.addEventListener('click', () => this._handleCustomCardClick());
+        }
     }
 
     _handleCameraClick() {
@@ -15107,6 +15582,12 @@ class PrismSidebarCard extends HTMLElement {
 
     async _handleCalendarClick() {
         if (!this._hass || !this.calendarEntity) return;
+        
+        // Check if custom popup is enabled
+        if (this.useCustomPopupCalendar && this.popupCardsCalendar) {
+            this._showCustomPopup('Calendar', this.popupCardsCalendar);
+            return;
+        }
         
         // Load upcoming events
         const now = new Date();
@@ -15255,6 +15736,13 @@ class PrismSidebarCard extends HTMLElement {
 
     _handleEnergyClick(entityId) {
         if (!this._hass || !entityId) return;
+        
+        // Check if custom popup is enabled
+        if (this.useCustomPopupEnergy && this.popupCardsEnergy) {
+            this._showCustomPopup('Energy', this.popupCardsEnergy);
+            return;
+        }
+        
         const event = new CustomEvent('hass-more-info', {
             bubbles: true,
             composed: true,
@@ -15263,8 +15751,23 @@ class PrismSidebarCard extends HTMLElement {
         this.dispatchEvent(event);
     }
 
+    _handleCustomCardClick() {
+        if (!this._hass) return;
+        
+        // Show custom popup
+        if (this.useCustomPopupCard && this.popupCardsCustom) {
+            this._showCustomPopup('Details', this.popupCardsCustom);
+        }
+    }
+
     async _handleWeatherClick() {
         if (!this._hass || !this.weatherEntity) return;
+        
+        // Check if custom popup is enabled
+        if (this.useCustomPopupWeather && this.popupCardsWeather) {
+            this._showCustomPopup('Weather', this.popupCardsWeather);
+            return;
+        }
         
         // Get weather data
         const weatherState = this._hass.states[this.weatherEntity];
@@ -15477,6 +15980,120 @@ class PrismSidebarCard extends HTMLElement {
         });
     }
 
+    // Show custom popup with custom cards
+    _showCustomPopup(title, cardsConfig) {
+        // Remove existing popup
+        const existingPopup = this.shadowRoot?.querySelector('.popup-overlay');
+        if (existingPopup) existingPopup.remove();
+        
+        // Clear previous popup cards
+        this._popupCards = [];
+        
+        // Parse cards config if it's an object (could be array or single card)
+        let cards = [];
+        if (Array.isArray(cardsConfig)) {
+            cards = cardsConfig;
+        } else if (cardsConfig && typeof cardsConfig === 'object') {
+            cards = [cardsConfig];
+        }
+        
+        // Create popup - stays in shadow root so events propagate correctly to HA
+        const popupOverlay = document.createElement('div');
+        popupOverlay.className = 'popup-overlay';
+        popupOverlay.innerHTML = `
+            <div class="popup">
+                <div class="popup-header">
+                    <ha-icon icon="mdi:view-dashboard" style="--mdc-icon-size: 24px; color: #7a65a8;"></ha-icon>
+                    <span>${title}</span>
+                    <button class="popup-close">
+                        <ha-icon icon="mdi:close" style="--mdc-icon-size: 20px;"></ha-icon>
+                    </button>
+                </div>
+                <div class="popup-content custom-cards-container">
+                </div>
+            </div>
+        `;
+        
+        // Add to shadow root (so hass-more-info events propagate correctly)
+        this.shadowRoot.appendChild(popupOverlay);
+        
+        // Insert custom cards and store references
+        const container = popupOverlay.querySelector('.custom-cards-container');
+        cards.forEach(cardConfig => {
+            const card = this._createPopupCustomCard(cardConfig);
+            if (card) {
+                container.appendChild(card);
+                // Store reference for hass updates
+                this._popupCards.push(card);
+            }
+        });
+        
+        // Event listeners
+        const closePopup = () => {
+            popupOverlay.remove();
+            this._popupCards = []; // Clear references when popup closes
+        };
+        
+        popupOverlay.addEventListener('click', (e) => {
+            if (e.target === popupOverlay) {
+                closePopup();
+            }
+        });
+        
+        const closeBtn = popupOverlay.querySelector('.popup-close');
+        closeBtn?.addEventListener('click', closePopup);
+    }
+
+    // Create a custom card for popup
+    _createPopupCustomCard(config) {
+        if (!config || !config.type) return null;
+        
+        let cardType = config.type;
+        
+        // Strip 'custom:' prefix if present
+        if (cardType.startsWith('custom:')) {
+            cardType = cardType.substring(7);
+        }
+        
+        // Check if element is registered
+        if (!customElements.get(cardType)) {
+            console.warn(`Custom card ${cardType} not found. Make sure it's installed.`);
+            
+            // Create error placeholder
+            const errorCard = document.createElement('div');
+            errorCard.style.cssText = 'padding: 16px; background: rgba(255,0,0,0.1); border-radius: 8px; color: rgba(255,255,255,0.8); text-align: center;';
+            errorCard.innerHTML = `
+                <ha-icon icon="mdi:alert-circle" style="--mdc-icon-size: 24px; display: block; margin: 0 auto 8px;"></ha-icon>
+                <div>Card "${cardType}" not found</div>
+                <div style="font-size: 12px; opacity: 0.6; margin-top: 4px;">Make sure it's installed via HACS</div>
+            `;
+            return errorCard;
+        }
+        
+        try {
+            const element = document.createElement(cardType);
+            
+            // Set config
+            if (element.setConfig) {
+                element.setConfig(config);
+            }
+            
+            // Set hass - always try to set it (most cards have a hass setter)
+            if (this._hass) {
+                try {
+                    element.hass = this._hass;
+                } catch (e) {
+                    // Card doesn't support hass
+                }
+            }
+            
+            return element;
+        } catch (error) {
+            console.error(`Error creating card ${cardType}:`, error);
+            return null;
+        }
+    }
+
     // Translation helper - English default, German if HA is set to German
     _t(key) {
         const lang = this._hass?.language || this._hass?.locale?.language || 'en';
@@ -15522,6 +16139,7 @@ class PrismSidebarLightCard extends HTMLElement {
         this.currentCameraIndex = 0;
         this.cameraEntities = [];
         this.forecastSubscriber = null; // For weather forecast subscription
+        this._popupCards = []; // Store references to custom cards in popup for hass updates
     }
 
     // Format energy value with max 2 decimal places
@@ -15562,78 +16180,158 @@ class PrismSidebarLightCard extends HTMLElement {
                     label: "Sidebar width (optional, e.g. 350px)",
                     selector: { text: {} }
                 },
+                // Camera Section
                 {
-                    name: "camera_entity",
-                    label: "Camera entity",
-                    selector: { entity: { domain: "camera" } }
+                    type: 'expandable',
+                    name: '',
+                    title: '📷 Camera',
+                    schema: [
+                        {
+                            name: "camera_entity",
+                            label: "Camera entity",
+                            selector: { entity: { domain: "camera" } }
+                        },
+                        {
+                            name: "camera_entity_2",
+                            label: "Camera entity 2",
+                            selector: { entity: { domain: "camera" } }
+                        },
+                        {
+                            name: "camera_entity_3",
+                            label: "Camera entity 3",
+                            selector: { entity: { domain: "camera" } }
+                        },
+                        {
+                            name: "rotation_interval",
+                            label: "Rotation interval",
+                            selector: { number: { min: 3, max: 60, step: 1, unit_of_measurement: "s" } },
+                            default: 10
+                        }
+                    ]
                 },
+                // Calendar Section
                 {
-                    name: "camera_entity_2",
-                    label: "Camera entity 2",
-                    selector: { entity: { domain: "camera" } }
+                    type: 'expandable',
+                    name: '',
+                    title: '📅 Calendar',
+                    schema: [
+                        {
+                            name: "calendar_entity",
+                            label: "Calendar entity",
+                            selector: { entity: { domain: "calendar" } }
+                        },
+                        {
+                            name: "use_custom_popup_calendar",
+                            label: "Use Custom Popup",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "popup_cards_calendar",
+                            label: "Custom Popup Cards (YAML - array of card configs)",
+                            selector: { object: {} }
+                        }
+                    ]
                 },
+                // Weather Section
                 {
-                    name: "camera_entity_3",
-                    label: "Camera entity 3",
-                    selector: { entity: { domain: "camera" } }
+                    type: 'expandable',
+                    name: '',
+                    title: '🌤️ Weather',
+                    schema: [
+                        {
+                            name: "temperature_entity",
+                            label: "Temperature entity",
+                            selector: { entity: { domain: "sensor" } }
+                        },
+                        {
+                            name: "temperature_title",
+                            label: "Temperature section title",
+                            selector: { text: {} }
+                        },
+                        {
+                            name: "weather_entity",
+                            label: "Weather entity",
+                            selector: { entity: { domain: "weather" } }
+                        },
+                        {
+                            name: "forecast_days",
+                            label: "Forecast days",
+                            selector: { number: { min: 1, max: 7, step: 1, unit_of_measurement: "days" } },
+                            default: 3
+                        },
+                        {
+                            name: "graph_hours",
+                            label: "Graph hours to show (requires mini-graph-card from HACS)",
+                            selector: { number: { min: 1, max: 168, step: 1, unit_of_measurement: "h" } },
+                            default: 24
+                        },
+                        {
+                            name: "use_custom_popup_weather",
+                            label: "Use Custom Popup",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "popup_cards_weather",
+                            label: "Custom Popup Cards (YAML - array of card configs)",
+                            selector: { object: {} }
+                        }
+                    ]
                 },
+                // Energy Section
                 {
-                    name: "rotation_interval",
-                    label: "Rotation interval",
-                    selector: { number: { min: 3, max: 60, step: 1, unit_of_measurement: "s" } },
-                    default: 10
+                    type: 'expandable',
+                    name: '',
+                    title: '⚡ Energy',
+                    schema: [
+                        {
+                            name: "grid_entity",
+                            label: "Grid entity",
+                            selector: { entity: {} }
+                        },
+                        {
+                            name: "solar_entity",
+                            label: "Solar entity",
+                            selector: { entity: {} }
+                        },
+                        {
+                            name: "home_entity",
+                            label: "Home entity",
+                            selector: { entity: {} }
+                        },
+                        {
+                            name: "use_custom_popup_energy",
+                            label: "Use Custom Popup",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "popup_cards_energy",
+                            label: "Custom Popup Cards (YAML - array of card configs)",
+                            selector: { object: {} }
+                        }
+                    ]
                 },
+                // Custom Card Section
                 {
-                    name: "temperature_entity",
-                    label: "Temperature entity",
-                    selector: { entity: { domain: "sensor" } }
-                },
-                {
-                    name: "temperature_title",
-                    label: "Temperature section title",
-                    selector: { text: {} }
-                },
-                {
-                    name: "weather_entity",
-                    label: "Weather entity",
-                    selector: { entity: { domain: "weather" } }
-                },
-                {
-                    name: "forecast_days",
-                    label: "Forecast days",
-                    selector: { number: { min: 1, max: 7, step: 1, unit_of_measurement: "days" } },
-                    default: 3
-                },
-                {
-                    name: "grid_entity",
-                    label: "Grid entity",
-                    selector: { entity: {} }
-                },
-                {
-                    name: "solar_entity",
-                    label: "Solar entity",
-                    selector: { entity: {} }
-                },
-                {
-                    name: "home_entity",
-                    label: "Home entity",
-                    selector: { entity: {} }
-                },
-                {
-                    name: "calendar_entity",
-                    label: "Calendar entity",
-                    selector: { entity: { domain: "calendar" } }
-                },
-                {
-                    name: "graph_hours",
-                    label: "Graph hours to show (requires mini-graph-card from HACS)",
-                    selector: { number: { min: 1, max: 168, step: 1, unit_of_measurement: "h" } },
-                    default: 24
-                },
-                {
-                    name: "custom_card",
-                    label: "Custom card (YAML)",
-                    selector: { object: {} }
+                    type: 'expandable',
+                    name: '',
+                    title: '🎴 Custom Card',
+                    schema: [
+                        {
+                            name: "custom_card",
+                            label: "Custom card config (YAML)",
+                            selector: { object: {} }
+                        },
+                        {
+                            name: "use_custom_popup_card",
+                            label: "Use Custom Popup (opens popup when clicked)",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "popup_cards_custom",
+                            label: "Custom Popup Cards (YAML - array of card configs)",
+                            selector: { object: {} }
+                        }
+                    ]
                 }
             ]
         };
@@ -15655,6 +16353,19 @@ class PrismSidebarLightCard extends HTMLElement {
         this.calendarEntity = this.config.calendar_entity || 'calendar.example';
         this.temperatureTitle = this.config.temperature_title || 'Outdoor';
         this.customCardConfig = this.config.custom_card || null;
+        
+        // Custom Popup Configs
+        this.useCustomPopupCalendar = this.config.use_custom_popup_calendar || false;
+        this.popupCardsCalendar = this.config.popup_cards_calendar || null;
+        
+        this.useCustomPopupWeather = this.config.use_custom_popup_weather || false;
+        this.popupCardsWeather = this.config.popup_cards_weather || null;
+        
+        this.useCustomPopupEnergy = this.config.use_custom_popup_energy || false;
+        this.popupCardsEnergy = this.config.popup_cards_energy || null;
+        
+        this.useCustomPopupCard = this.config.use_custom_popup_card || false;
+        this.popupCardsCustom = this.config.popup_cards_custom || null;
         
         // Graph settings (uses mini-graph-card)
         this.graphHours = this.config.graph_hours || 24;
@@ -15756,6 +16467,19 @@ class PrismSidebarLightCard extends HTMLElement {
         // Update mini-graph-card hass
         if (this._miniGraphCardElement && this._miniGraphCardElement.hass !== undefined) {
             this._miniGraphCardElement.hass = hass;
+        }
+        
+        // Update popup cards hass (if popup is open)
+        if (this._popupCards && this._popupCards.length > 0) {
+            this._popupCards.forEach(card => {
+                if (card) {
+                    try {
+                        card.hass = hass;
+                    } catch (e) {
+                        // Card doesn't support hass updates
+                    }
+                }
+            });
         }
     }
     
@@ -16681,6 +17405,279 @@ class PrismSidebarLightCard extends HTMLElement {
                     margin-bottom: 10px;
                 }
             }
+
+            /* Popup Styles */
+            .popup-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.4);
+                backdrop-filter: blur(10px);
+                z-index: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                animation: fadeIn 0.2s ease;
+            }
+
+            .popup {
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 24px;
+                max-width: 600px;
+                width: 100%;
+                max-height: 80vh;
+                overflow: hidden;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                animation: slideUp 0.3s ease;
+            }
+
+            .popup-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 20px 24px;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+                background: rgba(0, 0, 0, 0.02);
+            }
+
+            .popup-header span {
+                flex: 1;
+                font-size: 18px;
+                font-weight: 700;
+                color: rgba(0, 0, 0, 0.9);
+            }
+
+            .popup-close {
+                background: rgba(0, 0, 0, 0.05);
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                border-radius: 12px;
+                width: 36px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.2s;
+                color: rgba(0, 0, 0, 0.6);
+            }
+
+            .popup-close:hover {
+                background: rgba(0, 0, 0, 0.1);
+                color: rgba(0, 0, 0, 0.9);
+            }
+
+            .popup-content {
+                padding: 24px;
+                overflow-y: auto;
+                max-height: calc(80vh - 80px);
+            }
+
+            .custom-cards-container {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .popup-footer {
+                padding: 16px 24px;
+                border-top: 1px solid rgba(0, 0, 0, 0.1);
+                background: rgba(0, 0, 0, 0.02);
+                display: flex;
+                justify-content: flex-end;
+            }
+
+            .popup-more-info-btn {
+                background: rgba(122, 101, 168, 0.1);
+                border: 1px solid rgba(122, 101, 168, 0.3);
+                border-radius: 12px;
+                padding: 10px 16px;
+                color: #7a65a8;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                transition: all 0.2s;
+            }
+
+            .popup-more-info-btn:hover {
+                background: rgba(122, 101, 168, 0.2);
+                border-color: rgba(122, 101, 168, 0.5);
+            }
+
+            /* Popup Responsive - Tablet/Mobile */
+            @media (max-height: 700px) {
+                .popup {
+                    max-height: 90vh;
+                }
+                .popup-content {
+                    max-height: calc(90vh - 100px);
+                    padding: 16px;
+                }
+                .popup-header {
+                    padding: 14px 18px;
+                }
+                .popup-footer {
+                    padding: 12px 18px;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .popup {
+                    width: 95%;
+                    max-height: 85vh;
+                }
+                .popup-content {
+                    max-height: calc(85vh - 100px);
+                    padding: 16px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .popup {
+                    width: 98%;
+                    border-radius: 16px;
+                }
+                .popup-header {
+                    padding: 14px 16px;
+                }
+                .popup-header span {
+                    font-size: 16px;
+                }
+                .popup-content {
+                    padding: 12px;
+                }
+                .popup-footer {
+                    padding: 10px 14px;
+                }
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            @keyframes slideUp {
+                from { 
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to { 
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            /* Calendar Popup Styles */
+            .calendar-no-events {
+                text-align: center;
+                padding: 40px 20px;
+                color: rgba(0, 0, 0, 0.4);
+            }
+
+            .calendar-event {
+                background: rgba(0, 0, 0, 0.05);
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 12px;
+                border-left: 4px solid #7a65a8;
+            }
+
+            .calendar-event-title {
+                font-size: 16px;
+                font-weight: 600;
+                color: rgba(0, 0, 0, 0.9);
+                margin-bottom: 8px;
+            }
+
+            .calendar-event-time {
+                font-size: 14px;
+                color: rgba(0, 0, 0, 0.6);
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            /* Weather Popup Styles */
+            .weather-current {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                margin-bottom: 24px;
+                padding: 20px;
+                background: rgba(0, 0, 0, 0.05);
+                border-radius: 16px;
+            }
+
+            .weather-current-info {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .weather-current-temp {
+                font-size: 32px;
+                font-weight: 700;
+                color: rgba(0, 0, 0, 0.9);
+            }
+
+            .weather-current-condition {
+                font-size: 16px;
+                color: rgba(0, 0, 0, 0.6);
+            }
+
+            .weather-current-details {
+                font-size: 13px;
+                color: rgba(0, 0, 0, 0.4);
+                margin-top: 4px;
+            }
+
+            .weather-forecast-title {
+                font-size: 14px;
+                font-weight: 600;
+                color: rgba(0, 0, 0, 0.5);
+                margin-bottom: 12px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .weather-forecast-item {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px;
+                background: rgba(0, 0, 0, 0.03);
+                border-radius: 12px;
+                margin-bottom: 8px;
+            }
+
+            .weather-forecast-day {
+                flex: 1;
+                font-size: 14px;
+                font-weight: 500;
+                color: rgba(0, 0, 0, 0.7);
+            }
+
+            .weather-forecast-temps {
+                display: flex;
+                gap: 8px;
+                font-size: 14px;
+            }
+
+            .weather-forecast-high {
+                color: rgba(0, 0, 0, 0.9);
+                font-weight: 600;
+            }
+
+            .weather-forecast-low {
+                color: rgba(0, 0, 0, 0.4);
+            }
         </style>
 
         <div class="sidebar">
@@ -16861,6 +17858,13 @@ class PrismSidebarLightCard extends HTMLElement {
         if (forecastGrid) {
             forecastGrid.addEventListener('click', () => this._handleWeatherClick());
         }
+        
+        // Custom card click - opens custom popup if enabled
+        const customCardSlot = this.shadowRoot?.getElementById('custom-card-slot');
+        if (customCardSlot && this.useCustomPopupCard && this.popupCardsCustom) {
+            customCardSlot.style.cursor = 'pointer';
+            customCardSlot.addEventListener('click', () => this._handleCustomCardClick());
+        }
     }
 
     _handleCameraClick() {
@@ -16878,6 +17882,12 @@ class PrismSidebarLightCard extends HTMLElement {
 
     async _handleCalendarClick() {
         if (!this._hass || !this.calendarEntity) return;
+        
+        // Check if custom popup is enabled
+        if (this.useCustomPopupCalendar && this.popupCardsCalendar) {
+            this._showCustomPopup('Calendar', this.popupCardsCalendar);
+            return;
+        }
         
         // Load upcoming events
         const now = new Date();
@@ -17014,7 +18024,7 @@ class PrismSidebarLightCard extends HTMLElement {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                z-index: 9999;
+                z-index: 1;
                 animation: fadeIn 0.2s ease;
             }
             @keyframes fadeIn {
@@ -17201,6 +18211,13 @@ class PrismSidebarLightCard extends HTMLElement {
 
     _handleEnergyClick(entityId) {
         if (!this._hass || !entityId) return;
+        
+        // Check if custom popup is enabled
+        if (this.useCustomPopupEnergy && this.popupCardsEnergy) {
+            this._showCustomPopup('Energy', this.popupCardsEnergy);
+            return;
+        }
+        
         const event = new CustomEvent('hass-more-info', {
             bubbles: true,
             composed: true,
@@ -17209,8 +18226,23 @@ class PrismSidebarLightCard extends HTMLElement {
         this.dispatchEvent(event);
     }
 
+    _handleCustomCardClick() {
+        if (!this._hass) return;
+        
+        // Show custom popup
+        if (this.useCustomPopupCard && this.popupCardsCustom) {
+            this._showCustomPopup('Details', this.popupCardsCustom);
+        }
+    }
+
     async _handleWeatherClick() {
         if (!this._hass || !this.weatherEntity) return;
+        
+        // Check if custom popup is enabled
+        if (this.useCustomPopupWeather && this.popupCardsWeather) {
+            this._showCustomPopup('Weather', this.popupCardsWeather);
+            return;
+        }
         
         // Get weather data
         const weatherState = this._hass.states[this.weatherEntity];
@@ -17413,7 +18445,7 @@ class PrismSidebarLightCard extends HTMLElement {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                z-index: 9999;
+                z-index: 1;
                 animation: fadeIn 0.2s ease;
             }
             @keyframes fadeIn {
@@ -17601,6 +18633,120 @@ class PrismSidebarLightCard extends HTMLElement {
             });
             this.dispatchEvent(event);
         });
+    }
+
+    // Show custom popup with custom cards
+    _showCustomPopup(title, cardsConfig) {
+        // Remove existing popup
+        const existingPopup = this.shadowRoot?.querySelector('.popup-overlay');
+        if (existingPopup) existingPopup.remove();
+        
+        // Clear previous popup cards
+        this._popupCards = [];
+        
+        // Parse cards config if it's an object (could be array or single card)
+        let cards = [];
+        if (Array.isArray(cardsConfig)) {
+            cards = cardsConfig;
+        } else if (cardsConfig && typeof cardsConfig === 'object') {
+            cards = [cardsConfig];
+        }
+        
+        // Create popup - stays in shadow root so events propagate correctly to HA
+        const popupOverlay = document.createElement('div');
+        popupOverlay.className = 'popup-overlay';
+        popupOverlay.innerHTML = `
+            <div class="popup">
+                <div class="popup-header">
+                    <ha-icon icon="mdi:view-dashboard" style="--mdc-icon-size: 24px; color: #7a65a8;"></ha-icon>
+                    <span>${title}</span>
+                    <button class="popup-close">
+                        <ha-icon icon="mdi:close" style="--mdc-icon-size: 20px;"></ha-icon>
+                    </button>
+                </div>
+                <div class="popup-content custom-cards-container">
+                </div>
+            </div>
+        `;
+        
+        // Add to shadow root (so hass-more-info events propagate correctly)
+        this.shadowRoot.appendChild(popupOverlay);
+        
+        // Insert custom cards and store references
+        const container = popupOverlay.querySelector('.custom-cards-container');
+        cards.forEach(cardConfig => {
+            const card = this._createPopupCustomCard(cardConfig);
+            if (card) {
+                container.appendChild(card);
+                // Store reference for hass updates
+                this._popupCards.push(card);
+            }
+        });
+        
+        // Event listeners
+        const closePopup = () => {
+            popupOverlay.remove();
+            this._popupCards = []; // Clear references when popup closes
+        };
+        
+        popupOverlay.addEventListener('click', (e) => {
+            if (e.target === popupOverlay) {
+                closePopup();
+            }
+        });
+        
+        const closeBtn = popupOverlay.querySelector('.popup-close');
+        closeBtn?.addEventListener('click', closePopup);
+    }
+
+    // Create a custom card for popup
+    _createPopupCustomCard(config) {
+        if (!config || !config.type) return null;
+        
+        let cardType = config.type;
+        
+        // Strip 'custom:' prefix if present
+        if (cardType.startsWith('custom:')) {
+            cardType = cardType.substring(7);
+        }
+        
+        // Check if element is registered
+        if (!customElements.get(cardType)) {
+            console.warn(`Custom card ${cardType} not found. Make sure it's installed.`);
+            
+            // Create error placeholder
+            const errorCard = document.createElement('div');
+            errorCard.style.cssText = 'padding: 16px; background: rgba(255,0,0,0.1); border-radius: 8px; color: rgba(0,0,0,0.8); text-align: center;';
+            errorCard.innerHTML = `
+                <ha-icon icon="mdi:alert-circle" style="--mdc-icon-size: 24px; display: block; margin: 0 auto 8px;"></ha-icon>
+                <div>Card "${cardType}" not found</div>
+                <div style="font-size: 12px; opacity: 0.6; margin-top: 4px;">Make sure it's installed via HACS</div>
+            `;
+            return errorCard;
+        }
+        
+        try {
+            const element = document.createElement(cardType);
+            
+            // Set config
+            if (element.setConfig) {
+                element.setConfig(config);
+            }
+            
+            // Set hass - always try to set it (most cards have a hass setter)
+            if (this._hass) {
+                try {
+                    element.hass = this._hass;
+                } catch (e) {
+                    // Card doesn't support hass
+                }
+            }
+            
+            return element;
+        } catch (error) {
+            console.error(`Error creating card ${cardType}:`, error);
+            return null;
+        }
     }
 
     // Translation helper - English default, German if HA is set to German
@@ -18120,15 +19266,44 @@ class PrismEnergyCard extends HTMLElement {
     const evPower = this._getStateInWatts(this._config.ev_power, 0);
     const autarky = this._getState(this._config.autarky, 0); // Autarky is percentage
 
+    // Determine states for labels
+    const isSolarActive = solarPower > 50;
+    const isGridImport = gridPower > 50;
+    const isGridExport = gridPower < -50;
+    const isBatteryCharging = batteryPower < -50;
+    const isBatteryDischarging = batteryPower > 50;
+    const isEvCharging = evPower > 50;
+    const hasBattery = !!this._config.battery_soc;
+
     // Update pill values
     this._updateElement('.pill-solar .pill-val', this._formatPower(solarPower));
     this._updateElement('.pill-grid .pill-val', this._formatPower(gridPower));
     this._updateElement('.pill-home .pill-val', this._formatPower(homeConsumption));
-    this._updateElement('.pill-battery .pill-val', `${Math.round(batterySoc)}%`);
+    if (hasBattery) {
+      this._updateElement('.pill-battery .pill-val', `${Math.round(batterySoc)}%`);
+    }
+    
+    // Update pill labels dynamically
+    this._updateElement('.pill-solar .pill-label', isSolarActive ? this._t('production') : this._t('inactive'));
+    this._updateElement('.pill-grid .pill-label', isGridExport ? this._t('export') : isGridImport ? this._t('import') : this._t('neutral'));
+    if (hasBattery) {
+      this._updateElement('.pill-battery .pill-label', isBatteryCharging ? this._t('charging') : isBatteryDischarging ? this._t('discharging') : this._t('standby'));
+    }
+    
+    // Update pill icon classes (active/inactive states)
+    this._updatePillIconClass('.pill-solar .pill-icon', isSolarActive, 'bg-solar');
+    this._updatePillIconClass('.pill-solar .pill-icon ha-icon', isSolarActive, 'color-solar');
+    this._updatePillIconClass('.pill-grid .pill-icon', isGridImport || isGridExport, 'bg-grid');
+    this._updatePillIconClass('.pill-grid .pill-icon ha-icon', isGridImport || isGridExport, 'color-grid');
+    if (hasBattery) {
+      this._updatePillIconClass('.pill-battery .pill-icon', isBatteryCharging || isBatteryDischarging, 'bg-battery');
+      this._updatePillIconClass('.pill-battery .pill-icon ha-icon', isBatteryCharging || isBatteryDischarging, 'color-battery');
+    }
     
     if (this._config.ev_power) {
-      const isEvCharging = evPower > 50;
       this._updateElement('.pill-ev .pill-val', isEvCharging ? this._formatPower(evPower) : this._t('idle'));
+      this._updatePillIconClass('.pill-ev .pill-icon', isEvCharging, 'bg-ev');
+      this._updatePillIconClass('.pill-ev .pill-icon ha-icon', isEvCharging, 'color-ev');
     }
     
     if (this._config.autarky) {
@@ -18140,6 +19315,23 @@ class PrismEnergyCard extends HTMLElement {
     
     // Update details section values
     this._updateDetails();
+  }
+  
+  // Helper to toggle active/inactive classes on pill icons
+  _updatePillIconClass(selector, isActive, activeClass) {
+    const el = this.shadowRoot.querySelector(selector);
+    if (!el) return;
+    
+    const inactiveClass = 'bg-inactive';
+    const inactiveColorClass = 'color-inactive';
+    
+    if (activeClass.startsWith('bg-')) {
+      el.classList.toggle(activeClass, isActive);
+      el.classList.toggle(inactiveClass, !isActive);
+    } else if (activeClass.startsWith('color-')) {
+      el.classList.toggle(activeClass, isActive);
+      el.classList.toggle(inactiveColorClass, !isActive);
+    }
   }
   
   // Update detail section values dynamically
@@ -18260,15 +19452,16 @@ class PrismEnergyCard extends HTMLElement {
     const isBatteryDischarging = batteryPower > 50;
     const isEvCharging = evPower > 50;
     const hasEV = !!this._config.ev_power;
+    const hasBattery = !!this._config.battery_soc;
 
     // Show/hide flow groups based on state
     this._setFlowVisibility('flow-solar-home', isSolarActive && homeConsumption > 0);
-    this._setFlowVisibility('flow-solar-battery', isSolarActive && isBatteryCharging);
+    this._setFlowVisibility('flow-solar-battery', hasBattery && isSolarActive && isBatteryCharging);
     this._setFlowVisibility('flow-solar-grid', isSolarActive && isGridExport);
     this._setFlowVisibility('flow-grid-home', isGridImport);
-    this._setFlowVisibility('flow-grid-battery', isGridImport && isBatteryCharging);
-    this._setFlowVisibility('flow-battery-home', isBatteryDischarging);
-    this._setFlowVisibility('flow-battery-grid', isBatteryDischarging && isGridExport);
+    this._setFlowVisibility('flow-grid-battery', hasBattery && isGridImport && isBatteryCharging);
+    this._setFlowVisibility('flow-battery-home', hasBattery && isBatteryDischarging);
+    this._setFlowVisibility('flow-battery-grid', hasBattery && isBatteryDischarging && isGridExport);
     
     if (hasEV) {
       // EV is treated as sub-load of home - only one line from home to EV
@@ -19090,6 +20283,7 @@ class PrismEnergyCard extends HTMLElement {
     
     const hasEV = !!this._config.ev_power;
     const hasAutarky = !!this._config.autarky;
+    const hasBattery = !!this._config.battery_soc;
     const houseImg = this._config.image;
     
     // Get weather data
@@ -19670,6 +20864,13 @@ class PrismEnergyCard extends HTMLElement {
           border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
         
+        /* 3 columns when no battery - centered */
+        .details-grid.no-battery {
+          grid-template-columns: repeat(3, 1fr);
+          max-width: 800px;
+          margin: 0 auto;
+        }
+        
         /* Medium screens - 2 columns */
         @media (max-width: 600px) {
           .details-grid {
@@ -19974,16 +21175,16 @@ class PrismEnergyCard extends HTMLElement {
             
             <!-- Solar Flows -->
             ${this._renderFlow(paths.solarToHome, colors.solar, isSolarActive && homeConsumption > 0, false, 'flow-solar-home')}
-            ${this._renderFlow(paths.solarToBattery, colors.solar, isSolarActive && isBatteryCharging, false, 'flow-solar-battery')}
+            ${hasBattery ? this._renderFlow(paths.solarToBattery, colors.solar, isSolarActive && isBatteryCharging, false, 'flow-solar-battery') : ''}
             ${this._renderFlow(paths.solarToGrid, colors.solar, isSolarActive && isGridExport, false, 'flow-solar-grid')}
 
             <!-- Grid Flows -->
             ${this._renderFlow(paths.gridToHome, colors.grid, isGridImport, false, 'flow-grid-home')}
-            ${this._renderFlow(paths.gridToBattery, colors.grid, isGridImport && isBatteryCharging, false, 'flow-grid-battery')}
+            ${hasBattery ? this._renderFlow(paths.gridToBattery, colors.grid, isGridImport && isBatteryCharging, false, 'flow-grid-battery') : ''}
 
             <!-- Battery Flows -->
-            ${this._renderFlow(paths.batteryToHome, colors.battery, isBatteryDischarging, false, 'flow-battery-home')}
-            ${this._renderFlow(paths.batteryToGrid, colors.battery, isBatteryDischarging && isGridExport, false, 'flow-battery-grid')}
+            ${hasBattery ? this._renderFlow(paths.batteryToHome, colors.battery, isBatteryDischarging, false, 'flow-battery-home') : ''}
+            ${hasBattery ? this._renderFlow(paths.batteryToGrid, colors.battery, isBatteryDischarging && isGridExport, false, 'flow-battery-grid') : ''}
 
             <!-- EV Flow (sub-load of home) -->
             ${hasEV ? this._renderFlow(paths.homeToEv, colors.ev, isEvCharging, false, 'flow-home-ev') : ''}
@@ -20023,6 +21224,7 @@ class PrismEnergyCard extends HTMLElement {
           </div>
 
           <!-- Battery Pill (Right - Battery Storage) - Clickable for history -->
+          ${hasBattery ? `
           <div class="pill pill-battery" style="top: ${pillPos.battery.y}%; left: ${pillPos.battery.x}%; --pill-scale: ${pillPos.battery.scale};" data-entity="${this._config.battery_soc}">
             <div class="pill-icon ${isBatteryCharging || isBatteryDischarging ? 'bg-battery' : 'bg-inactive'}">
               <ha-icon icon="${batteryIcon}" class="${isBatteryCharging || isBatteryDischarging ? 'color-battery' : 'color-inactive'}"></ha-icon>
@@ -20032,6 +21234,7 @@ class PrismEnergyCard extends HTMLElement {
               <span class="pill-label">${isBatteryCharging ? this._t('charging') : isBatteryDischarging ? this._t('discharging') : this._t('standby')}</span>
             </div>
           </div>
+          ` : ''}
 
           <!-- EV Pill (Bottom Left - Carport) - Clickable for history -->
           ${hasEV ? `
@@ -20050,7 +21253,7 @@ class PrismEnergyCard extends HTMLElement {
         <!-- Bottom Details -->
         ${this._config.show_details ? `
         <div class="details-wrapper">
-        <div class="details-grid">
+        <div class="details-grid ${!hasBattery ? 'no-battery' : ''}">
           <!-- Solar -->
           <div class="detail-col">
             <div class="detail-header">Solar</div>
@@ -20105,6 +21308,7 @@ class PrismEnergyCard extends HTMLElement {
           </div>
 
           <!-- Storage -->
+          ${hasBattery ? `
           <div class="detail-col">
             <div class="detail-header">${this._t('storage')}</div>
             <div class="detail-content">
@@ -20121,6 +21325,7 @@ class PrismEnergyCard extends HTMLElement {
               <div class="detail-fill" style="width: ${batterySoc}%; background: ${colors.battery};"></div>
             </div>
           </div>
+          ` : ''}
         </div>
         </div>
         ` : ''}
@@ -20614,15 +21819,44 @@ class PrismEnergyHorizontalCard extends HTMLElement {
     const evPower = this._getStateInWatts(this._config.ev_power, 0);
     const autarky = this._getState(this._config.autarky, 0); // Autarky is percentage
 
+    // Determine states for labels
+    const isSolarActive = solarPower > 50;
+    const isGridImport = gridPower > 50;
+    const isGridExport = gridPower < -50;
+    const isBatteryCharging = batteryPower < -50;
+    const isBatteryDischarging = batteryPower > 50;
+    const isEvCharging = evPower > 50;
+    const hasBattery = !!this._config.battery_soc;
+
     // Update pill values
     this._updateElement('.pill-solar .pill-val', this._formatPower(solarPower));
     this._updateElement('.pill-grid .pill-val', this._formatPower(gridPower));
     this._updateElement('.pill-home .pill-val', this._formatPower(homeConsumption));
-    this._updateElement('.pill-battery .pill-val', `${Math.round(batterySoc)}%`);
+    if (hasBattery) {
+      this._updateElement('.pill-battery .pill-val', `${Math.round(batterySoc)}%`);
+    }
+    
+    // Update pill labels dynamically
+    this._updateElement('.pill-solar .pill-label', isSolarActive ? this._t('production') : this._t('inactive'));
+    this._updateElement('.pill-grid .pill-label', isGridExport ? this._t('export') : isGridImport ? this._t('import') : this._t('neutral'));
+    if (hasBattery) {
+      this._updateElement('.pill-battery .pill-label', isBatteryCharging ? this._t('charging') : isBatteryDischarging ? this._t('discharging') : this._t('standby'));
+    }
+    
+    // Update pill icon classes (active/inactive states)
+    this._updatePillIconClass('.pill-solar .pill-icon', isSolarActive, 'bg-solar');
+    this._updatePillIconClass('.pill-solar .pill-icon ha-icon', isSolarActive, 'color-solar');
+    this._updatePillIconClass('.pill-grid .pill-icon', isGridImport || isGridExport, 'bg-grid');
+    this._updatePillIconClass('.pill-grid .pill-icon ha-icon', isGridImport || isGridExport, 'color-grid');
+    if (hasBattery) {
+      this._updatePillIconClass('.pill-battery .pill-icon', isBatteryCharging || isBatteryDischarging, 'bg-battery');
+      this._updatePillIconClass('.pill-battery .pill-icon ha-icon', isBatteryCharging || isBatteryDischarging, 'color-battery');
+    }
     
     if (this._config.ev_power) {
-      const isEvCharging = evPower > 50;
       this._updateElement('.pill-ev .pill-val', isEvCharging ? this._formatPower(evPower) : this._t('idle'));
+      this._updatePillIconClass('.pill-ev .pill-icon', isEvCharging, 'bg-ev');
+      this._updatePillIconClass('.pill-ev .pill-icon ha-icon', isEvCharging, 'color-ev');
     }
     
     if (this._config.autarky) {
@@ -20634,6 +21868,23 @@ class PrismEnergyHorizontalCard extends HTMLElement {
 
     // Update flow visibility
     this._updateFlows();
+  }
+  
+  // Helper to toggle active/inactive classes on pill icons
+  _updatePillIconClass(selector, isActive, activeClass) {
+    const el = this.shadowRoot.querySelector(selector);
+    if (!el) return;
+    
+    const inactiveClass = 'bg-inactive';
+    const inactiveColorClass = 'color-inactive';
+    
+    if (activeClass.startsWith('bg-')) {
+      el.classList.toggle(activeClass, isActive);
+      el.classList.toggle(inactiveClass, !isActive);
+    } else if (activeClass.startsWith('color-')) {
+      el.classList.toggle(activeClass, isActive);
+      el.classList.toggle(inactiveColorClass, !isActive);
+    }
   }
 
   _updateElement(selector, value) {
@@ -20691,15 +21942,16 @@ class PrismEnergyHorizontalCard extends HTMLElement {
     const isBatteryDischarging = batteryPower > 50;
     const isEvCharging = evPower > 50;
     const hasEV = !!this._config.ev_power;
+    const hasBattery = !!this._config.battery_soc;
 
     // Show/hide flow groups based on state
     this._setFlowVisibility('flow-solar-home', isSolarActive && homeConsumption > 0);
-    this._setFlowVisibility('flow-solar-battery', isSolarActive && isBatteryCharging);
+    this._setFlowVisibility('flow-solar-battery', hasBattery && isSolarActive && isBatteryCharging);
     this._setFlowVisibility('flow-solar-grid', isSolarActive && isGridExport);
     this._setFlowVisibility('flow-grid-home', isGridImport);
-    this._setFlowVisibility('flow-grid-battery', isGridImport && isBatteryCharging);
-    this._setFlowVisibility('flow-battery-home', isBatteryDischarging);
-    this._setFlowVisibility('flow-battery-grid', isBatteryDischarging && isGridExport);
+    this._setFlowVisibility('flow-grid-battery', hasBattery && isGridImport && isBatteryCharging);
+    this._setFlowVisibility('flow-battery-home', hasBattery && isBatteryDischarging);
+    this._setFlowVisibility('flow-battery-grid', hasBattery && isBatteryDischarging && isGridExport);
     
     if (hasEV) {
       // EV is treated as sub-load of home - only one line from home to EV
@@ -21166,6 +22418,7 @@ class PrismEnergyHorizontalCard extends HTMLElement {
     
     const hasEV = !!this._config.ev_power;
     const hasAutarky = !!this._config.autarky;
+    const hasBattery = !!this._config.battery_soc;
     const houseImg = this._config.image;
     
     // Get weather data
@@ -21986,16 +23239,16 @@ class PrismEnergyHorizontalCard extends HTMLElement {
                 
                 <!-- Solar Flows -->
                 ${this._renderFlow(paths.solarToHome, colors.solar, isSolarActive && homeConsumption > 0, false, 'flow-solar-home')}
-                ${this._renderFlow(paths.solarToBattery, colors.solar, isSolarActive && isBatteryCharging, false, 'flow-solar-battery')}
+                ${hasBattery ? this._renderFlow(paths.solarToBattery, colors.solar, isSolarActive && isBatteryCharging, false, 'flow-solar-battery') : ''}
                 ${this._renderFlow(paths.solarToGrid, colors.solar, isSolarActive && isGridExport, false, 'flow-solar-grid')}
 
                 <!-- Grid Flows -->
                 ${this._renderFlow(paths.gridToHome, colors.grid, isGridImport, false, 'flow-grid-home')}
-                ${this._renderFlow(paths.gridToBattery, colors.grid, isGridImport && isBatteryCharging, false, 'flow-grid-battery')}
+                ${hasBattery ? this._renderFlow(paths.gridToBattery, colors.grid, isGridImport && isBatteryCharging, false, 'flow-grid-battery') : ''}
 
                 <!-- Battery Flows -->
-                ${this._renderFlow(paths.batteryToHome, colors.battery, isBatteryDischarging, false, 'flow-battery-home')}
-                ${this._renderFlow(paths.batteryToGrid, colors.battery, isBatteryDischarging && isGridExport, false, 'flow-battery-grid')}
+                ${hasBattery ? this._renderFlow(paths.batteryToHome, colors.battery, isBatteryDischarging, false, 'flow-battery-home') : ''}
+                ${hasBattery ? this._renderFlow(paths.batteryToGrid, colors.battery, isBatteryDischarging && isGridExport, false, 'flow-battery-grid') : ''}
 
                 <!-- EV Flow (sub-load of home) -->
                 ${hasEV ? this._renderFlow(paths.homeToEv, colors.ev, isEvCharging, false, 'flow-home-ev') : ''}
@@ -22035,6 +23288,7 @@ class PrismEnergyHorizontalCard extends HTMLElement {
               </div>
 
               <!-- Battery Pill (Right - battery storage) -->
+              ${hasBattery ? `
               <div class="pill pill-battery" style="top: ${pillPos.battery.y}%; left: ${pillPos.battery.x}%; --pill-scale: ${pillPos.battery.scale};" data-entity="${this._config.battery_soc}">
                 <div class="pill-icon ${isBatteryCharging || isBatteryDischarging ? 'bg-battery' : 'bg-inactive'}">
                   <ha-icon icon="${batteryIcon}" class="${isBatteryCharging || isBatteryDischarging ? 'color-battery' : 'color-inactive'}"></ha-icon>
@@ -22044,6 +23298,7 @@ class PrismEnergyHorizontalCard extends HTMLElement {
                   <span class="pill-label">${isBatteryCharging ? this._t('charging') : isBatteryDischarging ? this._t('discharging') : this._t('standby')}</span>
                 </div>
               </div>
+              ` : ''}
 
               <!-- EV Pill (Bottom Left - carport) -->
               ${hasEV ? `
@@ -22081,6 +23336,7 @@ class PrismEnergyHorizontalCard extends HTMLElement {
           </div>
           
           <!-- Battery Section with Icon -->
+          ${hasBattery ? `
           <div class="details-section">
             <div class="details-title">${this._t('storage')}</div>
             <div class="battery-display" data-entity="${this._config.battery_soc}">
@@ -22104,6 +23360,7 @@ class PrismEnergyHorizontalCard extends HTMLElement {
               </div>
             </div>
           </div>
+          ` : ''}
           
           ${hasEV ? `
           <!-- EV Section -->
@@ -33513,6 +34770,65 @@ class PrismRoomCard extends HTMLElement {
       
       .prism-room-empty-state-text {
         font-size: 0.875rem;
+      }
+
+      /* Popup Responsive - Tablet/Mobile */
+      @media (max-height: 700px) {
+        .prism-room-popup {
+          max-height: 90vh;
+        }
+        .prism-room-popup-content {
+          max-height: calc(90vh - 140px);
+          padding: 12px;
+        }
+        .prism-room-popup-header {
+          padding: 14px;
+        }
+        .prism-room-popup-climate {
+          padding: 12px 16px;
+          gap: 16px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .prism-room-popup {
+          max-width: 95vw;
+          max-height: 85vh;
+        }
+        .prism-room-popup-content {
+          max-height: calc(85vh - 140px);
+        }
+      }
+
+      @media (max-width: 480px) {
+        .prism-room-popup-overlay {
+          padding: 10px;
+        }
+        .prism-room-popup {
+          border-radius: 18px;
+        }
+        .prism-room-popup-header {
+          padding: 12px 14px;
+        }
+        .prism-room-popup-icon {
+          width: 40px;
+          height: 40px;
+        }
+        .prism-room-popup-icon ha-icon {
+          --mdc-icon-size: 22px;
+        }
+        .prism-room-popup-title {
+          font-size: 1.1rem;
+        }
+        .prism-room-popup-content {
+          padding: 10px;
+        }
+        .prism-room-entity-grid {
+          gap: 8px;
+        }
+        .prism-room-entity-card {
+          padding: 8px;
+        }
       }
     `;
   }

@@ -598,6 +598,51 @@ class PrismButtonCard extends HTMLElement {
           color: #f87171;
           font-size: 13px;
         }
+
+        /* Popup Responsive - Tablet/Mobile */
+        @media (max-height: 700px) {
+          .prism-popup {
+            max-height: 90vh;
+          }
+          .prism-popup-content {
+            max-height: calc(90vh - 80px);
+            padding: 12px;
+          }
+          .prism-popup-header {
+            padding: 12px 16px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .prism-popup {
+            width: 95vw;
+            max-width: 95vw;
+            max-height: 85vh;
+          }
+          .prism-popup-content {
+            max-height: calc(85vh - 80px);
+          }
+        }
+
+        @media (max-width: 480px) {
+          #prism-button-popup-overlay {
+            padding: 10px;
+          }
+          .prism-popup {
+            width: 98vw;
+            max-width: 98vw;
+            border-radius: 16px;
+          }
+          .prism-popup-header {
+            padding: 12px 14px;
+          }
+          .prism-popup-title {
+            font-size: 15px;
+          }
+          .prism-popup-content {
+            padding: 10px;
+          }
+        }
       </style>
       <div class="prism-popup">
         <div class="prism-popup-header">

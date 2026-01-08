@@ -1460,6 +1460,65 @@ class PrismRoomCard extends HTMLElement {
       .prism-room-empty-state-text {
         font-size: 0.875rem;
       }
+
+      /* Popup Responsive - Tablet/Mobile */
+      @media (max-height: 700px) {
+        .prism-room-popup {
+          max-height: 90vh;
+        }
+        .prism-room-popup-content {
+          max-height: calc(90vh - 140px);
+          padding: 12px;
+        }
+        .prism-room-popup-header {
+          padding: 14px;
+        }
+        .prism-room-popup-climate {
+          padding: 12px 16px;
+          gap: 16px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .prism-room-popup {
+          max-width: 95vw;
+          max-height: 85vh;
+        }
+        .prism-room-popup-content {
+          max-height: calc(85vh - 140px);
+        }
+      }
+
+      @media (max-width: 480px) {
+        .prism-room-popup-overlay {
+          padding: 10px;
+        }
+        .prism-room-popup {
+          border-radius: 18px;
+        }
+        .prism-room-popup-header {
+          padding: 12px 14px;
+        }
+        .prism-room-popup-icon {
+          width: 40px;
+          height: 40px;
+        }
+        .prism-room-popup-icon ha-icon {
+          --mdc-icon-size: 22px;
+        }
+        .prism-room-popup-title {
+          font-size: 1.1rem;
+        }
+        .prism-room-popup-content {
+          padding: 10px;
+        }
+        .prism-room-entity-grid {
+          gap: 8px;
+        }
+        .prism-room-entity-card {
+          padding: 8px;
+        }
+      }
     `;
   }
 

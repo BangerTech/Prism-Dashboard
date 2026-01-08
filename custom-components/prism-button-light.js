@@ -597,6 +597,51 @@ class PrismButtonLightCard extends HTMLElement {
           color: #dc2626;
           font-size: 13px;
         }
+
+        /* Popup Responsive - Tablet/Mobile */
+        @media (max-height: 700px) {
+          .prism-popup-light {
+            max-height: 90vh;
+          }
+          .prism-popup-content-light {
+            max-height: calc(90vh - 80px);
+            padding: 12px;
+          }
+          .prism-popup-header-light {
+            padding: 12px 16px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .prism-popup-light {
+            width: 95vw;
+            max-width: 95vw;
+            max-height: 85vh;
+          }
+          .prism-popup-content-light {
+            max-height: calc(85vh - 80px);
+          }
+        }
+
+        @media (max-width: 480px) {
+          #prism-button-popup-overlay-light {
+            padding: 10px;
+          }
+          .prism-popup-light {
+            width: 98vw;
+            max-width: 98vw;
+            border-radius: 16px;
+          }
+          .prism-popup-header-light {
+            padding: 12px 14px;
+          }
+          .prism-popup-title-light {
+            font-size: 15px;
+          }
+          .prism-popup-content-light {
+            padding: 10px;
+          }
+        }
       </style>
       <div class="prism-popup-light">
         <div class="prism-popup-header-light">

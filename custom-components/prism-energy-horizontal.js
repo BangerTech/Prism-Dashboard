@@ -454,15 +454,44 @@ class PrismEnergyHorizontalCard extends HTMLElement {
     const evPower = this._getStateInWatts(this._config.ev_power, 0);
     const autarky = this._getState(this._config.autarky, 0); // Autarky is percentage
 
+    // Determine states for labels
+    const isSolarActive = solarPower > 50;
+    const isGridImport = gridPower > 50;
+    const isGridExport = gridPower < -50;
+    const isBatteryCharging = batteryPower < -50;
+    const isBatteryDischarging = batteryPower > 50;
+    const isEvCharging = evPower > 50;
+    const hasBattery = !!this._config.battery_soc;
+
     // Update pill values
     this._updateElement('.pill-solar .pill-val', this._formatPower(solarPower));
     this._updateElement('.pill-grid .pill-val', this._formatPower(gridPower));
     this._updateElement('.pill-home .pill-val', this._formatPower(homeConsumption));
-    this._updateElement('.pill-battery .pill-val', `${Math.round(batterySoc)}%`);
+    if (hasBattery) {
+      this._updateElement('.pill-battery .pill-val', `${Math.round(batterySoc)}%`);
+    }
+    
+    // Update pill labels dynamically
+    this._updateElement('.pill-solar .pill-label', isSolarActive ? this._t('production') : this._t('inactive'));
+    this._updateElement('.pill-grid .pill-label', isGridExport ? this._t('export') : isGridImport ? this._t('import') : this._t('neutral'));
+    if (hasBattery) {
+      this._updateElement('.pill-battery .pill-label', isBatteryCharging ? this._t('charging') : isBatteryDischarging ? this._t('discharging') : this._t('standby'));
+    }
+    
+    // Update pill icon classes (active/inactive states)
+    this._updatePillIconClass('.pill-solar .pill-icon', isSolarActive, 'bg-solar');
+    this._updatePillIconClass('.pill-solar .pill-icon ha-icon', isSolarActive, 'color-solar');
+    this._updatePillIconClass('.pill-grid .pill-icon', isGridImport || isGridExport, 'bg-grid');
+    this._updatePillIconClass('.pill-grid .pill-icon ha-icon', isGridImport || isGridExport, 'color-grid');
+    if (hasBattery) {
+      this._updatePillIconClass('.pill-battery .pill-icon', isBatteryCharging || isBatteryDischarging, 'bg-battery');
+      this._updatePillIconClass('.pill-battery .pill-icon ha-icon', isBatteryCharging || isBatteryDischarging, 'color-battery');
+    }
     
     if (this._config.ev_power) {
-      const isEvCharging = evPower > 50;
       this._updateElement('.pill-ev .pill-val', isEvCharging ? this._formatPower(evPower) : this._t('idle'));
+      this._updatePillIconClass('.pill-ev .pill-icon', isEvCharging, 'bg-ev');
+      this._updatePillIconClass('.pill-ev .pill-icon ha-icon', isEvCharging, 'color-ev');
     }
     
     if (this._config.autarky) {
@@ -474,6 +503,23 @@ class PrismEnergyHorizontalCard extends HTMLElement {
 
     // Update flow visibility
     this._updateFlows();
+  }
+  
+  // Helper to toggle active/inactive classes on pill icons
+  _updatePillIconClass(selector, isActive, activeClass) {
+    const el = this.shadowRoot.querySelector(selector);
+    if (!el) return;
+    
+    const inactiveClass = 'bg-inactive';
+    const inactiveColorClass = 'color-inactive';
+    
+    if (activeClass.startsWith('bg-')) {
+      el.classList.toggle(activeClass, isActive);
+      el.classList.toggle(inactiveClass, !isActive);
+    } else if (activeClass.startsWith('color-')) {
+      el.classList.toggle(activeClass, isActive);
+      el.classList.toggle(inactiveColorClass, !isActive);
+    }
   }
 
   _updateElement(selector, value) {
@@ -531,15 +577,16 @@ class PrismEnergyHorizontalCard extends HTMLElement {
     const isBatteryDischarging = batteryPower > 50;
     const isEvCharging = evPower > 50;
     const hasEV = !!this._config.ev_power;
+    const hasBattery = !!this._config.battery_soc;
 
     // Show/hide flow groups based on state
     this._setFlowVisibility('flow-solar-home', isSolarActive && homeConsumption > 0);
-    this._setFlowVisibility('flow-solar-battery', isSolarActive && isBatteryCharging);
+    this._setFlowVisibility('flow-solar-battery', hasBattery && isSolarActive && isBatteryCharging);
     this._setFlowVisibility('flow-solar-grid', isSolarActive && isGridExport);
     this._setFlowVisibility('flow-grid-home', isGridImport);
-    this._setFlowVisibility('flow-grid-battery', isGridImport && isBatteryCharging);
-    this._setFlowVisibility('flow-battery-home', isBatteryDischarging);
-    this._setFlowVisibility('flow-battery-grid', isBatteryDischarging && isGridExport);
+    this._setFlowVisibility('flow-grid-battery', hasBattery && isGridImport && isBatteryCharging);
+    this._setFlowVisibility('flow-battery-home', hasBattery && isBatteryDischarging);
+    this._setFlowVisibility('flow-battery-grid', hasBattery && isBatteryDischarging && isGridExport);
     
     if (hasEV) {
       // EV is treated as sub-load of home - only one line from home to EV
@@ -1006,6 +1053,7 @@ class PrismEnergyHorizontalCard extends HTMLElement {
     
     const hasEV = !!this._config.ev_power;
     const hasAutarky = !!this._config.autarky;
+    const hasBattery = !!this._config.battery_soc;
     const houseImg = this._config.image;
     
     // Get weather data
@@ -1826,16 +1874,16 @@ class PrismEnergyHorizontalCard extends HTMLElement {
                 
                 <!-- Solar Flows -->
                 ${this._renderFlow(paths.solarToHome, colors.solar, isSolarActive && homeConsumption > 0, false, 'flow-solar-home')}
-                ${this._renderFlow(paths.solarToBattery, colors.solar, isSolarActive && isBatteryCharging, false, 'flow-solar-battery')}
+                ${hasBattery ? this._renderFlow(paths.solarToBattery, colors.solar, isSolarActive && isBatteryCharging, false, 'flow-solar-battery') : ''}
                 ${this._renderFlow(paths.solarToGrid, colors.solar, isSolarActive && isGridExport, false, 'flow-solar-grid')}
 
                 <!-- Grid Flows -->
                 ${this._renderFlow(paths.gridToHome, colors.grid, isGridImport, false, 'flow-grid-home')}
-                ${this._renderFlow(paths.gridToBattery, colors.grid, isGridImport && isBatteryCharging, false, 'flow-grid-battery')}
+                ${hasBattery ? this._renderFlow(paths.gridToBattery, colors.grid, isGridImport && isBatteryCharging, false, 'flow-grid-battery') : ''}
 
                 <!-- Battery Flows -->
-                ${this._renderFlow(paths.batteryToHome, colors.battery, isBatteryDischarging, false, 'flow-battery-home')}
-                ${this._renderFlow(paths.batteryToGrid, colors.battery, isBatteryDischarging && isGridExport, false, 'flow-battery-grid')}
+                ${hasBattery ? this._renderFlow(paths.batteryToHome, colors.battery, isBatteryDischarging, false, 'flow-battery-home') : ''}
+                ${hasBattery ? this._renderFlow(paths.batteryToGrid, colors.battery, isBatteryDischarging && isGridExport, false, 'flow-battery-grid') : ''}
 
                 <!-- EV Flow (sub-load of home) -->
                 ${hasEV ? this._renderFlow(paths.homeToEv, colors.ev, isEvCharging, false, 'flow-home-ev') : ''}
@@ -1875,6 +1923,7 @@ class PrismEnergyHorizontalCard extends HTMLElement {
               </div>
 
               <!-- Battery Pill (Right - battery storage) -->
+              ${hasBattery ? `
               <div class="pill pill-battery" style="top: ${pillPos.battery.y}%; left: ${pillPos.battery.x}%; --pill-scale: ${pillPos.battery.scale};" data-entity="${this._config.battery_soc}">
                 <div class="pill-icon ${isBatteryCharging || isBatteryDischarging ? 'bg-battery' : 'bg-inactive'}">
                   <ha-icon icon="${batteryIcon}" class="${isBatteryCharging || isBatteryDischarging ? 'color-battery' : 'color-inactive'}"></ha-icon>
@@ -1884,6 +1933,7 @@ class PrismEnergyHorizontalCard extends HTMLElement {
                   <span class="pill-label">${isBatteryCharging ? this._t('charging') : isBatteryDischarging ? this._t('discharging') : this._t('standby')}</span>
                 </div>
               </div>
+              ` : ''}
 
               <!-- EV Pill (Bottom Left - carport) -->
               ${hasEV ? `
@@ -1921,6 +1971,7 @@ class PrismEnergyHorizontalCard extends HTMLElement {
           </div>
           
           <!-- Battery Section with Icon -->
+          ${hasBattery ? `
           <div class="details-section">
             <div class="details-title">${this._t('storage')}</div>
             <div class="battery-display" data-entity="${this._config.battery_soc}">
@@ -1944,6 +1995,7 @@ class PrismEnergyHorizontalCard extends HTMLElement {
               </div>
             </div>
           </div>
+          ` : ''}
           
           ${hasEV ? `
           <!-- EV Section -->
