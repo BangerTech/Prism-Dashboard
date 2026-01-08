@@ -315,6 +315,9 @@ class PrismSidebarLightCard extends HTMLElement {
         if (miniGraphCard) {
             this._miniGraphCardElement = miniGraphCard;
             miniGraphSlot.appendChild(miniGraphCard);
+            
+            // Inject styles into mini-graph-card shadow DOM after it renders
+            this._injectMiniGraphStyles(miniGraphCard);
         } else {
             // Show fallback message if mini-graph-card not available
             miniGraphSlot.innerHTML = `
@@ -325,6 +328,44 @@ class PrismSidebarLightCard extends HTMLElement {
                 </div>
             `;
         }
+    }
+    
+    _injectMiniGraphStyles(miniGraphCard) {
+        // Wait for the mini-graph-card to render its shadow DOM
+        const checkAndInject = () => {
+            const shadowRoot = miniGraphCard.shadowRoot;
+            if (shadowRoot) {
+                // Check if styles already injected
+                if (shadowRoot.querySelector('#prism-mini-graph-styles')) return;
+                
+                const style = document.createElement('style');
+                style.id = 'prism-mini-graph-styles';
+                style.textContent = `
+                    ha-card {
+                        padding: 0 !important;
+                        background: transparent !important;
+                    }
+                    .states {
+                        padding: 0 !important;
+                        margin: 0 !important;
+                    }
+                    .state {
+                        padding: 0 !important;
+                        margin: 0 !important;
+                    }
+                    .graph {
+                        margin-top: 8px !important;
+                    }
+                `;
+                shadowRoot.appendChild(style);
+            } else {
+                // Retry after a short delay if shadow DOM not ready
+                setTimeout(checkAndInject, 50);
+            }
+        };
+        
+        // Start checking after a brief delay to allow rendering
+        setTimeout(checkAndInject, 100);
     }
     
     _createCustomCard() {
@@ -835,7 +876,8 @@ class PrismSidebarLightCard extends HTMLElement {
                 color: rgba(0, 0, 0, 0.6);
                 text-transform: uppercase;
                 letter-spacing: 2px;
-                margin-top: 8px;
+                margin-top: 5px;
+                margin-left: 2px; /* Ausgleich für letter-spacing Verschiebung */
             }
 
             /* Calendar Inlet */
@@ -876,7 +918,7 @@ class PrismSidebarLightCard extends HTMLElement {
             .section-title {
                 font-size: 11px; font-weight: 700; color: rgba(0, 0, 0, 0.35);
                 text-transform: uppercase; letter-spacing: 2px;
-                margin-bottom: 4px;
+                margin-bottom: 2px;
                 text-align: center;
             }
             
@@ -1051,6 +1093,79 @@ class PrismSidebarLightCard extends HTMLElement {
                 0% { opacity: 1; }
                 50% { opacity: 0.5; }
                 100% { opacity: 1; }
+            }
+
+            /* Responsive Spacing - Tablet */
+            @media (max-width: 1024px) {
+                .camera-box {
+                    margin-bottom: 20px;
+                }
+                .clock-box {
+                    margin-bottom: 20px;
+                }
+                .calendar-inlet {
+                    margin-bottom: 20px;
+                }
+                .custom-card-container {
+                    margin-top: 16px;
+                    margin-bottom: 16px;
+                }
+            }
+
+            /* Responsive Spacing - Mobile Large */
+            @media (max-width: 768px) {
+                .camera-box {
+                    margin-bottom: 16px;
+                }
+                .clock-box {
+                    margin-bottom: 16px;
+                }
+                .calendar-inlet {
+                    margin-bottom: 16px;
+                    padding: 14px;
+                    gap: 14px;
+                }
+                .custom-card-container {
+                    margin-top: 14px;
+                    margin-bottom: 14px;
+                }
+                .sidebar {
+                    padding: 14px;
+                }
+            }
+
+            /* Responsive Spacing - Mobile Small */
+            @media (max-width: 480px) {
+                .camera-box {
+                    margin-bottom: 12px;
+                }
+                .clock-box {
+                    margin-bottom: 12px;
+                }
+                .calendar-inlet {
+                    margin-bottom: 12px;
+                    padding: 10px;
+                    gap: 10px;
+                }
+                .custom-card-container {
+                    margin-top: 10px;
+                    margin-bottom: 10px;
+                }
+                .sidebar {
+                    padding: 10px;
+                }
+                .clock-time {
+                    font-size: 56px;
+                    letter-spacing: -3px;
+                }
+                .clock-date {
+                    font-size: 12px;
+                    letter-spacing: 1px;
+                    margin-left: 1px;
+                }
+                .mini-graph-container {
+                    margin-bottom: 10px;
+                }
             }
         </style>
 

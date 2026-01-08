@@ -825,6 +825,7 @@ class PrismSidebarCard extends HTMLElement {
                 text-transform: uppercase;
                 letter-spacing: 2px;
                 margin-top: 5px;
+                margin-left: 2px; /* Ausgleich für letter-spacing Verschiebung */
             }
 
             /* Calendar Inlet */
@@ -880,11 +881,14 @@ class PrismSidebarCard extends HTMLElement {
                 --ha-card-background: transparent !important;
                 --ha-card-box-shadow: none !important;
                 --ha-card-border-width: 0 !important;
+                display: block !important;
             }
             .mini-graph-container ha-card {
                 background: transparent !important;
                 box-shadow: none !important;
                 border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
             }
             .mini-graph-container .header {
                 display: none !important;
@@ -892,9 +896,20 @@ class PrismSidebarCard extends HTMLElement {
             .mini-graph-container .states {
                 justify-content: center !important;
                 padding: 0 !important;
+                margin: 0 !important;
+                padding-top: 0 !important;
             }
             .mini-graph-container .state {
                 text-align: center !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .mini-graph-container .state__value {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .mini-graph-container .graph {
+                margin-top: 8px !important;
             }
             .forecast-grid {
                 display: grid; 
@@ -1292,36 +1307,36 @@ class PrismSidebarCard extends HTMLElement {
             /* Responsive Spacing - Tablet */
             @media (max-width: 1024px) {
                 .camera-box {
-                    margin-bottom: 24px;
+                    margin-bottom: 20px;
                 }
                 .clock-box {
-                    margin-bottom: 24px;
+                    margin-bottom: 20px;
                 }
                 .calendar-inlet {
-                    margin-bottom: 24px;
+                    margin-bottom: 20px;
                 }
                 .custom-card-container {
-                    margin-top: 20px;
-                    margin-bottom: 20px;
+                    margin-top: 16px;
+                    margin-bottom: 16px;
                 }
             }
 
             /* Responsive Spacing - Mobile Large */
             @media (max-width: 768px) {
                 .camera-box {
-                    margin-bottom: 20px;
+                    margin-bottom: 16px;
                 }
                 .clock-box {
-                    margin-bottom: 20px;
+                    margin-bottom: 16px;
                 }
                 .calendar-inlet {
-                    margin-bottom: 20px;
+                    margin-bottom: 16px;
                     padding: 14px;
                     gap: 14px;
                 }
                 .custom-card-container {
-                    margin-top: 16px;
-                    margin-bottom: 16px;
+                    margin-top: 14px;
+                    margin-bottom: 14px;
                 }
                 .sidebar {
                     padding: 14px;
@@ -1331,22 +1346,22 @@ class PrismSidebarCard extends HTMLElement {
             /* Responsive Spacing - Mobile Small */
             @media (max-width: 480px) {
                 .camera-box {
-                    margin-bottom: 16px;
-                }
-                .clock-box {
-                    margin-bottom: 16px;
-                }
-                .calendar-inlet {
-                    margin-bottom: 16px;
-                    padding: 12px;
-                    gap: 12px;
-                }
-                .custom-card-container {
-                    margin-top: 12px;
                     margin-bottom: 12px;
                 }
+                .clock-box {
+                    margin-bottom: 12px;
+                }
+                .calendar-inlet {
+                    margin-bottom: 12px;
+                    padding: 10px;
+                    gap: 10px;
+                }
+                .custom-card-container {
+                    margin-top: 10px;
+                    margin-bottom: 10px;
+                }
                 .sidebar {
-                    padding: 12px;
+                    padding: 10px;
                 }
                 .clock-time {
                     font-size: 56px;
@@ -1355,9 +1370,10 @@ class PrismSidebarCard extends HTMLElement {
                 .clock-date {
                     font-size: 12px;
                     letter-spacing: 1px;
+                    margin-left: 1px;
                 }
                 .mini-graph-container {
-                    margin-bottom: 12px;
+                    margin-bottom: 10px;
                 }
             }
         </style>
@@ -1524,6 +1540,9 @@ class PrismSidebarCard extends HTMLElement {
         if (miniGraphCard) {
             this._miniGraphCardElement = miniGraphCard;
             miniGraphSlot.appendChild(miniGraphCard);
+            
+            // Inject styles into mini-graph-card's shadow DOM to remove padding
+            this._injectMiniGraphStyles(miniGraphCard);
         } else {
             // Show fallback message if mini-graph-card not available
             miniGraphSlot.innerHTML = `
@@ -1534,6 +1553,58 @@ class PrismSidebarCard extends HTMLElement {
                 </div>
             `;
         }
+    }
+    
+    _injectMiniGraphStyles(element) {
+        // Wait for the element to render and then inject styles
+        const injectStyles = () => {
+            const shadowRoot = element.shadowRoot;
+            if (!shadowRoot) {
+                // Retry if shadow root not ready yet
+                setTimeout(injectStyles, 50);
+                return;
+            }
+            
+            // Check if styles already injected
+            if (shadowRoot.querySelector('#prism-mini-graph-styles')) return;
+            
+            const style = document.createElement('style');
+            style.id = 'prism-mini-graph-styles';
+            style.textContent = `
+                ha-card {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    background: transparent !important;
+                }
+                .header {
+                    display: none !important;
+                }
+                .states {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    padding-top: 0 !important;
+                    margin-top: 0 !important;
+                }
+                .state {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+                .state__value {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }
+                .graph {
+                    margin-top: 8px !important;
+                }
+                .graph__container {
+                    padding: 0 !important;
+                }
+            `;
+            shadowRoot.appendChild(style);
+        };
+        
+        // Start injection process
+        setTimeout(injectStyles, 100);
     }
 
     setupListeners() {
