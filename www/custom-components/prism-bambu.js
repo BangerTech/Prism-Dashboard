@@ -470,7 +470,19 @@ class PrismBambuCard extends HTMLElement {
     if (remainingTimeEntity?.entity_id && (isPrinting || isPaused)) {
       const state = this._hass.states[remainingTimeEntity.entity_id];
       if (state) {
-        const minutes = parseFloat(state.state) || 0;
+        const unit = state?.attributes?.unit_of_measurement?.toLowerCase() || 'min';
+        let rawValue = parseFloat(state.state) || 0;
+        
+        // Convert to minutes based on unit
+        let minutes;
+        if (unit === 'h' || unit === 'hours' || unit === 'hour' || unit === 'std' || unit === 'stunden') {
+          minutes = rawValue * 60;
+        } else if (unit === 's' || unit === 'sec' || unit === 'seconds' || unit === 'sekunden') {
+          minutes = rawValue / 60;
+        } else {
+          minutes = rawValue;
+        }
+        
         if (minutes > 0) {
           const hours = Math.floor(minutes / 60);
           const mins = Math.round(minutes % 60);
@@ -3184,10 +3196,34 @@ class PrismBambuCard extends HTMLElement {
     const remainingTimeEntity = this._deviceEntities['remaining_time'];
     let printTimeLeft = '--';
     let printEndTime = '--:--';
+    
+    // Debug: Log entity discovery
+    PrismBambuCard.log('Entity check - remaining_time:', remainingTimeEntity?.entity_id || 'NOT FOUND');
+    PrismBambuCard.log('Entity check - current_layer:', this._deviceEntities['current_layer']?.entity_id || 'NOT FOUND');
+    PrismBambuCard.log('Entity check - total_layers:', this._deviceEntities['total_layers']?.entity_id || 'NOT FOUND');
+    PrismBambuCard.log('isPrinting:', isPrinting, 'isPaused:', isPaused, 'isIdle:', isIdle);
+    
     if (remainingTimeEntity?.entity_id && (isPrinting || isPaused)) {
       const state = this._hass.states[remainingTimeEntity.entity_id];
+      const unit = state?.attributes?.unit_of_measurement?.toLowerCase() || 'min';
+      PrismBambuCard.log('remaining_time state:', state?.state, 'unit:', unit);
       if (state) {
-        const minutes = parseFloat(state.state) || 0;
+        let rawValue = parseFloat(state.state) || 0;
+        
+        // Convert to minutes based on unit
+        let minutes;
+        if (unit === 'h' || unit === 'hours' || unit === 'hour' || unit === 'std' || unit === 'stunden') {
+          // Value is in hours, convert to minutes
+          minutes = rawValue * 60;
+          PrismBambuCard.log('Converted hours to minutes:', rawValue, 'h ->', minutes, 'min');
+        } else if (unit === 's' || unit === 'sec' || unit === 'seconds' || unit === 'sekunden') {
+          // Value is in seconds, convert to minutes
+          minutes = rawValue / 60;
+        } else {
+          // Assume minutes (min, m, minutes, minuten, or unknown)
+          minutes = rawValue;
+        }
+        
         if (minutes > 0) {
           const hours = Math.floor(minutes / 60);
           const mins = Math.round(minutes % 60);
@@ -3201,6 +3237,8 @@ class PrismBambuCard extends HTMLElement {
           printEndTime = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
       }
+    } else if (!remainingTimeEntity?.entity_id) {
+      PrismBambuCard.log('WARNING: remaining_time entity not found! Available keys:', Object.keys(this._deviceEntities).filter(k => !k.includes('.')));
     }
     
     // Temperatures
