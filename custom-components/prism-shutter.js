@@ -263,7 +263,7 @@ class PrismShutterCard extends HTMLElement {
         }
         
         .header {
-            display: flex; gap: 12px; align-items: center; margin-bottom: 16px;
+            display: flex; gap: 16px; align-items: center; margin-bottom: 16px;
         }
         .icon-box {
             width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -282,8 +282,14 @@ class PrismShutterCard extends HTMLElement {
             width: 22px; height: 22px; --mdc-icon-size: 22px;
             ${isOpen ? 'filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.6));' : ''}
         }
+        .info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 40px;
+        }
         .title { font-size: 1.125rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); line-height: 1; }
-        .subtitle { font-size: 0.75rem; font-weight: 500; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; margin-top: 4px; letter-spacing: 0.05em; }
+        .subtitle { font-size: 0.75rem; font-weight: 500; color: rgba(255, 255, 255, 0.6); text-transform: capitalize; margin-top: 2px; line-height: 1.2; }
         
         /* Inlet Slider Display (Interactive) */
         .slider-track {
@@ -396,7 +402,7 @@ class PrismShutterCard extends HTMLElement {
             <div class="icon-box">
                 <ha-icon icon="mdi:window-shutter"></ha-icon>
             </div>
-            <div>
+            <div class="info">
                 <div class="title">${this.config.name || 'Shutter'}</div>
                 <div class="subtitle">${statusText}</div>
             </div>

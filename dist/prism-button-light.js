@@ -956,6 +956,10 @@ class PrismButtonLightCard extends HTMLElement {
           flex: 1;
           min-width: 0;
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          height: 40px;
           ${layout === 'vertical' ? 'text-align: center;' : ''}
           display: flex;
           flex-direction: column;

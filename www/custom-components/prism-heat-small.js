@@ -269,7 +269,7 @@ class PrismHeatSmallCard extends HTMLElement {
         .header-left { 
             display: flex; 
             align-items: center; 
-            gap: 12px; 
+            gap: 16px; 
         }
         
         .icon-box {
@@ -306,6 +306,7 @@ class PrismHeatSmallCard extends HTMLElement {
             display: flex; 
             flex-direction: column; 
             justify-content: center;
+            height: 40px;
         }
         .title { 
             font-size: 1.125rem; 

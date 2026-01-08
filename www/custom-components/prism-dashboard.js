@@ -3,7 +3,7 @@
  * https://github.com/BangerTech/Prism-Dashboard
  * 
  * Version: 1.5.9
- * Build Date: 2026-01-07T14:25:23.341Z
+ * Build Date: 2026-01-08T06:17:30.470Z
  * 
  * This file contains all Prism custom cards bundled together.
  * Just add this single file as a resource in Lovelace:
@@ -2195,6 +2195,10 @@ class PrismButtonLightCard extends HTMLElement {
           flex: 1;
           min-width: 0;
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          height: 40px;
           ${layout === 'vertical' ? 'text-align: center;' : ''}
           display: flex;
           flex-direction: column;
@@ -3009,7 +3013,7 @@ class PrismHeatCard extends HTMLElement {
           box-sizing: border-box;
         }
         .header {
-            display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+            display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
         }
         .icon-box {
             width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -3086,7 +3090,7 @@ class PrismHeatCard extends HTMLElement {
             color: rgba(255, 255, 255, 0.4);
         }
 
-        .title-area { flex: 1; min-width: 0; overflow: hidden; }
+        .title-area { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; height: 40px; }
         .title { font-size: 1.125rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .subtitle { font-size: 0.75rem; font-weight: 500; color: rgba(255, 255, 255, 0.6); line-height: 1.2; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -4103,7 +4107,7 @@ class PrismHeatLightCard extends HTMLElement {
           box-sizing: border-box;
         }
         .header {
-            display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+            display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
         }
         .icon-box {
             width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -4145,7 +4149,7 @@ class PrismHeatLightCard extends HTMLElement {
             filter: none;
         }
 
-        .title-area { flex: 1; min-width: 0; overflow: hidden; }
+        .title-area { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; height: 40px; }
         .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; line-height: 1.2; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -4875,7 +4879,7 @@ class PrismHeatSmallCard extends HTMLElement {
         .header-left { 
             display: flex; 
             align-items: center; 
-            gap: 12px; 
+            gap: 16px; 
         }
         
         .icon-box {
@@ -4912,6 +4916,7 @@ class PrismHeatSmallCard extends HTMLElement {
             display: flex; 
             flex-direction: column; 
             justify-content: center;
+            height: 40px;
         }
         .title { 
             font-size: 1.125rem; 
@@ -5445,7 +5450,7 @@ class PrismHeatSmallLightCard extends HTMLElement {
         .header-left { 
             display: flex; 
             align-items: center; 
-            gap: 12px; 
+            gap: 16px; 
         }
         
         .icon-box {
@@ -5477,6 +5482,7 @@ class PrismHeatSmallLightCard extends HTMLElement {
             display: flex; 
             flex-direction: column; 
             justify-content: center;
+            height: 40px;
         }
         .title { 
             font-size: 1.125rem; 
@@ -7888,7 +7894,7 @@ class PrismShutterCard extends HTMLElement {
         }
         
         .header {
-            display: flex; gap: 12px; align-items: center; margin-bottom: 16px;
+            display: flex; gap: 16px; align-items: center; margin-bottom: 16px;
         }
         .icon-box {
             width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -7907,8 +7913,14 @@ class PrismShutterCard extends HTMLElement {
             width: 22px; height: 22px; --mdc-icon-size: 22px;
             ${isOpen ? 'filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.6));' : ''}
         }
+        .info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 40px;
+        }
         .title { font-size: 1.125rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); line-height: 1; }
-        .subtitle { font-size: 0.75rem; font-weight: 500; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; margin-top: 4px; letter-spacing: 0.05em; }
+        .subtitle { font-size: 0.75rem; font-weight: 500; color: rgba(255, 255, 255, 0.6); text-transform: capitalize; margin-top: 2px; line-height: 1.2; }
         
         /* Inlet Slider Display (Interactive) */
         .slider-track {
@@ -8021,7 +8033,7 @@ class PrismShutterCard extends HTMLElement {
             <div class="icon-box">
                 <ha-icon icon="mdi:window-shutter"></ha-icon>
             </div>
-            <div>
+            <div class="info">
                 <div class="title">${this.config.name || 'Shutter'}</div>
                 <div class="subtitle">${statusText}</div>
             </div>
@@ -8333,7 +8345,7 @@ class PrismShutterLightCard extends HTMLElement {
         }
         
         .header {
-            display: flex; gap: 12px; align-items: center; margin-bottom: 16px;
+            display: flex; gap: 16px; align-items: center; margin-bottom: 16px;
         }
         .icon-box {
             width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -8352,8 +8364,14 @@ class PrismShutterLightCard extends HTMLElement {
             width: 22px; height: 22px; --mdc-icon-size: 22px;
             ${isOpen ? 'filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.4));' : ''}
         }
+        .info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 40px;
+        }
         .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; }
-        .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; text-transform: uppercase; margin-top: 4px; }
+        .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; text-transform: capitalize; margin-top: 2px; line-height: 1.2; }
         
         /* Inlet Slider Display (Interactive) */
         .slider-track {
@@ -8458,7 +8476,7 @@ class PrismShutterLightCard extends HTMLElement {
             <div class="icon-box">
                 <ha-icon icon="mdi:window-shutter"></ha-icon>
             </div>
-            <div>
+            <div class="info">
                 <div class="title">${this.config.name || 'Shutter'}</div>
                 <div class="subtitle">${statusText}</div>
             </div>
@@ -9607,7 +9625,7 @@ class PrismVacuumCard extends HTMLElement {
               gap: 12px;
           }
           .header-left { 
-              display: flex; align-items: center; gap: 12px;
+              display: flex; align-items: center; gap: 16px;
               flex: 1;
               min-width: 0;
               overflow: hidden;
@@ -9645,6 +9663,8 @@ class PrismVacuumCard extends HTMLElement {
           
           .info { 
               display: flex; flex-direction: column;
+              justify-content: center;
+              height: 40px;
               min-width: 0;
               overflow: hidden;
           }
@@ -10407,7 +10427,7 @@ class PrismVacuumLightCard extends HTMLElement {
               gap: 12px;
           }
           .header-left { 
-              display: flex; align-items: center; gap: 12px;
+              display: flex; align-items: center; gap: 16px;
               flex: 1;
               min-width: 0;
               overflow: hidden;
@@ -10439,6 +10459,8 @@ class PrismVacuumLightCard extends HTMLElement {
           
           .info { 
               display: flex; flex-direction: column;
+              justify-content: center;
+              height: 40px;
               min-width: 0;
               overflow: hidden;
           }
@@ -12544,7 +12566,7 @@ class PrismLedCard extends HTMLElement {
           .header {
               display: flex; justify-content: space-between; align-items: center;
           }
-          .header-left { display: flex; align-items: center; gap: 12px; }
+          .header-left { display: flex; align-items: center; gap: 16px; }
           
           .icon-box {
               width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -12569,7 +12591,7 @@ class PrismLedCard extends HTMLElement {
               filter: drop-shadow(0 0 6px currentColor);
           }
           
-          .info { display: flex; flex-direction: column; }
+          .info { display: flex; flex-direction: column; justify-content: center; height: 40px; }
           .title { font-size: 1.125rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); line-height: 1; }
           .subtitle { font-size: 0.75rem; font-weight: 500; color: rgba(255, 255, 255, 0.6); margin-top: 4px; }
           
@@ -13227,7 +13249,7 @@ class PrismLedLightCard extends HTMLElement {
           .header {
               display: flex; justify-content: space-between; align-items: flex-start;
           }
-          .header-left { display: flex; align-items: center; gap: 12px; }
+          .header-left { display: flex; align-items: center; gap: 16px; }
           
           .icon-box {
               width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -13240,7 +13262,7 @@ class PrismLedLightCard extends HTMLElement {
               width: 22px; height: 22px; --mdc-icon-size: 22px;
           }
           
-          .info { display: flex; flex-direction: column; }
+          .info { display: flex; flex-direction: column; justify-content: center; height: 40px; }
           .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; }
           .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; margin-top: 4px; }
           
@@ -14251,7 +14273,7 @@ class PrismSidebarCard extends HTMLElement {
                 color: rgba(255, 255, 255, 0.6);
                 text-transform: uppercase;
                 letter-spacing: 2px;
-                margin-top: 8px;
+                margin-top: 5px;
             }
 
             /* Calendar Inlet */
@@ -14290,7 +14312,7 @@ class PrismSidebarCard extends HTMLElement {
             .section-title {
                 font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.35);
                 text-transform: uppercase; letter-spacing: 2px;
-                margin-bottom: 4px;
+                margin-bottom: 2px;
                 text-align: center;
             }
             
@@ -14714,6 +14736,78 @@ class PrismSidebarCard extends HTMLElement {
             .weather-forecast-low {
                 font-size: 13px;
                 color: rgba(255, 255, 255, 0.4);
+            }
+
+            /* Responsive Spacing - Tablet */
+            @media (max-width: 1024px) {
+                .camera-box {
+                    margin-bottom: 24px;
+                }
+                .clock-box {
+                    margin-bottom: 24px;
+                }
+                .calendar-inlet {
+                    margin-bottom: 24px;
+                }
+                .custom-card-container {
+                    margin-top: 20px;
+                    margin-bottom: 20px;
+                }
+            }
+
+            /* Responsive Spacing - Mobile Large */
+            @media (max-width: 768px) {
+                .camera-box {
+                    margin-bottom: 20px;
+                }
+                .clock-box {
+                    margin-bottom: 20px;
+                }
+                .calendar-inlet {
+                    margin-bottom: 20px;
+                    padding: 14px;
+                    gap: 14px;
+                }
+                .custom-card-container {
+                    margin-top: 16px;
+                    margin-bottom: 16px;
+                }
+                .sidebar {
+                    padding: 14px;
+                }
+            }
+
+            /* Responsive Spacing - Mobile Small */
+            @media (max-width: 480px) {
+                .camera-box {
+                    margin-bottom: 16px;
+                }
+                .clock-box {
+                    margin-bottom: 16px;
+                }
+                .calendar-inlet {
+                    margin-bottom: 16px;
+                    padding: 12px;
+                    gap: 12px;
+                }
+                .custom-card-container {
+                    margin-top: 12px;
+                    margin-bottom: 12px;
+                }
+                .sidebar {
+                    padding: 12px;
+                }
+                .clock-time {
+                    font-size: 56px;
+                    letter-spacing: -3px;
+                }
+                .clock-date {
+                    font-size: 12px;
+                    letter-spacing: 1px;
+                }
+                .mini-graph-container {
+                    margin-bottom: 12px;
+                }
             }
         </style>
 
@@ -26265,7 +26359,13 @@ class PrismBambuCard extends HTMLElement {
         .header-left {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 16px;
+        }
+        .printer-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 40px;
         }
         /* Printer Icon - Neumorphism Style */
         .printer-icon {
@@ -27351,7 +27451,7 @@ class PrismBambuCard extends HTMLElement {
                 <div class="printer-icon ${(['offline', 'unavailable'].includes(data.stateStr.toLowerCase()) || (data.powerSwitch && !data.isPowerOn)) ? 'offline' : data.isPrinting ? 'printing' : data.isPaused ? 'paused' : ''}">
                     <ha-icon icon="mdi:printer-3d-nozzle"></ha-icon>
                 </div>
-                <div>
+                <div class="printer-info">
                     <h2 class="title">${data.name}</h2>
                     <div class="status-row">
                         <div class="status-dot"></div>
@@ -30954,7 +31054,13 @@ class PrismCrealityCard extends HTMLElement {
         .header-left {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 16px;
+        }
+        .printer-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 40px;
         }
         /* Printer Icon - Neumorphism Style */
         .printer-icon {
@@ -31602,7 +31708,7 @@ class PrismCrealityCard extends HTMLElement {
                 <div class="printer-icon ${(['offline', 'unavailable'].includes(data.stateStr.toLowerCase()) || (data.powerSwitch && !data.isPowerOn)) ? 'offline' : data.isPrinting ? 'printing' : data.isPaused ? 'paused' : ''}">
                     <ha-icon icon="mdi:printer-3d-nozzle"></ha-icon>
                 </div>
-                <div>
+                <div class="printer-info">
                     <h2 class="title">${data.name}</h2>
                     <div class="status-row">
                         <div class="status-dot"></div>
@@ -32859,12 +32965,15 @@ class PrismRoomCard extends HTMLElement {
           </div>
         `).join('');
         statusRow.classList.remove('placeholder');
+        statusRow.style.display = '';  // Show (flex from CSS)
       } else if (this._config.show_status_placeholder) {
         statusRow.innerHTML = '';
         statusRow.classList.add('placeholder');
+        statusRow.style.display = '';  // Show placeholder
       } else {
         statusRow.innerHTML = '';
         statusRow.classList.remove('placeholder');
+        statusRow.style.display = 'none';  // Hide completely
       }
     }
   }

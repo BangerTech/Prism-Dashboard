@@ -1097,12 +1097,15 @@ class PrismRoomCard extends HTMLElement {
           </div>
         `).join('');
         statusRow.classList.remove('placeholder');
+        statusRow.style.display = '';  // Show (flex from CSS)
       } else if (this._config.show_status_placeholder) {
         statusRow.innerHTML = '';
         statusRow.classList.add('placeholder');
+        statusRow.style.display = '';  // Show placeholder
       } else {
         statusRow.innerHTML = '';
         statusRow.classList.remove('placeholder');
+        statusRow.style.display = 'none';  // Hide completely
       }
     }
   }

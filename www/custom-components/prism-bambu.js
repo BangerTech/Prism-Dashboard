@@ -3765,7 +3765,13 @@ class PrismBambuCard extends HTMLElement {
         .header-left {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 16px;
+        }
+        .printer-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 40px;
         }
         /* Printer Icon - Neumorphism Style */
         .printer-icon {
@@ -4851,7 +4857,7 @@ class PrismBambuCard extends HTMLElement {
                 <div class="printer-icon ${(['offline', 'unavailable'].includes(data.stateStr.toLowerCase()) || (data.powerSwitch && !data.isPowerOn)) ? 'offline' : data.isPrinting ? 'printing' : data.isPaused ? 'paused' : ''}">
                     <ha-icon icon="mdi:printer-3d-nozzle"></ha-icon>
                 </div>
-                <div>
+                <div class="printer-info">
                     <h2 class="title">${data.name}</h2>
                     <div class="status-row">
                         <div class="status-dot"></div>

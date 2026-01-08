@@ -824,7 +824,7 @@ class PrismSidebarCard extends HTMLElement {
                 color: rgba(255, 255, 255, 0.6);
                 text-transform: uppercase;
                 letter-spacing: 2px;
-                margin-top: 8px;
+                margin-top: 5px;
             }
 
             /* Calendar Inlet */
@@ -863,7 +863,7 @@ class PrismSidebarCard extends HTMLElement {
             .section-title {
                 font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.35);
                 text-transform: uppercase; letter-spacing: 2px;
-                margin-bottom: 4px;
+                margin-bottom: 2px;
                 text-align: center;
             }
             
@@ -1287,6 +1287,78 @@ class PrismSidebarCard extends HTMLElement {
             .weather-forecast-low {
                 font-size: 13px;
                 color: rgba(255, 255, 255, 0.4);
+            }
+
+            /* Responsive Spacing - Tablet */
+            @media (max-width: 1024px) {
+                .camera-box {
+                    margin-bottom: 24px;
+                }
+                .clock-box {
+                    margin-bottom: 24px;
+                }
+                .calendar-inlet {
+                    margin-bottom: 24px;
+                }
+                .custom-card-container {
+                    margin-top: 20px;
+                    margin-bottom: 20px;
+                }
+            }
+
+            /* Responsive Spacing - Mobile Large */
+            @media (max-width: 768px) {
+                .camera-box {
+                    margin-bottom: 20px;
+                }
+                .clock-box {
+                    margin-bottom: 20px;
+                }
+                .calendar-inlet {
+                    margin-bottom: 20px;
+                    padding: 14px;
+                    gap: 14px;
+                }
+                .custom-card-container {
+                    margin-top: 16px;
+                    margin-bottom: 16px;
+                }
+                .sidebar {
+                    padding: 14px;
+                }
+            }
+
+            /* Responsive Spacing - Mobile Small */
+            @media (max-width: 480px) {
+                .camera-box {
+                    margin-bottom: 16px;
+                }
+                .clock-box {
+                    margin-bottom: 16px;
+                }
+                .calendar-inlet {
+                    margin-bottom: 16px;
+                    padding: 12px;
+                    gap: 12px;
+                }
+                .custom-card-container {
+                    margin-top: 12px;
+                    margin-bottom: 12px;
+                }
+                .sidebar {
+                    padding: 12px;
+                }
+                .clock-time {
+                    font-size: 56px;
+                    letter-spacing: -3px;
+                }
+                .clock-date {
+                    font-size: 12px;
+                    letter-spacing: 1px;
+                }
+                .mini-graph-container {
+                    margin-bottom: 12px;
+                }
             }
         </style>
 

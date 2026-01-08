@@ -396,7 +396,7 @@ class PrismLedCard extends HTMLElement {
           .header {
               display: flex; justify-content: space-between; align-items: center;
           }
-          .header-left { display: flex; align-items: center; gap: 12px; }
+          .header-left { display: flex; align-items: center; gap: 16px; }
           
           .icon-box {
               width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -421,7 +421,7 @@ class PrismLedCard extends HTMLElement {
               filter: drop-shadow(0 0 6px currentColor);
           }
           
-          .info { display: flex; flex-direction: column; }
+          .info { display: flex; flex-direction: column; justify-content: center; height: 40px; }
           .title { font-size: 1.125rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); line-height: 1; }
           .subtitle { font-size: 0.75rem; font-weight: 500; color: rgba(255, 255, 255, 0.6); margin-top: 4px; }
           

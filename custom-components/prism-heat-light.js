@@ -538,7 +538,7 @@ class PrismHeatLightCard extends HTMLElement {
           box-sizing: border-box;
         }
         .header {
-            display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+            display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
         }
         .icon-box {
             width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -580,7 +580,7 @@ class PrismHeatLightCard extends HTMLElement {
             filter: none;
         }
 
-        .title-area { flex: 1; min-width: 0; overflow: hidden; }
+        .title-area { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; height: 40px; }
         .title { font-size: 1.125rem; font-weight: 700; color: #1a1a1a; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .subtitle { font-size: 0.75rem; font-weight: 500; color: #666; line-height: 1.2; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

@@ -365,7 +365,7 @@ class PrismVacuumLightCard extends HTMLElement {
               gap: 12px;
           }
           .header-left { 
-              display: flex; align-items: center; gap: 12px;
+              display: flex; align-items: center; gap: 16px;
               flex: 1;
               min-width: 0;
               overflow: hidden;
@@ -397,6 +397,8 @@ class PrismVacuumLightCard extends HTMLElement {
           
           .info { 
               display: flex; flex-direction: column;
+              justify-content: center;
+              height: 40px;
               min-width: 0;
               overflow: hidden;
           }
