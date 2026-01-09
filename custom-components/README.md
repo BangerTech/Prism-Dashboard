@@ -395,7 +395,7 @@ The card is compatible with the [ha-bambulab Integration](https://github.com/gre
 
 ### prism-creality
 
-A Creality 3D printer card with glassmorphism design and full display of print progress, temperatures, fans, layer info. Supports K1, K1C, K1 Max, K1 SE and other Creality printers.
+A Creality 3D printer card with glassmorphism design and full display of print progress, temperatures, fans, layer info. Supports K1, K1C, K1 Max, K1 SE and other Creality printers. Also works with Moonraker/Klipper for rooted printers.
 
 <img width="400" alt="prism-creality" src="images/prism-creality.jpg" />
 

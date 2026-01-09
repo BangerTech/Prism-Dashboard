@@ -1,6 +1,6 @@
 ## <img src="https://raw.githubusercontent.com/BangerTech/Prism-Dashboard/main/custom-components/images/prism-logo.png" alt="Prism" width="80" align="center"> Prism Dashboard
 
-A modern, glassmorphism-inspired dashboard for Home Assistant, built on the popular Mushroom Cards.
+A modern, glassmorphism-inspired dashboard and custom-cards for Home Assistant.
 
 ---
 
@@ -22,11 +22,15 @@ A modern, glassmorphism-inspired dashboard for Home Assistant, built on the popu
 - [Features](#features)
 - [Requirements](#requirements)
 - [Installation](#installation)
-  - [1. Prepare Files](#1-prepare-files)
+  - [Option 1: Installation via HACS](#option-1-installation-via-hacs-recommended)
+  - [Option 2: Manual Installation](#option-2-manual-installation)
   - [2. Create Dashboard](#2-create-dashboard)
-  - [3. Register Custom Cards](#3-register-custom-cards)
+  - [3. Register Custom Cards](#3-register-custom-cards-manual-installation-only)
+- [Project Structure](#project-structure)
+- [Available Custom Cards](#available-custom-cards)
 - [Dashboard Configuration](#dashboard-configuration)
 - [Support / Feedback](#support--feedback)
+- [Development](#development)
 - [Contributing](#contributing)
 - [Sponsorship](#sponsorship)
 - [Keywords](#keywords)
@@ -110,7 +114,7 @@ For this dashboard to work, the following frontend integrations must be installe
 4. Search for "Prism Dashboard" and click **"Download"**
 5. Restart Home Assistant
 
-> **✨ That's it!** HACS automatically registers the resource. All 27 custom cards (dark + light themes) are included in this single file and will receive automatic cache updates via HACS.
+> **✨ That's it!** HACS automatically registers the resource. All 29 custom cards (dark + light themes) are included in this single file and will receive automatic cache updates via HACS.
 
 ### Option 2: Manual Installation
 
@@ -143,7 +147,7 @@ If you chose Option 2 (manual installation), the custom cards must be registered
    - **Type:** `JavaScript Module`
 5. Restart Home Assistant so the custom cards are loaded.
 
-> **✨ All 27 cards are included!** The bundled file contains all dark and light theme cards.
+> **✨ All 29 cards are included!** The bundled file contains all dark and light theme cards.
 
 ---
 
@@ -168,6 +172,49 @@ Prism-Dashboard/
 ```
 
 > **Note:** The dashboard components in the `dashboard/components/` folder are reusable YAML templates. See [Dashboard README](dashboard/README.md) for details on usage.
+
+---
+
+## Available Custom Cards
+
+Prism Dashboard includes **29 custom cards** (including dark and light theme variants):
+
+### Room & Navigation
+- **prism-room** – Compact room overview with grouped entities and popup
+- **prism-navigation** – Floating navigation bar for dashboard views
+- **prism-spacer** – Invisible placeholder for layout spacing
+
+### Climate Control
+- **prism-heat** / **prism-heat-light** – Circular thermostat knob with drag control
+- **prism-heat-small** / **prism-heat-small-light** – Compact heating card
+
+### Lights
+- **prism-button** / **prism-button-light** – Entity button with brightness slider
+- **prism-led** / **prism-led-light** – RGB light with color wheel and temperature control
+
+### Covers & Shutters
+- **prism-shutter** / **prism-shutter-light** – Horizontal shutter card
+- **prism-shutter-vertical** / **prism-shutter-vertical-light** – Vertical shutter card
+
+### Media & Calendar
+- **prism-media** / **prism-media-light** – Media player card
+- **prism-calendar** / **prism-calendar-light** – Calendar events card
+
+### Cleaning
+- **prism-vacuum** / **prism-vacuum-light** – Vacuum robot card
+- **prism-vacuum-switchbot** – Specialized card for SwitchBot vacuums
+
+### Energy & 3D Printing
+- **prism-energy** – Energy flow visualization with animations
+- **prism-energy-horizontal** – Horizontal energy flow layout
+- **prism-3dprinter** – Generic 3D printer card
+- **prism-bambu** – Bambu Lab printer with AMS support
+- **prism-creality** – Creality printer (K1, K1 Max, K1 SE, etc.) - also supports Moonraker/Klipper
+
+### Dashboard Layout
+- **prism-sidebar** / **prism-sidebar-light** – Full sidebar with camera, weather, calendar
+
+> 📚 **Full documentation** for all cards available in [Custom Components README](custom-components/README.md)
 
 ---
 
