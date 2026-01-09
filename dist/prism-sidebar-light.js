@@ -507,9 +507,10 @@ class PrismSidebarLightCard extends HTMLElement {
         if (this.config && !this.hasRendered) {
             this.render();
             this.hasRendered = true;
-            this.startClock();
-            this.startCameraRotation();
         }
+        // Always restart timers when reconnected to DOM
+        this.startClock();
+        this.startCameraRotation();
     }
 
     disconnectedCallback() {
