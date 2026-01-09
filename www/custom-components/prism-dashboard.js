@@ -3,7 +3,7 @@
  * https://github.com/BangerTech/Prism-Dashboard
  * 
  * Version: 1.5.9
- * Build Date: 2026-01-08T17:47:05.369Z
+ * Build Date: 2026-01-09T07:26:02.697Z
  * 
  * This file contains all Prism custom cards bundled together.
  * Just add this single file as a resource in Lovelace:
@@ -14030,6 +14030,7 @@ class PrismSidebarCard extends HTMLElement {
             }
         } else if (this.hasRendered) {
             // Minor changes, just update values
+            this.startClock();
             this.startCameraRotation();
             if (this._hass) {
                 this.updateValues();
@@ -17358,6 +17359,7 @@ class PrismSidebarLightCard extends HTMLElement {
             }
         } else if (this.hasRendered) {
             // Minor changes, just update values
+            this.startClock();
             this.startCameraRotation();
             if (this._hass) {
                 this.updateValues();

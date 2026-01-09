@@ -297,6 +297,7 @@ class PrismSidebarCard extends HTMLElement {
             }
         } else if (this.hasRendered) {
             // Minor changes, just update values
+            this.startClock();
             this.startCameraRotation();
             if (this._hass) {
                 this.updateValues();
