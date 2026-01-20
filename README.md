@@ -1,10 +1,10 @@
 <div align="center">
-  <table border="0">
-    <tr>
-      <td valign="middle">
+  <table style="border: none; border-collapse: collapse;">
+    <tr style="border: none;">
+      <td style="border: none;" valign="middle">
         <img src="https://raw.githubusercontent.com/BangerTech/Prism-Dashboard/main/custom-components/images/prism-logo.png" alt="Prism" width="130">
       </td>
-      <td valign="middle">
+      <td style="border: none;" valign="middle">
         <h1>PRISM Dashboard</h1>
       </td>
     </tr>
