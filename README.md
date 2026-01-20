@@ -1,5 +1,6 @@
 <h1 align="center">
-<img src="https://raw.githubusercontent.com/BangerTech/Prism-Dashboard/main/custom-components/images/prism-logo.png" alt="Prism" width="130" style="vertical-align: middle;"> PRISM Dashboard
+  <img src="https://raw.githubusercontent.com/BangerTech/Prism-Dashboard/main/custom-components/images/prism-logo.png" alt="Prism" width="130" align="middle"> 
+  PRISM Dashboard
 </h1>
 
 <p align="center">
