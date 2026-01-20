@@ -106,6 +106,8 @@ For this dashboard to work, the following frontend integrations must be installe
 
 ### Option 1: Installation via HACS (Recommended)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BangerTech&repository=Prism-Dashboard&category=dashboard)
+
 1. Make sure [HACS](https://hacs.xyz) is installed.
 2. Go to **HACS → Frontend** (three-dot menu top right) → **Custom Repositories**
 3. Add this repository:
