@@ -3,7 +3,7 @@
  * https://github.com/BangerTech/Prism-Dashboard
  * 
  * Version: 1.5.9
- * Build Date: 2026-01-20T12:58:28.189Z
+ * Build Date: 2026-01-23T07:04:03.667Z
  * 
  * This file contains all Prism custom cards bundled together.
  * Just add this single file as a resource in Lovelace:
@@ -177,6 +177,15 @@ class PrismButtonCard extends HTMLElement {
     this._hass = hass;
     if (this._config) {
       this._updateCard();
+    }
+    // Update popup cards if popup is open (live updates)
+    if (this._popupCards && this._popupCards.length > 0) {
+      console.log('Prism Button: Updating', this._popupCards.length, 'popup cards with new hass');
+      this._popupCards.forEach(card => {
+        if (card) {
+          card.hass = hass;
+        }
+      });
     }
   }
 
@@ -444,6 +453,9 @@ class PrismButtonCard extends HTMLElement {
       window.removeEventListener('resize', this._popupResizeHandler);
       this._popupResizeHandler = null;
     }
+    
+    // Clear popup cards references (stop live updates)
+    this._popupCards = [];
     
     const existingOverlay = document.getElementById('prism-button-popup-overlay');
     if (existingOverlay) {
@@ -768,6 +780,9 @@ class PrismButtonCard extends HTMLElement {
     // Clear loading message
     scaleWrapper.innerHTML = '';
     
+    // Initialize popup cards array for live updates
+    this._popupCards = [];
+    
     // Normalize to array
     let cardConfigs = [];
     if (Array.isArray(cardsConfig)) {
@@ -816,6 +831,8 @@ class PrismButtonCard extends HTMLElement {
         if (cardElement) {
           cardElement.hass = this._hass;
           scaleWrapper.appendChild(cardElement);
+          // Store reference for live updates
+          this._popupCards.push(cardElement);
         }
       } catch (e) {
         console.error('Prism Button Popup: Failed to create card', cardConfig, e);
@@ -980,7 +997,9 @@ class PrismButtonCard extends HTMLElement {
             bottom: 5px;
             left: 5px;
             right: 5px;
-            height: ${showSlider ? brightness : 0}%;
+            /* Slider-Höhe wird per JS gesetzt, hier nur Basis */
+            height: 0%;
+            max-height: calc(100% - 10px);
             width: auto;
             background: linear-gradient(0deg, 
               ${sliderColorStart} 0%,
@@ -998,7 +1017,9 @@ class PrismButtonCard extends HTMLElement {
             top: 5px;
             left: 5px;
             bottom: 5px;
-            width: ${showSlider ? brightness : 0}%;
+            /* Slider-Breite wird per JS gesetzt, hier nur Basis */
+            width: 0%;
+            max-width: calc(100% - 10px);
             background: linear-gradient(90deg, 
               ${sliderColorStart} 0%,
               ${sliderColorEnd} 100%);
@@ -1154,23 +1175,45 @@ class PrismButtonCard extends HTMLElement {
     const slider = this.shadowRoot.querySelector('.brightness-slider');
     this._card = card;
     
+    // Set initial slider value via JS (not CSS) to avoid calc() complexity and flicker
+    // BUT: Don't update if currently dragging OR if we have a pending brightness value
+    // (pending = user just released slider, waiting for HA to confirm new value)
+    if (slider && showSlider && !this._isDragging) {
+      // Use pending brightness if set (prevents jump back to old value after drag)
+      const displayBrightness = this._pendingBrightness !== undefined ? this._pendingBrightness : brightness;
+      
+      // Clear pending if HA state now matches
+      if (this._pendingBrightness !== undefined && Math.abs(brightness - this._pendingBrightness) < 2) {
+        this._pendingBrightness = undefined;
+      }
+      
+      if (layout === 'vertical') {
+        slider.style.height = displayBrightness + '%';
+      } else {
+        slider.style.width = displayBrightness + '%';
+      }
+    }
+    
     if (card) {
-      let touchStart = 0;
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let hasMoved = false;
-      let hasHandledInteraction = false;
+      // IMPORTANT: Use class variables instead of local variables to survive re-renders!
+      // If we use local variables, they get reset when _updateCard() is called during an interaction,
+      // which can cause _handleHold() to be triggered instead of _handleTap()
+      if (this._touchStart === undefined) this._touchStart = 0;
+      if (this._touchStartX === undefined) this._touchStartX = 0;
+      if (this._touchStartY === undefined) this._touchStartY = 0;
+      if (this._hasMoved === undefined) this._hasMoved = false;
+      if (this._hasHandledInteraction === undefined) this._hasHandledInteraction = false;
       
       // Handle start of interaction
       const handleInteractionStart = (e) => {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
-        touchStartX = clientX;
-        touchStartY = clientY;
-        touchStart = Date.now();
-        hasMoved = false;
-        hasHandledInteraction = false;
+        this._touchStartX = clientX;
+        this._touchStartY = clientY;
+        this._touchStart = Date.now();
+        this._hasMoved = false;
+        this._hasHandledInteraction = false;
         this._isDragging = false;
         this._dragStartX = clientX;
         this._dragStartBrightness = brightness;
@@ -1183,21 +1226,21 @@ class PrismButtonCard extends HTMLElement {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
-        const deltaX = Math.abs(clientX - touchStartX);
-        const deltaY = Math.abs(clientY - touchStartY);
+        const deltaX = Math.abs(clientX - this._touchStartX);
+        const deltaY = Math.abs(clientY - this._touchStartY);
         
         // Start dragging based on layout direction
         if (layout === 'vertical') {
           // Vertical: Start dragging if moved more than 10px vertically and more vertical than horizontal
           if (deltaY > 10 && deltaY > deltaX) {
             this._isDragging = true;
-            hasMoved = true;
+            this._hasMoved = true;
           }
         } else {
           // Horizontal: Start dragging if moved more than 10px horizontally and more horizontal than vertical
           if (deltaX > 10 && deltaX > deltaY) {
             this._isDragging = true;
-            hasMoved = true;
+            this._hasMoved = true;
           }
         }
         
@@ -1205,6 +1248,11 @@ class PrismButtonCard extends HTMLElement {
           e.preventDefault();
           const rect = card.getBoundingClientRect();
           let newBrightness;
+          
+          // Disable transition during drag for smooth feedback
+          if (slider) {
+            slider.style.transition = 'none';
+          }
           
           if (layout === 'vertical') {
             // Vertical: Calculate from bottom (inverted Y-axis)
@@ -1254,24 +1302,75 @@ class PrismButtonCard extends HTMLElement {
             newBrightness = Math.max(1, Math.min(100, percent));
           }
           
+          // Re-enable transition after drag
+          if (slider) {
+            slider.style.transition = '';
+          }
+          
+          // Store pending brightness to prevent jump back to old value during HA state update
+          this._pendingBrightness = newBrightness;
+          
+          // Clear pending after timeout (fallback if HA doesn't update)
+          setTimeout(() => {
+            this._pendingBrightness = undefined;
+          }, 2000);
+          
           this._setBrightness(newBrightness);
           this._isDragging = false;
-          hasHandledInteraction = true;
+          this._hasHandledInteraction = true;
           return;
         }
         
+        // Re-enable transition if drag was cancelled
+        if (slider) {
+          slider.style.transition = '';
+        }
         this._isDragging = false;
         
         // Handle tap/hold for ALL entities (not just lights)
-        const duration = Date.now() - touchStart;
-        if (!hasMoved && duration < 500) {
+        // IMPORTANT: Only process if touchStart is valid (> 0) to avoid false hold triggers
+        const duration = this._touchStart > 0 ? (Date.now() - this._touchStart) : 0;
+        if (!this._hasMoved && duration > 0 && duration < 500) {
           this._handleTap();
-          hasHandledInteraction = true;
-        } else if (!hasMoved && duration >= 500) {
+          this._hasHandledInteraction = true;
+        } else if (!this._hasMoved && duration >= 500) {
           e.preventDefault();
           this._handleHold();
-          hasHandledInteraction = true;
+          this._hasHandledInteraction = true;
         }
+        // Reset touchStart to prevent stale data
+        this._touchStart = 0;
+      };
+      
+      // Document-level handlers for dragging (allows dragging outside card)
+      const documentMouseMove = (e) => {
+        if (this._isDragging && e.buttons === 1) {
+          handleInteractionMove(e);
+        }
+      };
+      
+      const documentMouseUp = (e) => {
+        if (this._isDragging || this._touchStart > 0) {
+          handleInteractionEnd(e);
+        }
+        // Remove document listeners when done
+        document.removeEventListener('mousemove', documentMouseMove);
+        document.removeEventListener('mouseup', documentMouseUp);
+      };
+      
+      const documentTouchMove = (e) => {
+        if (this._isDragging) {
+          handleInteractionMove(e);
+        }
+      };
+      
+      const documentTouchEnd = (e) => {
+        if (this._isDragging || this._touchStart > 0) {
+          handleInteractionEnd(e);
+        }
+        // Remove document listeners when done
+        document.removeEventListener('touchmove', documentTouchMove);
+        document.removeEventListener('touchend', documentTouchEnd);
       };
       
       // Create bound handlers for proper cleanup
@@ -1280,6 +1379,9 @@ class PrismButtonCard extends HTMLElement {
           e.stopPropagation();
           e.stopImmediatePropagation();
           handleInteractionStart(e);
+          // Add document-level listeners for dragging outside card
+          document.addEventListener('touchmove', documentTouchMove, { passive: false });
+          document.addEventListener('touchend', documentTouchEnd);
         },
         touchMove: (e) => {
           e.stopPropagation();
@@ -1295,6 +1397,9 @@ class PrismButtonCard extends HTMLElement {
           e.stopPropagation();
           e.stopImmediatePropagation();
           handleInteractionStart(e);
+          // Add document-level listeners for dragging outside card
+          document.addEventListener('mousemove', documentMouseMove);
+          document.addEventListener('mouseup', documentMouseUp);
         },
         mouseMove: (e) => {
           if (e.buttons === 1) {
@@ -1308,25 +1413,19 @@ class PrismButtonCard extends HTMLElement {
           e.stopImmediatePropagation();
           handleInteractionEnd(e);
         },
-        mouseLeave: () => {
-          if (this._isDragging) {
-            this._isDragging = false;
-            this._updateCard(); // Reset to actual brightness
-          }
-        },
         click: (e) => {
           // CRITICAL: Stop propagation immediately to prevent other cards from receiving this event
           e.stopPropagation();
           e.stopImmediatePropagation();
           
-          // Only handle if we haven't already handled via mouseup/touchend
-          if (!hasHandledInteraction && !hasMoved) {
-            this._handleTap();
-          }
+          // IMPORTANT: Do NOT handle tap here - it's already handled in mouseUp/touchEnd
+          // This click handler is ONLY for stopping propagation to prevent parent elements from receiving the click
+          // If we call _handleTap() here, it may trigger TWICE (once in mouseUp/touchEnd, once here)
+          
           // Reset state for next interaction
-          hasMoved = false;
-          hasHandledInteraction = false;
-          touchStart = 0;
+          this._hasMoved = false;
+          this._hasHandledInteraction = false;
+          this._touchStart = 0;
         },
         contextMenu: (e) => {
           e.preventDefault();
@@ -1345,7 +1444,6 @@ class PrismButtonCard extends HTMLElement {
       card.addEventListener('mousedown', this._boundHandlers.mouseDown, { capture: true });
       card.addEventListener('mousemove', this._boundHandlers.mouseMove, { capture: true });
       card.addEventListener('mouseup', this._boundHandlers.mouseUp, { capture: true });
-      card.addEventListener('mouseleave', this._boundHandlers.mouseLeave);
       
       // Click handler - use capture phase to catch events before they bubble
       card.addEventListener('click', this._boundHandlers.click, { capture: true });
@@ -32196,6 +32294,16 @@ class PrismCrealityCard extends HTMLElement {
           selector: { text: {} }
         },
         {
+          name: 'show_cover_image',
+          label: 'Show 3D model preview (Thumbnail) with print progress',
+          selector: { boolean: {} }
+        },
+        {
+          name: 'cover_image_entity',
+          label: 'Cover image/thumbnail entity (optional - auto-detected if not set)',
+          selector: { entity: { domain: ['camera', 'image'] } }
+        },
+        {
           name: 'custom_humidity',
           label: 'Custom humidity sensor (optional)',
           selector: { entity: { domain: 'sensor', device_class: 'humidity' } }
@@ -32214,6 +32322,74 @@ class PrismCrealityCard extends HTMLElement {
           name: 'power_switch_icon',
           label: 'Power switch icon (default: mdi:power)',
           selector: { icon: {} }
+        },
+        // Display Options section - toggle visibility of chips/overlays
+        {
+          type: 'expandable',
+          name: '',
+          title: 'Display Options',
+          schema: [
+            {
+              name: 'show_model_fan',
+              label: 'Show Model/Part Fan',
+              default: true,
+              selector: { boolean: {} }
+            },
+            {
+              name: 'show_aux_fan',
+              label: 'Show Aux Fan',
+              default: true,
+              selector: { boolean: {} }
+            },
+            {
+              name: 'show_case_fan',
+              label: 'Show Case/Enclosure Fan',
+              default: true,
+              selector: { boolean: {} }
+            },
+            {
+              name: 'show_nozzle_temp',
+              label: 'Show Nozzle Temperature',
+              default: true,
+              selector: { boolean: {} }
+            },
+            {
+              name: 'show_bed_temp',
+              label: 'Show Bed Temperature',
+              default: true,
+              selector: { boolean: {} }
+            },
+            {
+              name: 'show_chamber_temp',
+              label: 'Show Chamber Temperature',
+              default: true,
+              selector: { boolean: {} }
+            },
+            {
+              name: 'show_humidity',
+              label: 'Show Humidity (if configured)',
+              default: true,
+              selector: { boolean: {} }
+            },
+            {
+              name: 'show_custom_temp',
+              label: 'Show Custom Temperature (if configured)',
+              default: true,
+              selector: { boolean: {} }
+            },
+            {
+              name: 'show_layer_info',
+              label: 'Show Layer Information',
+              default: true,
+              selector: { boolean: {} }
+            },
+            {
+              name: 'show_time_info',
+              label: 'Show Time Left / ETA',
+              default: true,
+              selector: { boolean: {} }
+            }
+          ]
         },
         // Multi-Printer View section
         {
@@ -32321,9 +32497,6 @@ class PrismCrealityCard extends HTMLElement {
         const deviceName = device.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
         const deviceNameSimple = device.name.toLowerCase().replace(/[^a-z0-9]/g, '');
         
-        console.log('Prism Creality: No device_id match, searching by device name:', device.name);
-        console.log('Prism Creality: Search patterns:', deviceName, deviceNameSimple);
-        
         // Search in states (this covers ALL entities including those without entity registry entry)
         for (const entityId in this._hass.states) {
           const entityIdLower = entityId.toLowerCase();
@@ -32338,10 +32511,6 @@ class PrismCrealityCard extends HTMLElement {
           }
         }
         
-        console.log('Prism Creality: Found entities by name search:', Object.keys(result).length);
-        if (Object.keys(result).length > 0) {
-          console.log('Prism Creality: Sample entities:', Object.keys(result).slice(0, 10));
-        }
       }
     }
     
@@ -32349,25 +32518,22 @@ class PrismCrealityCard extends HTMLElement {
   }
 
   // Get entity by name pattern (searches entity_id)
-  // First tries device-bound entities, then falls back to device name search
+  // IMPORTANT: Only searches for entities belonging to the selected device
   findEntityByPattern(pattern, domain = null) {
     if (!this._hass) return null;
     
     const deviceId = this.config?.printer;
-    const supportedPlatforms = ['creality_control', 'moonraker', 'klipper'];
     
     // Get device name patterns for searching (dynamically from actual device name)
     // E.g., device "K1-098D" -> patterns: ["k1_098d", "k1098d"] and parts: ["k1", "098d"]
     let deviceNamePattern = '';
     let deviceNameSimple = '';
-    let deviceNameParts = [];
     
     if (deviceId) {
       const device = this._hass.devices?.[deviceId];
       if (device?.name) {
         deviceNamePattern = device.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
         deviceNameSimple = device.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        deviceNameParts = device.name.toLowerCase().split(/[^a-z0-9]+/).filter(p => p.length >= 2);
       }
     }
     
@@ -32387,9 +32553,11 @@ class PrismCrealityCard extends HTMLElement {
     
     // Second pass: Look for entities by full device name pattern (e.g., "k1_098d")
     // This catches Moonraker entities like "sensor.k1_098d_bed_temperature"
+    // IMPORTANT: Only match if entity contains the device name pattern!
     if (deviceNamePattern) {
       for (const entityId in this._hass.states) {
         const entityIdLower = entityId.toLowerCase();
+        // Must contain BOTH device name AND pattern
         if (entityIdLower.includes(deviceNamePattern) && entityIdLower.includes(pattern.toLowerCase())) {
           if (matchesDomain(entityId, domain)) return entityId;
         }
@@ -32400,22 +32568,15 @@ class PrismCrealityCard extends HTMLElement {
     if (deviceNameSimple && deviceNameSimple !== deviceNamePattern) {
       for (const entityId in this._hass.states) {
         const entityIdLower = entityId.toLowerCase();
+        // Must contain BOTH device name AND pattern
         if (entityIdLower.includes(deviceNameSimple) && entityIdLower.includes(pattern.toLowerCase())) {
           if (matchesDomain(entityId, domain)) return entityId;
         }
       }
     }
     
-    // Fourth pass: Look for supported platform entities (fallback for entities not matching device name)
-    for (const entityId in this._hass.entities) {
-      const entityInfo = this._hass.entities[entityId];
-      const platform = entityInfo.platform || '';
-      const isSupported = supportedPlatforms.some(p => platform.toLowerCase().includes(p));
-      
-      if (isSupported && entityId.toLowerCase().includes(pattern.toLowerCase())) {
-        if (matchesDomain(entityId, domain)) return entityId;
-      }
-    }
+    // NO fourth pass - don't search for generic platform entities as this can find wrong devices!
+    // If a device is selected, only return entities that belong to that device.
     
     return null;
   }
@@ -32496,8 +32657,6 @@ class PrismCrealityCard extends HTMLElement {
         const deviceName = device.name?.toLowerCase().replace(/[^a-z0-9]/g, '_') || '';
         const deviceNameSimple = device.name?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
         
-        console.log('Prism Creality: Searching by device name:', device.name, '-> patterns:', deviceName, deviceNameSimple);
-        
         // Search in states by device name pattern (covers all entities)
         for (const entityId in this._hass.states) {
           const entityIdLower = entityId.toLowerCase();
@@ -32506,7 +32665,6 @@ class PrismCrealityCard extends HTMLElement {
           }
         }
         
-        console.log('Prism Creality: Found entities by name pattern:', Object.keys(result).length);
       }
     }
     
@@ -32604,10 +32762,10 @@ class PrismCrealityCard extends HTMLElement {
     
     // Get print status
     // Creality Control: devicestate, print_state
-    // Moonraker: print_status, current_print_state, status
+    // Moonraker HA: current_print_state, printer_state, status
     let stateStr = 'Idle';
     const stateEntity = findEntityMultiPattern([
-      'devicestate', 'print_status', 'print_state', 'current_print_state', 
+      'devicestate', 'current_print_state', 'print_status', 'print_state', 
       'printer_state', 'status', '_state'
     ]);
     
@@ -32664,7 +32822,6 @@ class PrismCrealityCard extends HTMLElement {
       // If we have progress but status isn't recognized as printing or idle, assume paused
       if (!idleStates.includes(statusLower)) {
         isPaused = true;
-        console.log('Prism Creality: Smart pause detection - status:', stateStr, 'progress:', progress);
       }
     }
     
@@ -32672,10 +32829,10 @@ class PrismCrealityCard extends HTMLElement {
 
     // Remaining time
     // Creality: printlefttime, lefttime (in minutes)
-    // Moonraker: print_time_left, time_remaining, eta (may be in seconds)
+    // Moonraker HA: slicer_print_time_left_estimate, print_time_left, time_remaining, eta (may be in seconds)
     let printTimeLeft = '--';
     const timeEntity = findEntityMultiPattern([
-      'printlefttime', 'print_time_left', 'time_remaining', 'lefttime', 'eta', 'remaining'
+      'printlefttime', 'slicer_print_time_left', 'print_time_left', 'time_remaining', 'lefttime', 'eta', 'print_eta', 'remaining'
     ]);
     if (timeEntity && (isPrinting || isPaused)) {
       let timeValue = parseFloat(this._hass.states[timeEntity]?.state) || 0;
@@ -32710,15 +32867,27 @@ class PrismCrealityCard extends HTMLElement {
     const nozzleTempEntity = findEntityMultiPattern([
       'nozzletemp', 'extruder_temperature', 'extruder_temp', 'hotend_temp', 'nozzle_temp'
     ]);
-    const targetNozzleEntity = findEntityMultiPattern([
+    // Target nozzle can be sensor OR number domain in Moonraker HA
+    let targetNozzleEntity = findEntityMultiPattern([
       'targetnozzle', 'extruder_target', 'target_extruder', 'nozzle_target', 'target_nozzle'
     ]);
+    if (!targetNozzleEntity) {
+      targetNozzleEntity = findEntityMultiPattern([
+        'extruder_target', 'target_extruder', 'nozzle_target'
+      ], 'number');
+    }
     const bedTempEntity = findEntityMultiPattern([
       'bedtemp', 'heater_bed_temperature', 'bed_temp', 'bed_temperature', 'heated_bed'
     ]);
-    const targetBedEntity = findEntityMultiPattern([
+    // Target bed can be sensor OR number domain in Moonraker HA
+    let targetBedEntity = findEntityMultiPattern([
       'targetbed', 'heater_bed_target', 'bed_target', 'target_bed'
     ]);
+    if (!targetBedEntity) {
+      targetBedEntity = findEntityMultiPattern([
+        'bed_target', 'target_bed', 'heater_bed_target'
+      ], 'number');
+    }
     const boxTempEntity = findEntityMultiPattern([
       'boxtemp', 'chamber_temp', 'chamber_temperature', 'enclosure_temp'
     ]);
@@ -32826,7 +32995,6 @@ class PrismCrealityCard extends HTMLElement {
     // Cache device entities on first hass assignment or if empty (only if printer is configured)
     if (this.config?.printer && (firstTime || Object.keys(this._deviceEntities).length === 0)) {
       this._deviceEntities = this.getCrealityDeviceEntities();
-      console.log('Prism Creality: Found device entities:', Object.keys(this._deviceEntities));
     }
     
     // Get current status to detect changes
@@ -32903,22 +33071,37 @@ class PrismCrealityCard extends HTMLElement {
       statVals[1].innerHTML = `${data.isIdle ? '--' : data.currentLayer} <span style="font-size: 0.875rem; opacity: 0.4;">/ ${data.isIdle ? '--' : data.totalLayers}</span>`;
     }
     
-    // Update temperatures and fans via pill values
-    const pillValues = this.shadowRoot.querySelectorAll('.pill-value');
-    if (pillValues.length >= 5) {
-      pillValues[0].textContent = `${data.modelFanSpeed}%`;
-      pillValues[1].textContent = `${data.auxFanSpeed}%`;
-      pillValues[2].textContent = `${Math.round(data.nozzleTemp)}°`;
-      pillValues[3].textContent = `${Math.round(data.bedTemp)}°`;
-      pillValues[4].textContent = `${Math.round(data.chamberTemp)}°`;
-    }
+    // Update fans via data-field attributes
+    const modelFanEl = this.shadowRoot.querySelector('[data-field="model-fan"]');
+    if (modelFanEl) modelFanEl.textContent = `${Math.round(data.modelFanSpeed)}%`;
     
-    // Update target temps
-    const pillLabels = this.shadowRoot.querySelectorAll('.overlay-right .pill-label');
-    if (pillLabels.length >= 2) {
-      pillLabels[0].textContent = `/${Math.round(data.targetNozzleTemp)}°`;
-      pillLabels[1].textContent = `/${Math.round(data.targetBedTemp)}°`;
-    }
+    const auxFanEl = this.shadowRoot.querySelector('[data-field="aux-fan"]');
+    if (auxFanEl) auxFanEl.textContent = `${Math.round(data.auxFanSpeed)}%`;
+    
+    const caseFanEl = this.shadowRoot.querySelector('[data-field="case-fan"]');
+    if (caseFanEl) caseFanEl.textContent = `${Math.round(data.caseFanSpeed)}%`;
+    
+    const humidityEl = this.shadowRoot.querySelector('[data-field="humidity"]');
+    if (humidityEl) humidityEl.textContent = `${Math.round(data.humidity)}%`;
+    
+    // Update temperatures via data-field attributes
+    const nozzleTempEl = this.shadowRoot.querySelector('[data-field="nozzle-temp"]');
+    if (nozzleTempEl) nozzleTempEl.textContent = `${Math.round(data.nozzleTemp)}°`;
+    
+    const nozzleTargetEl = this.shadowRoot.querySelector('[data-field="nozzle-target"]');
+    if (nozzleTargetEl) nozzleTargetEl.textContent = `/${Math.round(data.targetNozzleTemp)}°`;
+    
+    const bedTempEl = this.shadowRoot.querySelector('[data-field="bed-temp"]');
+    if (bedTempEl) bedTempEl.textContent = `${Math.round(data.bedTemp)}°`;
+    
+    const bedTargetEl = this.shadowRoot.querySelector('[data-field="bed-target"]');
+    if (bedTargetEl) bedTargetEl.textContent = `/${Math.round(data.targetBedTemp)}°`;
+    
+    const chamberTempEl = this.shadowRoot.querySelector('[data-field="chamber-temp"]');
+    if (chamberTempEl) chamberTempEl.textContent = `${Math.round(data.chamberTemp)}°`;
+    
+    const customTempEl = this.shadowRoot.querySelector('[data-field="custom-temp"]');
+    if (customTempEl) customTempEl.textContent = `${Math.round(data.customTemp)}°`;
     
     // Update camera stream hass if it exists
     const cameraStream = this.shadowRoot.querySelector('ha-camera-stream');
@@ -32954,6 +33137,35 @@ class PrismCrealityCard extends HTMLElement {
           powerBtn.classList.add('off');
           powerBtn.title = 'Power On';
         }
+      }
+    }
+    
+    // Update cover image progress
+    const coverProgress = this.shadowRoot.querySelector('.cover-image-progress');
+    if (coverProgress) {
+      coverProgress.style.setProperty('--progress-height', `${data.progress}%`);
+    }
+    
+    const coverBadge = this.shadowRoot.querySelector('.cover-progress-badge');
+    if (coverBadge) {
+      coverBadge.textContent = `${Math.round(data.progress)}%`;
+    }
+    
+    // Update cover image wrapper classes for state changes
+    const coverWrapper = this.shadowRoot.querySelector('.cover-image-wrapper');
+    if (coverWrapper) {
+      coverWrapper.classList.toggle('printing', data.isPrinting);
+      coverWrapper.classList.toggle('paused', data.isPaused);
+      coverWrapper.classList.toggle('idle', data.isIdle);
+    }
+    
+    // Update cover image URL if it changed
+    const coverImage = this.shadowRoot.querySelector('.cover-image');
+    const coverImageProgress = this.shadowRoot.querySelector('.cover-image-progress');
+    if (coverImage && data.coverImageUrl && coverImage.src !== data.coverImageUrl) {
+      coverImage.src = data.coverImageUrl;
+      if (coverImageProgress) {
+        coverImageProgress.src = data.coverImageUrl;
       }
     }
   }
@@ -33245,29 +33457,47 @@ class PrismCrealityCard extends HTMLElement {
   handleLightToggle() {
     if (!this._hass) return;
     
-    // Use configured light_switch or auto-detect switch domain
+    // Use configured light_switch or auto-detect
     let entityId = this.config.light_switch;
     
-    // Otherwise find the light switch (must be switch domain for control)
+    // Otherwise find the light entity (switch, light, or number domain)
     if (!entityId) {
       entityId = this.findEntityByPattern('light', 'switch');
     }
+    if (!entityId) {
+      entityId = this.findEntityByPattern('light', 'light');
+    }
+    // Moonraker HA uses number domain for LED control
+    if (!entityId) {
+      entityId = this.findEntityByPattern('output_pin_led', 'number') || this.findEntityByPattern('led', 'number');
+    }
     
     if (!entityId) {
-      console.warn('Prism Creality: No light switch entity found. Please configure light_switch in card settings.');
+      console.warn('Prism Creality: No light entity found. Please configure light_switch in card settings.');
       return;
     }
     
     // Determine domain from entity_id
-    const domain = entityId.startsWith('light.') ? 'light' : 'switch';
+    const domain = entityId.split('.')[0];
+    const currentState = this._hass.states[entityId]?.state;
+    let newState;
     
-    // Call the service
-    this._hass.callService(domain, 'toggle', { entity_id: entityId });
+    // Handle different domains
+    if (domain === 'number') {
+      // Number entities: toggle between 0 and max value
+      const currentValue = parseFloat(currentState) || 0;
+      const maxValue = this._hass.states[entityId]?.attributes?.max || 100;
+      const newValue = currentValue > 0 ? 0 : maxValue;
+      newState = newValue > 0 ? 'on' : 'off';
+      this._hass.callService('number', 'set_value', { entity_id: entityId, value: newValue });
+    } else {
+      // Light/Switch entities: use toggle service
+      newState = currentState === 'on' ? 'off' : 'on';
+      this._hass.callService(domain, 'toggle', { entity_id: entityId });
+    }
     
     // Optimistically update UI immediately
     const lightBtn = this.shadowRoot?.querySelector('.btn-light');
-    const currentState = this._hass.states[entityId]?.state;
-    const newState = currentState === 'on' ? 'off' : 'on';
     
     if (lightBtn) {
       if (newState === 'on') {
@@ -35182,31 +35412,73 @@ class PrismCrealityCard extends HTMLElement {
     };
     
     // Status, Progress, Layers - support both Creality Control and Moonraker
+    // Moonraker HA uses: current_print_state, printer_state, progress, current_layer, total_layer, print_time_left
     const progressEntity = findMulti(['printprogress', 'print_progress', 'progress_percentage', 'progress']);
-    const stateEntity = findMulti(['devicestate', 'print_status', 'print_state', 'device_state', 'status']);
+    const stateEntity = findMulti(['devicestate', 'current_print_state', 'print_status', 'print_state', 'printer_state', 'device_state', 'status']);
     const layerEntity = findMulti(['current_layer', '_layer', 'layer']);
     const totalLayerEntity = findMulti(['total_layer', 'totallayer', 'total_layers']);
-    const timeLeftEntity = findMulti(['printlefttime', 'print_time_left', 'time_remaining', 'time_left', 'eta']);
+    // Moonraker HA: slicer_print_time_left_estimate, print_time_left, print_eta
+    const timeLeftEntity = findMulti(['printlefttime', 'slicer_print_time_left', 'print_time_left', 'time_remaining', 'time_left', 'eta', 'print_eta']);
+    
     
     // Temperatures
     const nozzleTempEntity = findMulti(['nozzletemp', 'extruder_temperature', 'extruder_temp', 'nozzle_temp']);
-    const targetNozzleTempEntity = findMulti(['targetnozzle', 'extruder_target', 'target_nozzle']);
+    // Target temps can be sensor OR number domain in Moonraker HA
+    let targetNozzleTempEntity = findMulti(['targetnozzle', 'extruder_target', 'target_nozzle']);
+    if (!targetNozzleTempEntity) {
+      targetNozzleTempEntity = findMulti(['extruder_target', 'target_nozzle', 'nozzle_target'], 'number');
+    }
     const bedTempEntity = findMulti(['bedtemp', 'heater_bed_temperature', 'bed_temp', 'bed_temperature']);
-    const targetBedTempEntity = findMulti(['targetbed', 'heater_bed_target', 'target_bed']);
+    let targetBedTempEntity = findMulti(['targetbed', 'heater_bed_target', 'bed_target', 'target_bed']);
+    if (!targetBedTempEntity) {
+      targetBedTempEntity = findMulti(['bed_target', 'target_bed', 'heater_bed_target'], 'number');
+    }
     const boxTempEntity = findMulti(['boxtemp', 'chamber_temp', 'chamber_temperature', 'enclosure_temp']);
     
-    // Fans - Creality: modelfan, Moonraker: part_fan, fan_speed
-    const modelFanEntity = findMulti(['modelfan', 'model_fan', 'part_fan', 'fan_speed', 'print_cooling_fan']);
-    const auxFanEntity = findMulti(['auxiliaryfan', 'auxiliary_fan', 'aux_fan']);
-    const caseFanEntity = findMulti(['casefan', 'case_fan', 'enclosure_fan', 'controller_fan']);
     
-    // Light: prefer switch domain for control, sensor for status
-    const lightSwitchEntity = findMulti(['lightsw', 'light', 'led'], 'switch');
+    // Fans - Creality: modelfan, Moonraker: hotend_fan, output_pin_fan0/1/2
+    // Moonraker K1 fan mapping: Fan0 = Model/Part, Fan1 = Case/Enclosure, Fan2 = Aux/Side
+    // Note: chamber_fan_temp is a temperature sensor, not a fan speed!
+    // Moonraker uses number domain for fan control entities
+    let modelFanEntity = findMulti(['modelfan', 'model_fan', 'part_fan', 'fan_speed', 'print_cooling_fan']);
+    if (!modelFanEntity) {
+      // Moonraker: hotend_fan is a sensor, output_pin_fan0 is the model/part fan
+      modelFanEntity = findMulti(['hotend_fan'], 'sensor') || findMulti(['output_pin_fan0'], 'number');
+    }
+    
+    // Case fan: Moonraker uses output_pin_fan1 (number domain)
+    let caseFanEntity = findMulti(['casefan', 'case_fan', 'enclosure_fan', 'controller_fan']);
+    if (!caseFanEntity) {
+      caseFanEntity = findMulti(['output_pin_fan1'], 'number');
+    }
+    
+    // Aux fan: Moonraker uses output_pin_fan2 (number domain)
+    let auxFanEntity = findMulti(['auxiliaryfan', 'auxiliary_fan', 'aux_fan']);
+    if (!auxFanEntity) {
+      auxFanEntity = findMulti(['output_pin_fan2'], 'number');
+    }
+    
+    
+    // Light: prefer switch domain for control, then number (Moonraker), then sensor for status
+    let lightSwitchEntity = findMulti(['lightsw', 'light', 'led'], 'switch');
+    // Moonraker HA uses number domain for LED control (e.g., number.k1_098d_output_pin_led)
+    if (!lightSwitchEntity) {
+      lightSwitchEntity = findMulti(['output_pin_led', 'led'], 'number');
+    }
     const lightSensorEntity = findMulti(['lightsw', 'light', 'led'], 'sensor');
     
     // Camera: must be camera domain
     const cameraEntityAuto = this.findEntityByPattern('camera', 'camera');
     const fileNameEntity = findMulti(['filename', 'print_filename', 'current_file']);
+    
+    // Thumbnail/Cover image: auto-detect from camera or image domain
+    let thumbnailEntityAuto = null;
+    // First try camera domain (Moonraker uses camera.xxx_thumbnail)
+    thumbnailEntityAuto = findMulti(['thumbnail', 'cover_image', 'titelbild', 'gcode_preview'], 'camera');
+    // Then try image domain
+    if (!thumbnailEntityAuto) {
+      thumbnailEntityAuto = findMulti(['thumbnail', 'cover_image', 'titelbild', 'gcode_preview'], 'image');
+    }
     
     // Read values
     const progress = this.getEntityValueById(progressEntity);
@@ -35247,7 +35519,6 @@ class PrismCrealityCard extends HTMLElement {
     if (!isPrinting && !isPaused && progress > 0 && progress < 100) {
       if (!idleStates.includes(statusLower)) {
         isPaused = true;
-        console.log('Prism Creality Multi: Smart pause detection - status:', stateStr, 'progress:', progress);
       }
     }
     
@@ -35259,11 +35530,14 @@ class PrismCrealityCard extends HTMLElement {
     if (timeLeftEntity && (isPrinting || isPaused)) {
       const state = this._hass.states[timeLeftEntity];
       if (state) {
-        // Creality returns time as HH:MM:SS string or seconds
         const timeValue = state.state;
-        if (timeValue && timeValue !== 'Unknown') {
-          if (timeValue.includes(':')) {
-            // Already formatted as HH:MM:SS
+        
+        // Skip unavailable/unknown states
+        if (timeValue && timeValue !== 'Unknown' && timeValue !== 'unknown' && 
+            timeValue !== 'unavailable' && timeValue !== 'none') {
+          
+          if (typeof timeValue === 'string' && timeValue.includes(':')) {
+            // Already formatted as HH:MM:SS or H:MM:SS
             const parts = timeValue.split(':');
             if (parts.length >= 2) {
               const hours = parseInt(parts[0]) || 0;
@@ -35273,24 +35547,28 @@ class PrismCrealityCard extends HTMLElement {
               } else {
                 printTimeLeft = `${mins}m`;
               }
-              // Calculate end time
               const totalMinutes = hours * 60 + mins;
               const endTime = new Date(Date.now() + totalMinutes * 60 * 1000);
               printEndTime = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
           } else {
-            // Seconds value
-            const seconds = parseInt(timeValue) || 0;
-            const minutes = Math.floor(seconds / 60);
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            if (hours > 0) {
-              printTimeLeft = `${hours}h ${mins}m`;
-            } else {
-              printTimeLeft = `${mins}m`;
+            // Numeric value - Moonraker HA returns HOURS (e.g., 2.68 = 2h 41m)
+            const numValue = parseFloat(timeValue) || 0;
+            if (numValue > 0) {
+              // Convert hours to minutes
+              const totalMinutes = numValue * 60;
+              const hours = Math.floor(totalMinutes / 60);
+              const mins = Math.round(totalMinutes % 60);
+              if (hours > 0) {
+                printTimeLeft = `${hours}h ${mins}m`;
+              } else if (mins > 0) {
+                printTimeLeft = `${mins}m`;
+              } else {
+                printTimeLeft = `<1m`;
+              }
+              const endTime = new Date(Date.now() + totalMinutes * 60 * 1000);
+              printEndTime = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
-            const endTime = new Date(Date.now() + seconds * 1000);
-            printEndTime = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           }
         }
       }
@@ -35303,10 +35581,36 @@ class PrismCrealityCard extends HTMLElement {
     const targetBedTemp = this.getEntityValueById(targetBedTempEntity);
     const chamberTemp = this.getEntityValueById(boxTempEntity);
     
-    // Fans
-    const modelFanSpeed = this.getEntityValueById(modelFanEntity);
-    const auxFanSpeed = this.getEntityValueById(auxFanEntity);
-    const caseFanSpeed = this.getEntityValueById(caseFanEntity);
+    // Fans - need special handling for number entities which may have 0-1 or 0-255 range
+    const getFanSpeedPercent = (entityId) => {
+      if (!entityId) return 0;
+      const state = this._hass.states[entityId];
+      if (!state) return 0;
+      
+      const value = parseFloat(state.state) || 0;
+      const domain = entityId.split('.')[0];
+      
+      // For number entities, normalize to percentage based on max value
+      if (domain === 'number') {
+        const max = parseFloat(state.attributes?.max) || 1;
+        // If max is 1, value is already a fraction (0-1), multiply by 100
+        // If max is 255, normalize to 0-100
+        // If max is 100, use as-is
+        if (max <= 1) {
+          return value * 100;
+        } else if (max > 100) {
+          return (value / max) * 100;
+        }
+        return value;
+      }
+      
+      // For sensor entities, assume value is already in percentage or needs no conversion
+      return value;
+    };
+    
+    const modelFanSpeed = getFanSpeedPercent(modelFanEntity);
+    const auxFanSpeed = getFanSpeedPercent(auxFanEntity);
+    const caseFanSpeed = getFanSpeedPercent(caseFanEntity);
     
     // Layer info
     let currentLayer = 0;
@@ -35316,21 +35620,30 @@ class PrismCrealityCard extends HTMLElement {
       totalLayers = parseInt(this.getEntityStateById(totalLayerEntity)) || 0;
     }
     
-    // Light: Use configured light_switch, or auto-detected switch, or sensor for status
+    // Light: Use configured light_switch, or auto-detected switch/number, or sensor for status
     let lightEntityId = this.config.light_switch || lightSwitchEntity;
     let lightState = null;
+    let isLightOn = false;
     
     if (lightEntityId) {
-      // Use the switch state directly
-      lightState = this._hass.states[lightEntityId]?.state;
+      const lightDomain = lightEntityId.split('.')[0];
+      if (lightDomain === 'number') {
+        // Number entities: on if value > 0
+        const numValue = parseFloat(this._hass.states[lightEntityId]?.state) || 0;
+        isLightOn = numValue > 0;
+        lightState = isLightOn ? 'on' : 'off';
+      } else {
+        // Switch/Light entities: use state directly
+        lightState = this._hass.states[lightEntityId]?.state;
+        isLightOn = lightState === 'on';
+      }
     } else if (lightSensorEntity) {
       // Fall back to sensor for status display (but won't be controllable)
       lightState = this._hass.states[lightSensorEntity]?.state;
       // Sensor uses "1" for on, "0" for off
       lightState = lightState === '1' ? 'on' : lightState === '0' ? 'off' : lightState;
+      isLightOn = lightState === 'on' || lightState === '1';
     }
-    
-    const isLightOn = lightState === 'on' || lightState === '1';
     
     // Custom sensors
     const customHumidity = this.config.custom_humidity;
@@ -35346,10 +35659,6 @@ class PrismCrealityCard extends HTMLElement {
     const isPowerOn = powerSwitchState?.state === 'on';
     const powerSwitchIcon = this.config.power_switch_icon || 'mdi:power';
     
-    // Debug: Log light entity details
-    console.log('Prism Creality: Light - configured:', this.config.light_switch, 'auto-switch:', lightSwitchEntity, 'auto-sensor:', lightSensorEntity);
-    console.log('Prism Creality: Light entity used:', lightEntityId, 'State:', lightState, 'isLightOn:', isLightOn);
-    
     // Get printer name from device
     const deviceId = this.config.printer;
     const device = this._hass.devices?.[deviceId];
@@ -35364,15 +35673,41 @@ class PrismCrealityCard extends HTMLElement {
     const cameraState = resolvedCameraEntity ? this._hass.states[resolvedCameraEntity] : null;
     const cameraImage = cameraState?.attributes?.entity_picture || null;
     
-    // Debug: Log camera entity
-    console.log('Prism Creality: Camera entity:', resolvedCameraEntity, 'Has image:', !!cameraImage, 'Auto-detected:', cameraEntityAuto);
-    
     // Image path
     const printerImg = this.config.image || '/local/community/Prism-Dashboard/images/printer-blank.jpg';
     
     // Get print filename
     const fileName = this.getEntityStateById(fileNameEntity) || '';
-
+    
+    // Cover image / Thumbnail - use configured or auto-detected
+    let coverImageEntity = this.config.cover_image_entity || thumbnailEntityAuto;
+    let coverImageUrl = null;
+    
+    if (coverImageEntity && this.config.show_cover_image !== false) {
+      const coverState = this._hass.states[coverImageEntity];
+      if (coverState) {
+        // Try entity_picture first (works for image entities)
+        coverImageUrl = coverState.attributes?.entity_picture || null;
+        
+        // For camera entities, use camera proxy URL if no entity_picture
+        if (!coverImageUrl && coverImageEntity.startsWith('camera.')) {
+          // Use the access_token from the entity state for authenticated access
+          const accessToken = coverState.attributes?.access_token;
+          if (accessToken) {
+            coverImageUrl = `/api/camera_proxy/${coverImageEntity}?token=${accessToken}`;
+          } else {
+            // Fallback without token (may work for some setups)
+            coverImageUrl = `/api/camera_proxy/${coverImageEntity}`;
+          }
+        }
+        
+        // Prepend / if needed for relative URLs
+        if (coverImageUrl && !coverImageUrl.startsWith('http') && !coverImageUrl.startsWith('/')) {
+          coverImageUrl = '/' + coverImageUrl;
+        }
+      }
+    }
+    
     const returnData = {
       stateStr,
       progress: isIdle ? 0 : progress,
@@ -35398,6 +35733,10 @@ class PrismCrealityCard extends HTMLElement {
       isIdle,
       isLightOn,
       lightEntity: lightEntityId,
+      // Cover image / Thumbnail - only show when printing or paused (not idle)
+      coverImageEntity,
+      coverImageUrl,
+      showCoverImage: this.config.show_cover_image !== false && !!coverImageUrl && !isIdle,
       // Custom sensors
       humidity,
       customTemp,
@@ -35405,10 +35744,6 @@ class PrismCrealityCard extends HTMLElement {
       isPowerOn,
       powerSwitchIcon
     };
-    
-    // Debug: Log key data
-    console.log('Prism Creality: Icons - Light:', lightEntityId, 'Camera:', resolvedCameraEntity);
-    console.log('Prism Creality: Status - isPrinting:', isPrinting, 'isPaused:', isPaused, 'isIdle:', isIdle);
     
     return returnData;
   }
@@ -35439,6 +35774,9 @@ class PrismCrealityCard extends HTMLElement {
       isIdle: false,
       isLightOn: true,
       lightEntity: null,
+      coverImageEntity: null,
+      coverImageUrl: null,
+      showCoverImage: false,
       humidity: null,
       customTemp: null,
       powerSwitch: null,
@@ -35879,6 +36217,141 @@ class PrismCrealityCard extends HTMLElement {
             width: 80px;
             height: 80px;
         }
+        
+        /* Cover Image (3D Model Preview / Thumbnail) - positioned on print bed */
+        .cover-image-container {
+            position: absolute;
+            /* Position on the print bed area - matching prism-bambu style */
+            bottom: 29%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 38%;
+            max-width: 150px;
+            z-index: 15;
+            pointer-events: none;
+        }
+        .cover-image-wrapper {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%; /* Square aspect ratio */
+            border-radius: 8px;
+            overflow: visible;
+            background: transparent;
+        }
+        .cover-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            /* Transparent "ghost" image as background - matching prism-bambu */
+            opacity: 0.45;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) 
+                    grayscale(0.3) brightness(0.75);
+            transition: filter 0.3s ease, opacity 0.3s ease;
+        }
+        /* Reflection/shadow on the bed */
+        .cover-image-wrapper::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 10%;
+            right: 10%;
+            height: 8px;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(4px);
+        }
+        /* Progress overlay - actual IMG element so drop-shadow follows the model shape! */
+        .cover-image-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            /* Clip from bottom to top based on progress
+               Added 12% base offset so model starts showing earlier
+               (accounts for empty space at bottom of preview images) */
+            clip-path: inset(calc(88% - var(--progress-height, 0%)) 0 0 0);
+            /* drop-shadow on <img> follows the actual alpha shape of the image! */
+            filter: drop-shadow(0 0 8px rgba(74, 222, 128, 0.6))
+                    drop-shadow(0 0 4px rgba(74, 222, 128, 0.8))
+                    brightness(1.1) contrast(1.15);
+            pointer-events: none;
+        }
+        /* Glow effect when printing - follows the actual model shape! */
+        .cover-image-wrapper.printing .cover-image-progress {
+            filter: drop-shadow(0 0 12px rgba(74, 222, 128, 0.7))
+                    drop-shadow(0 0 6px rgba(74, 222, 128, 0.9))
+                    drop-shadow(0 0 3px rgba(255, 255, 255, 0.5))
+                    brightness(1.15) contrast(1.2);
+            animation: modelBuildGlow 2s ease-in-out infinite;
+        }
+        @keyframes modelBuildGlow {
+            0%, 100% { 
+                filter: drop-shadow(0 0 10px rgba(74, 222, 128, 0.6))
+                        drop-shadow(0 0 5px rgba(74, 222, 128, 0.8))
+                        drop-shadow(0 0 2px rgba(255, 255, 255, 0.4))
+                        brightness(1.1) contrast(1.15);
+            }
+            50% { 
+                filter: drop-shadow(0 0 20px rgba(74, 222, 128, 0.8))
+                        drop-shadow(0 0 10px rgba(74, 222, 128, 1))
+                        drop-shadow(0 0 4px rgba(255, 255, 255, 0.6))
+                        brightness(1.2) contrast(1.2);
+            }
+        }
+        /* Idle state - dimmer ghost image, no progress visible */
+        .cover-image-wrapper.idle .cover-image {
+            opacity: 0.3;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) 
+                    grayscale(0.3) brightness(0.5);
+            /* contrast at 1.0 (default) and grayscale 0.3 so black models remain visible */
+        }
+        .cover-image-wrapper.idle .cover-image-progress {
+            opacity: 0;
+        }
+        .cover-image-wrapper.idle::after {
+            opacity: 0.2;
+        }
+        /* Paused state - yellow glow following model shape */
+        .cover-image-wrapper.paused .cover-image-progress {
+            filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.7))
+                    drop-shadow(0 0 6px rgba(251, 191, 36, 0.9))
+                    drop-shadow(0 0 3px rgba(255, 255, 255, 0.4))
+                    brightness(1.1) contrast(1.15);
+            animation: none;
+        }
+        /* Progress percentage badge - positioned below model */
+        .cover-progress-badge {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.85), rgba(20, 20, 20, 0.9));
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: monospace;
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.4);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            z-index: 20;
+            backdrop-filter: blur(4px);
+        }
+        .cover-image-wrapper.paused .cover-progress-badge {
+            color: #fbbf24;
+            border-color: rgba(251, 191, 36, 0.4);
+        }
+        .cover-image-wrapper.idle .cover-progress-badge {
+            color: rgba(255, 255, 255, 0.4);
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.6);
+        }
+        
         .camera-container {
             width: 100%;
             height: 100%;
@@ -36187,26 +36660,49 @@ class PrismCrealityCard extends HTMLElement {
                   <ha-icon icon="mdi:printer-3d"></ha-icon>
                 </div>
                 
+                ${data.showCoverImage ? `
+                <div class="cover-image-container">
+                    <div class="cover-image-wrapper ${data.isPrinting ? 'printing' : ''} ${data.isPaused ? 'paused' : ''} ${data.isIdle ? 'idle' : ''}">
+                        <img src="${data.coverImageUrl}" class="cover-image" alt="3D Model Ghost" />
+                        <img src="${data.coverImageUrl}" class="cover-image-progress" style="--progress-height: ${data.progress}%;" alt="3D Model" />
+                        <div class="cover-progress-badge">${Math.round(data.progress)}%</div>
+                    </div>
+                </div>
+                ` : ''}
+                
                 <div class="overlay-left">
+                    ${this.config.show_model_fan !== false ? `
                     <div class="overlay-pill">
                         <div class="pill-icon-container"><ha-icon icon="mdi:fan"></ha-icon></div>
                         <div class="pill-content">
-                            <span class="pill-value">${data.modelFanSpeed}%</span>
+                            <span class="pill-value" data-field="model-fan">${Math.round(data.modelFanSpeed)}%</span>
                             <span class="pill-label">Model</span>
                         </div>
                     </div>
+                    ` : ''}
+                    ${this.config.show_aux_fan !== false ? `
                     <div class="overlay-pill">
                         <div class="pill-icon-container"><ha-icon icon="mdi:weather-windy"></ha-icon></div>
                         <div class="pill-content">
-                            <span class="pill-value">${data.auxFanSpeed}%</span>
+                            <span class="pill-value" data-field="aux-fan">${Math.round(data.auxFanSpeed)}%</span>
                             <span class="pill-label">Aux</span>
                         </div>
                     </div>
-                    ${data.humidity !== null ? `
+                    ` : ''}
+                    ${this.config.show_case_fan !== false ? `
+                    <div class="overlay-pill">
+                        <div class="pill-icon-container"><ha-icon icon="mdi:fan-alert"></ha-icon></div>
+                        <div class="pill-content">
+                            <span class="pill-value" data-field="case-fan">${Math.round(data.caseFanSpeed)}%</span>
+                            <span class="pill-label">Case</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${this.config.show_humidity !== false && data.humidity !== null ? `
                     <div class="overlay-pill">
                         <div class="pill-icon-container"><ha-icon icon="mdi:water-percent" style="color: #60a5fa;"></ha-icon></div>
                         <div class="pill-content">
-                            <span class="pill-value">${Math.round(data.humidity)}%</span>
+                            <span class="pill-value" data-field="humidity">${Math.round(data.humidity)}%</span>
                             <span class="pill-label">Humid</span>
                         </div>
                     </div>
@@ -36214,32 +36710,38 @@ class PrismCrealityCard extends HTMLElement {
                 </div>
                 
                 <div class="overlay-right">
+                    ${this.config.show_nozzle_temp !== false ? `
                     <div class="overlay-pill right">
                         <div class="pill-icon-container"><ha-icon icon="mdi:thermometer" style="color: #F87171;"></ha-icon></div>
                         <div class="pill-content">
-                            <span class="pill-value">${data.nozzleTemp}°</span>
-                            <span class="pill-label">/${data.targetNozzleTemp}°</span>
+                            <span class="pill-value" data-field="nozzle-temp">${Math.round(data.nozzleTemp)}°</span>
+                            <span class="pill-label" data-field="nozzle-target">/${Math.round(data.targetNozzleTemp)}°</span>
                         </div>
                     </div>
+                    ` : ''}
+                    ${this.config.show_bed_temp !== false ? `
                     <div class="overlay-pill right">
                         <div class="pill-icon-container"><ha-icon icon="mdi:radiator" style="color: #FB923C;"></ha-icon></div>
                         <div class="pill-content">
-                            <span class="pill-value">${data.bedTemp}°</span>
-                            <span class="pill-label">/${data.targetBedTemp}°</span>
+                            <span class="pill-value" data-field="bed-temp">${Math.round(data.bedTemp)}°</span>
+                            <span class="pill-label" data-field="bed-target">/${Math.round(data.targetBedTemp)}°</span>
                         </div>
                     </div>
+                    ` : ''}
+                    ${this.config.show_chamber_temp !== false ? `
                     <div class="overlay-pill right">
                         <div class="pill-icon-container"><ha-icon icon="mdi:thermometer" style="color: #4ade80;"></ha-icon></div>
                         <div class="pill-content">
-                            <span class="pill-value">${data.chamberTemp}°</span>
+                            <span class="pill-value" data-field="chamber-temp">${Math.round(data.chamberTemp)}°</span>
                             <span class="pill-label">Box</span>
                         </div>
                     </div>
-                    ${data.customTemp !== null ? `
+                    ` : ''}
+                    ${this.config.show_custom_temp !== false && data.customTemp !== null ? `
                     <div class="overlay-pill right">
                         <div class="pill-icon-container"><ha-icon icon="mdi:thermometer-lines" style="color: #a78bfa;"></ha-icon></div>
                         <div class="pill-content">
-                            <span class="pill-value">${Math.round(data.customTemp)}°</span>
+                            <span class="pill-value" data-field="custom-temp">${Math.round(data.customTemp)}°</span>
                             <span class="pill-label">Custom</span>
                         </div>
                     </div>
@@ -36250,19 +36752,23 @@ class PrismCrealityCard extends HTMLElement {
         </div>
 
         <div class="stats-row">
+            ${this.config.show_time_info !== false ? `
             <div class="stat-group">
                 <span class="stat-label">Time Left</span>
                 <span class="stat-val">${data.printTimeLeft}</span>
             </div>
+            ` : '<div class="stat-group"></div>'}
+            ${this.config.show_layer_info !== false ? `
             <div class="stat-group" style="align-items: flex-end;">
                 <span class="stat-label">Layer</span>
                 <span class="stat-val">${data.isIdle ? '--' : data.currentLayer} <span style="font-size: 0.875rem; opacity: 0.4;">/ ${data.isIdle ? '--' : data.totalLayers}</span></span>
             </div>
+            ` : '<div class="stat-group"></div>'}
         </div>
 
         <div class="progress-bar-container">
             <div class="progress-bar-fill"></div>
-            <div class="progress-text">${data.progress}%</div>
+            <div class="progress-text">${Math.round(data.progress)}%</div>
         </div>
 
         <div class="controls">

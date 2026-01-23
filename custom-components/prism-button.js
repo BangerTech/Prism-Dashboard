@@ -155,6 +155,15 @@ class PrismButtonCard extends HTMLElement {
     if (this._config) {
       this._updateCard();
     }
+    // Update popup cards if popup is open (live updates)
+    if (this._popupCards && this._popupCards.length > 0) {
+      console.log('Prism Button: Updating', this._popupCards.length, 'popup cards with new hass');
+      this._popupCards.forEach(card => {
+        if (card) {
+          card.hass = hass;
+        }
+      });
+    }
   }
 
   getCardSize() {
@@ -421,6 +430,9 @@ class PrismButtonCard extends HTMLElement {
       window.removeEventListener('resize', this._popupResizeHandler);
       this._popupResizeHandler = null;
     }
+    
+    // Clear popup cards references (stop live updates)
+    this._popupCards = [];
     
     const existingOverlay = document.getElementById('prism-button-popup-overlay');
     if (existingOverlay) {
@@ -745,6 +757,9 @@ class PrismButtonCard extends HTMLElement {
     // Clear loading message
     scaleWrapper.innerHTML = '';
     
+    // Initialize popup cards array for live updates
+    this._popupCards = [];
+    
     // Normalize to array
     let cardConfigs = [];
     if (Array.isArray(cardsConfig)) {
@@ -793,6 +808,8 @@ class PrismButtonCard extends HTMLElement {
         if (cardElement) {
           cardElement.hass = this._hass;
           scaleWrapper.appendChild(cardElement);
+          // Store reference for live updates
+          this._popupCards.push(cardElement);
         }
       } catch (e) {
         console.error('Prism Button Popup: Failed to create card', cardConfig, e);
@@ -957,7 +974,9 @@ class PrismButtonCard extends HTMLElement {
             bottom: 5px;
             left: 5px;
             right: 5px;
-            height: ${showSlider ? brightness : 0}%;
+            /* Slider-Höhe wird per JS gesetzt, hier nur Basis */
+            height: 0%;
+            max-height: calc(100% - 10px);
             width: auto;
             background: linear-gradient(0deg, 
               ${sliderColorStart} 0%,
@@ -975,7 +994,9 @@ class PrismButtonCard extends HTMLElement {
             top: 5px;
             left: 5px;
             bottom: 5px;
-            width: ${showSlider ? brightness : 0}%;
+            /* Slider-Breite wird per JS gesetzt, hier nur Basis */
+            width: 0%;
+            max-width: calc(100% - 10px);
             background: linear-gradient(90deg, 
               ${sliderColorStart} 0%,
               ${sliderColorEnd} 100%);
@@ -1131,23 +1152,45 @@ class PrismButtonCard extends HTMLElement {
     const slider = this.shadowRoot.querySelector('.brightness-slider');
     this._card = card;
     
+    // Set initial slider value via JS (not CSS) to avoid calc() complexity and flicker
+    // BUT: Don't update if currently dragging OR if we have a pending brightness value
+    // (pending = user just released slider, waiting for HA to confirm new value)
+    if (slider && showSlider && !this._isDragging) {
+      // Use pending brightness if set (prevents jump back to old value after drag)
+      const displayBrightness = this._pendingBrightness !== undefined ? this._pendingBrightness : brightness;
+      
+      // Clear pending if HA state now matches
+      if (this._pendingBrightness !== undefined && Math.abs(brightness - this._pendingBrightness) < 2) {
+        this._pendingBrightness = undefined;
+      }
+      
+      if (layout === 'vertical') {
+        slider.style.height = displayBrightness + '%';
+      } else {
+        slider.style.width = displayBrightness + '%';
+      }
+    }
+    
     if (card) {
-      let touchStart = 0;
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let hasMoved = false;
-      let hasHandledInteraction = false;
+      // IMPORTANT: Use class variables instead of local variables to survive re-renders!
+      // If we use local variables, they get reset when _updateCard() is called during an interaction,
+      // which can cause _handleHold() to be triggered instead of _handleTap()
+      if (this._touchStart === undefined) this._touchStart = 0;
+      if (this._touchStartX === undefined) this._touchStartX = 0;
+      if (this._touchStartY === undefined) this._touchStartY = 0;
+      if (this._hasMoved === undefined) this._hasMoved = false;
+      if (this._hasHandledInteraction === undefined) this._hasHandledInteraction = false;
       
       // Handle start of interaction
       const handleInteractionStart = (e) => {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
-        touchStartX = clientX;
-        touchStartY = clientY;
-        touchStart = Date.now();
-        hasMoved = false;
-        hasHandledInteraction = false;
+        this._touchStartX = clientX;
+        this._touchStartY = clientY;
+        this._touchStart = Date.now();
+        this._hasMoved = false;
+        this._hasHandledInteraction = false;
         this._isDragging = false;
         this._dragStartX = clientX;
         this._dragStartBrightness = brightness;
@@ -1160,21 +1203,21 @@ class PrismButtonCard extends HTMLElement {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
-        const deltaX = Math.abs(clientX - touchStartX);
-        const deltaY = Math.abs(clientY - touchStartY);
+        const deltaX = Math.abs(clientX - this._touchStartX);
+        const deltaY = Math.abs(clientY - this._touchStartY);
         
         // Start dragging based on layout direction
         if (layout === 'vertical') {
           // Vertical: Start dragging if moved more than 10px vertically and more vertical than horizontal
           if (deltaY > 10 && deltaY > deltaX) {
             this._isDragging = true;
-            hasMoved = true;
+            this._hasMoved = true;
           }
         } else {
           // Horizontal: Start dragging if moved more than 10px horizontally and more horizontal than vertical
           if (deltaX > 10 && deltaX > deltaY) {
             this._isDragging = true;
-            hasMoved = true;
+            this._hasMoved = true;
           }
         }
         
@@ -1182,6 +1225,11 @@ class PrismButtonCard extends HTMLElement {
           e.preventDefault();
           const rect = card.getBoundingClientRect();
           let newBrightness;
+          
+          // Disable transition during drag for smooth feedback
+          if (slider) {
+            slider.style.transition = 'none';
+          }
           
           if (layout === 'vertical') {
             // Vertical: Calculate from bottom (inverted Y-axis)
@@ -1231,24 +1279,75 @@ class PrismButtonCard extends HTMLElement {
             newBrightness = Math.max(1, Math.min(100, percent));
           }
           
+          // Re-enable transition after drag
+          if (slider) {
+            slider.style.transition = '';
+          }
+          
+          // Store pending brightness to prevent jump back to old value during HA state update
+          this._pendingBrightness = newBrightness;
+          
+          // Clear pending after timeout (fallback if HA doesn't update)
+          setTimeout(() => {
+            this._pendingBrightness = undefined;
+          }, 2000);
+          
           this._setBrightness(newBrightness);
           this._isDragging = false;
-          hasHandledInteraction = true;
+          this._hasHandledInteraction = true;
           return;
         }
         
+        // Re-enable transition if drag was cancelled
+        if (slider) {
+          slider.style.transition = '';
+        }
         this._isDragging = false;
         
         // Handle tap/hold for ALL entities (not just lights)
-        const duration = Date.now() - touchStart;
-        if (!hasMoved && duration < 500) {
+        // IMPORTANT: Only process if touchStart is valid (> 0) to avoid false hold triggers
+        const duration = this._touchStart > 0 ? (Date.now() - this._touchStart) : 0;
+        if (!this._hasMoved && duration > 0 && duration < 500) {
           this._handleTap();
-          hasHandledInteraction = true;
-        } else if (!hasMoved && duration >= 500) {
+          this._hasHandledInteraction = true;
+        } else if (!this._hasMoved && duration >= 500) {
           e.preventDefault();
           this._handleHold();
-          hasHandledInteraction = true;
+          this._hasHandledInteraction = true;
         }
+        // Reset touchStart to prevent stale data
+        this._touchStart = 0;
+      };
+      
+      // Document-level handlers for dragging (allows dragging outside card)
+      const documentMouseMove = (e) => {
+        if (this._isDragging && e.buttons === 1) {
+          handleInteractionMove(e);
+        }
+      };
+      
+      const documentMouseUp = (e) => {
+        if (this._isDragging || this._touchStart > 0) {
+          handleInteractionEnd(e);
+        }
+        // Remove document listeners when done
+        document.removeEventListener('mousemove', documentMouseMove);
+        document.removeEventListener('mouseup', documentMouseUp);
+      };
+      
+      const documentTouchMove = (e) => {
+        if (this._isDragging) {
+          handleInteractionMove(e);
+        }
+      };
+      
+      const documentTouchEnd = (e) => {
+        if (this._isDragging || this._touchStart > 0) {
+          handleInteractionEnd(e);
+        }
+        // Remove document listeners when done
+        document.removeEventListener('touchmove', documentTouchMove);
+        document.removeEventListener('touchend', documentTouchEnd);
       };
       
       // Create bound handlers for proper cleanup
@@ -1257,6 +1356,9 @@ class PrismButtonCard extends HTMLElement {
           e.stopPropagation();
           e.stopImmediatePropagation();
           handleInteractionStart(e);
+          // Add document-level listeners for dragging outside card
+          document.addEventListener('touchmove', documentTouchMove, { passive: false });
+          document.addEventListener('touchend', documentTouchEnd);
         },
         touchMove: (e) => {
           e.stopPropagation();
@@ -1272,6 +1374,9 @@ class PrismButtonCard extends HTMLElement {
           e.stopPropagation();
           e.stopImmediatePropagation();
           handleInteractionStart(e);
+          // Add document-level listeners for dragging outside card
+          document.addEventListener('mousemove', documentMouseMove);
+          document.addEventListener('mouseup', documentMouseUp);
         },
         mouseMove: (e) => {
           if (e.buttons === 1) {
@@ -1285,25 +1390,19 @@ class PrismButtonCard extends HTMLElement {
           e.stopImmediatePropagation();
           handleInteractionEnd(e);
         },
-        mouseLeave: () => {
-          if (this._isDragging) {
-            this._isDragging = false;
-            this._updateCard(); // Reset to actual brightness
-          }
-        },
         click: (e) => {
           // CRITICAL: Stop propagation immediately to prevent other cards from receiving this event
           e.stopPropagation();
           e.stopImmediatePropagation();
           
-          // Only handle if we haven't already handled via mouseup/touchend
-          if (!hasHandledInteraction && !hasMoved) {
-            this._handleTap();
-          }
+          // IMPORTANT: Do NOT handle tap here - it's already handled in mouseUp/touchEnd
+          // This click handler is ONLY for stopping propagation to prevent parent elements from receiving the click
+          // If we call _handleTap() here, it may trigger TWICE (once in mouseUp/touchEnd, once here)
+          
           // Reset state for next interaction
-          hasMoved = false;
-          hasHandledInteraction = false;
-          touchStart = 0;
+          this._hasMoved = false;
+          this._hasHandledInteraction = false;
+          this._touchStart = 0;
         },
         contextMenu: (e) => {
           e.preventDefault();
@@ -1322,7 +1421,6 @@ class PrismButtonCard extends HTMLElement {
       card.addEventListener('mousedown', this._boundHandlers.mouseDown, { capture: true });
       card.addEventListener('mousemove', this._boundHandlers.mouseMove, { capture: true });
       card.addEventListener('mouseup', this._boundHandlers.mouseUp, { capture: true });
-      card.addEventListener('mouseleave', this._boundHandlers.mouseLeave);
       
       // Click handler - use capture phase to catch events before they bubble
       card.addEventListener('click', this._boundHandlers.click, { capture: true });
