@@ -64,7 +64,32 @@ class PrismEnergyHorizontalCard extends HTMLElement {
       battery_pill_scale: 1.0,
       ev_pill_top: 70,
       ev_pill_left: 20,
-      ev_pill_scale: 1.0
+      ev_pill_scale: 1.0,
+      // Custom Pills (optional)
+      custom_pill_1_entity: "",
+      custom_pill_1_icon: "mdi:thermometer",
+      custom_pill_1_label: "",
+      custom_pill_1_color: [34, 211, 238],
+      custom_pill_1_show_label: true,
+      custom_pill_1_top: 85,
+      custom_pill_1_left: 35,
+      custom_pill_1_scale: 1.0,
+      custom_pill_2_entity: "",
+      custom_pill_2_icon: "mdi:weather-windy",
+      custom_pill_2_label: "",
+      custom_pill_2_color: [96, 165, 250],
+      custom_pill_2_show_label: true,
+      custom_pill_2_top: 85,
+      custom_pill_2_left: 50,
+      custom_pill_2_scale: 1.0,
+      custom_pill_3_entity: "",
+      custom_pill_3_icon: "mdi:water-percent",
+      custom_pill_3_label: "",
+      custom_pill_3_color: [74, 222, 128],
+      custom_pill_3_show_label: true,
+      custom_pill_3_top: 85,
+      custom_pill_3_left: 65,
+      custom_pill_3_scale: 1.0
     };
   }
 
@@ -336,6 +361,172 @@ class PrismEnergyHorizontalCard extends HTMLElement {
               ]
             }
           ]
+        },
+        {
+          type: "expandable",
+          name: "",
+          title: "🎯 Custom Pills (optional)",
+          schema: [
+            {
+              type: "expandable",
+              name: "",
+              title: "Custom Pill 1",
+              schema: [
+                {
+                  name: "custom_pill_1_entity",
+                  label: "Entity (e.g. sensor.outdoor_temperature)",
+                  selector: { entity: { domain: "sensor" } }
+                },
+                {
+                  name: "custom_pill_1_icon",
+                  label: "Icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "custom_pill_1_label",
+                  label: "Label (optional, e.g. 'Außen')",
+                  selector: { text: {} }
+                },
+                {
+                  name: "custom_pill_1_color",
+                  label: "Icon Color",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "custom_pill_1_show_label",
+                  label: "Show label",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "custom_pill_1_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_1_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_1_scale",
+                      label: "Size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Custom Pill 2",
+              schema: [
+                {
+                  name: "custom_pill_2_entity",
+                  label: "Entity (e.g. sensor.wind_speed)",
+                  selector: { entity: { domain: "sensor" } }
+                },
+                {
+                  name: "custom_pill_2_icon",
+                  label: "Icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "custom_pill_2_label",
+                  label: "Label (optional)",
+                  selector: { text: {} }
+                },
+                {
+                  name: "custom_pill_2_color",
+                  label: "Icon Color",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "custom_pill_2_show_label",
+                  label: "Show label",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "custom_pill_2_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_2_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_2_scale",
+                      label: "Size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Custom Pill 3",
+              schema: [
+                {
+                  name: "custom_pill_3_entity",
+                  label: "Entity (e.g. sensor.rain_probability)",
+                  selector: { entity: { domain: "sensor" } }
+                },
+                {
+                  name: "custom_pill_3_icon",
+                  label: "Icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "custom_pill_3_label",
+                  label: "Label (optional)",
+                  selector: { text: {} }
+                },
+                {
+                  name: "custom_pill_3_color",
+                  label: "Icon Color",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "custom_pill_3_show_label",
+                  label: "Show label",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "custom_pill_3_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_3_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_3_scale",
+                      label: "Size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     };
@@ -385,7 +576,32 @@ class PrismEnergyHorizontalCard extends HTMLElement {
       battery_pill_scale: config.battery_pill_scale ?? 1.0,
       ev_pill_top: config.ev_pill_top ?? 70,
       ev_pill_left: config.ev_pill_left ?? 20,
-      ev_pill_scale: config.ev_pill_scale ?? 1.0
+      ev_pill_scale: config.ev_pill_scale ?? 1.0,
+      // Custom Pills
+      custom_pill_1_entity: config.custom_pill_1_entity || "",
+      custom_pill_1_icon: config.custom_pill_1_icon || "mdi:thermometer",
+      custom_pill_1_label: config.custom_pill_1_label || "",
+      custom_pill_1_color: config.custom_pill_1_color || [34, 211, 238],
+      custom_pill_1_show_label: config.custom_pill_1_show_label !== false,
+      custom_pill_1_top: config.custom_pill_1_top ?? 85,
+      custom_pill_1_left: config.custom_pill_1_left ?? 35,
+      custom_pill_1_scale: config.custom_pill_1_scale ?? 1.0,
+      custom_pill_2_entity: config.custom_pill_2_entity || "",
+      custom_pill_2_icon: config.custom_pill_2_icon || "mdi:weather-windy",
+      custom_pill_2_label: config.custom_pill_2_label || "",
+      custom_pill_2_color: config.custom_pill_2_color || [96, 165, 250],
+      custom_pill_2_show_label: config.custom_pill_2_show_label !== false,
+      custom_pill_2_top: config.custom_pill_2_top ?? 85,
+      custom_pill_2_left: config.custom_pill_2_left ?? 50,
+      custom_pill_2_scale: config.custom_pill_2_scale ?? 1.0,
+      custom_pill_3_entity: config.custom_pill_3_entity || "",
+      custom_pill_3_icon: config.custom_pill_3_icon || "mdi:water-percent",
+      custom_pill_3_label: config.custom_pill_3_label || "",
+      custom_pill_3_color: config.custom_pill_3_color || [74, 222, 128],
+      custom_pill_3_show_label: config.custom_pill_3_show_label !== false,
+      custom_pill_3_top: config.custom_pill_3_top ?? 85,
+      custom_pill_3_left: config.custom_pill_3_left ?? 65,
+      custom_pill_3_scale: config.custom_pill_3_scale ?? 1.0
     };
   }
 
@@ -498,6 +714,9 @@ class PrismEnergyHorizontalCard extends HTMLElement {
       this._updateElement('.autarkie-value', `${Math.round(autarky)}%`);
     }
 
+    // Update Custom Pills
+    this._updateCustomPills();
+
     // Update gauge values
     this._updateGauges();
 
@@ -520,6 +739,88 @@ class PrismEnergyHorizontalCard extends HTMLElement {
       el.classList.toggle(activeClass, isActive);
       el.classList.toggle(inactiveColorClass, !isActive);
     }
+  }
+
+  // Update Custom Pills values
+  _updateCustomPills() {
+    for (let i = 1; i <= 3; i++) {
+      const entity = this._config[`custom_pill_${i}_entity`];
+      if (entity) {
+        const stateObj = this._hass.states[entity];
+        if (stateObj) {
+          const value = stateObj.state;
+          const unit = stateObj.attributes?.unit_of_measurement || '';
+          this._updateElement(`.pill-custom-${i} .pill-val`, `${value}${unit ? ' ' + unit : ''}`);
+        }
+      }
+    }
+  }
+
+  // Get Custom Pill value with unit
+  _getCustomPillValue(entityId) {
+    if (!entityId || !this._hass) return { value: '', unit: '' };
+    const stateObj = this._hass.states[entityId];
+    if (!stateObj) return { value: '—', unit: '' };
+    return {
+      value: stateObj.state,
+      unit: stateObj.attributes?.unit_of_measurement || ''
+    };
+  }
+
+  // Normalize color from RGB array or hex string
+  _normalizeColor(color) {
+    if (Array.isArray(color) && color.length >= 3) {
+      return { r: color[0], g: color[1], b: color[2] };
+    }
+    if (typeof color === 'string' && color.startsWith('#')) {
+      const hex = color.replace('#', '');
+      return {
+        r: parseInt(hex.substr(0, 2), 16),
+        g: parseInt(hex.substr(2, 2), 16),
+        b: parseInt(hex.substr(4, 2), 16)
+      };
+    }
+    return { r: 34, g: 211, b: 238 }; // Default cyan
+  }
+
+  // Render Custom Pills HTML
+  _renderCustomPills() {
+    let html = '';
+    
+    for (let i = 1; i <= 3; i++) {
+      const entity = this._config[`custom_pill_${i}_entity`];
+      if (!entity) continue;
+      
+      const icon = this._config[`custom_pill_${i}_icon`] || 'mdi:information';
+      const label = this._config[`custom_pill_${i}_label`] || '';
+      const colorConfig = this._config[`custom_pill_${i}_color`];
+      const showLabel = this._config[`custom_pill_${i}_show_label`] !== false;
+      const top = this._config[`custom_pill_${i}_top`] ?? 85;
+      const left = this._config[`custom_pill_${i}_left`] ?? (35 + (i - 1) * 15);
+      const scale = this._config[`custom_pill_${i}_scale`] ?? 1.0;
+      
+      // Get color as RGB
+      const color = this._normalizeColor(colorConfig);
+      const colorStr = `${color.r}, ${color.g}, ${color.b}`;
+      
+      // Get entity value
+      const { value, unit } = this._getCustomPillValue(entity);
+      const displayValue = value + (unit ? ' ' + unit : '');
+      
+      html += `
+              <div class="pill pill-custom-${i}" style="top: ${top}%; left: ${left}%; --pill-scale: ${scale};" data-entity="${entity}">
+                <div class="pill-icon" style="background: rgba(${colorStr}, 0.15); box-shadow: 0 0 10px rgba(${colorStr}, 0.3);">
+                  <ha-icon icon="${icon}" style="color: rgb(${colorStr});"></ha-icon>
+                </div>
+                <div class="pill-content">
+                  <span class="pill-val">${displayValue}</span>
+                  ${showLabel && label ? `<span class="pill-label">${label}</span>` : ''}
+                </div>
+              </div>
+      `;
+    }
+    
+    return html;
   }
 
   _updateElement(selector, value) {
@@ -1949,6 +2250,9 @@ class PrismEnergyHorizontalCard extends HTMLElement {
                 </div>
               </div>
               ` : ''}
+
+              <!-- Custom Pills (optional) -->
+              ${this._renderCustomPills()}
             </div>
             <div class="bottom-gradient"></div>
           </div>
