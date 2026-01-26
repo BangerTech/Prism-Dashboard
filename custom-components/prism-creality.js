@@ -4889,37 +4889,50 @@ class PrismCrealityCard extends HTMLElement {
         .cfs-info-pill {
             display: flex;
             align-items: center;
-            gap: 6px;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 6px 10px;
+            gap: 8px;
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 6px 12px 6px 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        .cfs-pill-icon {
-            width: 18px;
-            height: 18px;
+        .cfs-info-pill .cfs-pill-icon {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            min-height: 24px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .cfs-info-pill .cfs-pill-icon ha-icon {
+            width: 14px;
+            height: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .cfs-pill-icon ha-icon {
-            width: 16px;
-            height: 16px;
-        }
         .cfs-pill-content {
             display: flex;
             flex-direction: column;
-            line-height: 1.1;
+            align-items: center;
+            line-height: 1;
         }
         .cfs-pill-value {
-            font-size: 11px;
+            font-size: 14px;
             font-weight: 700;
+            color: rgba(255, 255, 255, 0.95);
         }
         .cfs-pill-label {
-            font-size: 8px;
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.5);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            opacity: 0.6;
         }
         .cfs-info-pill.temp .cfs-pill-icon ha-icon {
             color: #fb923c;
