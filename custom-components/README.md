@@ -285,7 +285,7 @@ An LED light card with interactive color wheel, white temperature control, and b
 
 A 3D printer card for **Moonraker/Klipper** printers (Voron, Prusa, RatRig, Ender, etc.) with glassmorphism design.
 
-<img width="400" alt="prism-3dprinter" src="images/prism-3dprinter.png" />
+<img width="400" alt="prism-3dprinter" src="images/prism-creality.jpg" />
 
 **For Creality printers:** Use `prism-creality` instead (supports ha_creality_ws + CFS).
 
