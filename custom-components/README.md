@@ -552,6 +552,38 @@ The card automatically detects CFS entities from ha_creality_ws:
 - Temperature & humidity pills
 - Click slot for detailed popup
 
+**Spoolman Integration (NEW v1.11.0):**
+
+For printers **without CFS** (e.g., K1, K1C, Ender 3 V3), you can select a Spoolman spool. Filament consumption is automatically reported to Spoolman.
+
+**Prerequisites:**
+- **[Spoolman](https://github.com/Donkie/Spoolman)** - Filament inventory system (required)
+- **[Spoolman Home Assistant Integration](https://github.com/Disane87/spoolman-homeassistant)** - HA integration for Spoolman (required)
+- **[Spoolman Home Assistant Addon](https://github.com/bytenoodle/hassioaddon)** - Optional: Spoolman as HA addon (recommended for easy installation)
+- ha_creality_ws integration with `used_material_length` sensor (measures filament consumption in cm)
+
+**Spoolman Configuration:**
+```yaml
+- type: custom:prism-creality
+  printer: <device_id>
+  # Spoolman Integration (only for printers without CFS)
+  enable_spoolman: true
+  filament_usage_entity: sensor.k1_ws_used_material_length  # Usage sensor
+  enable_spoolman_tracking: true  # Enable automatic tracking
+```
+
+**How it works:**
+1. When `enable_spoolman` is enabled, a spool slot appears below the printer (like CFS)
+2. Clicking the slot opens a popup with all active Spoolman spools
+3. Only spools with remaining filament (not archived, remaining > 0) are shown
+4. The selected spool is persistently stored in localStorage (per printer)
+5. With tracking enabled, filament consumption is automatically reported to Spoolman after print completion
+
+**Notes:**
+- CFS has priority: For printers with CFS, the Spoolman slot is **not** displayed
+- Filament consumption is measured in **cm** and automatically converted to **mm** for Spoolman
+- Tracking uses the `spoolman.use_spool_filament` service
+
 **ha_creality_ws Entity Mapping:**
 
 | Function | ha_creality_ws | Moonraker |

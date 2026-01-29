@@ -85,14 +85,35 @@ class PrismBambuCard extends HTMLElement {
           selector: { device: { filter: printerFilterCombinations } }
         },
         {
-          name: 'ams_device',
-          label: 'AMS Device (optional - select your AMS)',
-          selector: { device: { filter: amsFilterCombinations } }
-        },
-        {
           name: 'name',
           label: 'Printer name (optional)',
           selector: { text: {} }
+        },
+        // AMS (Automatic Material System) section - important, right after printer selection
+        {
+          type: 'expandable',
+          name: '',
+          title: 'AMS (Automatic Material System)',
+          schema: [
+            {
+              name: 'ams_device',
+              label: 'AMS Device (select your AMS)',
+              selector: { device: { filter: amsFilterCombinations } }
+            },
+            {
+              name: 'spool_view',
+              label: 'Spool Display Style (Side = circular, Front = AMS-style vertical)',
+              default: 'side',
+              selector: { 
+                select: { 
+                  options: [
+                    { value: 'side', label: 'Side (Circular - Default)' },
+                    { value: 'front', label: 'Front (AMS-Style)' }
+                  ]
+                } 
+              }
+            }
+          ]
         },
         {
           name: 'camera_entity',
@@ -4160,7 +4181,9 @@ class PrismBambuCard extends HTMLElement {
       showHumidity: this.config.show_humidity !== false,
       showCustomTemp: this.config.show_custom_temp !== false,
       showCustomFan: this.config.show_custom_fan !== false,
-      showAmsInfo: this.config.show_ams_info !== false
+      showAmsInfo: this.config.show_ams_info !== false,
+      // Spool view mode: 'side' (circular, default) or 'front' (AMS-style vertical)
+      spoolView: this.config.spool_view || 'side'
     };
     
     // Debug: Log key data for icons and status
@@ -4231,7 +4254,9 @@ class PrismBambuCard extends HTMLElement {
       showHumidity: true,
       showCustomTemp: true,
       showCustomFan: true,
-      showAmsInfo: true
+      showAmsInfo: true,
+      // Spool view mode
+      spoolView: this.config?.spool_view || 'side'
     };
   }
 
@@ -4577,19 +4602,19 @@ class PrismBambuCard extends HTMLElement {
         .spool-visual {
             position: relative;
             width: 100%;
-            aspect-ratio: 1;
+            height: 0;
+            padding-bottom: 100%; /* Forces square aspect ratio */
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             background-color: rgba(0, 0, 0, 0.4);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
         }
         .filament {
+            position: absolute;
+            top: 15%;
+            left: 15%;
             width: 70%;
             height: 70%;
             border-radius: 50%;
-            position: relative;
             overflow: hidden;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
         }
@@ -4610,6 +4635,9 @@ class PrismBambuCard extends HTMLElement {
         }
         .spool-center {
             position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             width: 20%;
             height: 20%;
             border-radius: 50%;
@@ -4621,6 +4649,8 @@ class PrismBambuCard extends HTMLElement {
         .remaining-badge {
             position: absolute;
             bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
             background-color: rgba(0, 0, 0, 0.8);
             font-size: 9px;
             font-family: monospace;
@@ -4646,6 +4676,239 @@ class PrismBambuCard extends HTMLElement {
             transform: scale(1.05);
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
         }
+        
+        /* ========== FRONT VIEW (AMS-Style Vertical) Styles ========== */
+        .ams-grid.front-view {
+            gap: 12px;
+        }
+        .ams-slot.front-view {
+            aspect-ratio: 3/4;
+            padding: 12px;
+            background: linear-gradient(180deg, rgba(30, 32, 38, 0.95), rgba(20, 22, 26, 0.98));
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+        }
+        .ams-slot.front-view.active {
+            border-bottom: 2px solid #00AE42;
+        }
+        
+        /* Hide the external ams-info for front view - we show it inside the filament */
+        .ams-slot.front-view > .ams-info {
+            display: none;
+        }
+        
+        /* Front view spool container - vertically centered */
+        .spool-front-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* The main filament column wrapper with flanges */
+        .spool-front-wrapper {
+            position: relative;
+            width: 45%;
+            height: 75%;
+        }
+        
+        /* Side flanges (left/right edges of spool) - same height top and bottom */
+        .spool-front-flange {
+            position: absolute;
+            top: -4px;
+            bottom: -4px;
+            width: 4px;
+            border-radius: 3px;
+            background: linear-gradient(180deg, rgba(70,75,85,0.95), rgba(50,55,65,0.98) 50%, rgba(35,40,50,0.95));
+            box-shadow: inset 1px 0 0 rgba(255,255,255,0.1), inset -1px 0 0 rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.4);
+            z-index: 15;
+        }
+        .spool-front-flange.left {
+            left: -3px;
+        }
+        .spool-front-flange.right {
+            right: -3px;
+        }
+        
+        /* Bottom flare extension of flanges - HIDDEN, not needed */
+        .spool-front-flange-bottom {
+            display: none;
+        }
+        
+        /* Inner core shadow (cardboard core hint) - very subtle, not visible */
+        .spool-front-core {
+            display: none;
+        }
+        
+        /* The filament column */
+        .spool-front-filament {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 4px 4px 0 0;
+            box-shadow: inset 0 12px 12px rgba(255,255,255,0.12), inset 0 -16px 18px rgba(0,0,0,0.65), 0 12px 18px rgba(0,0,0,0.4);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Filament ridges (winding pattern) - vertical lines */
+        .spool-front-ridges {
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(90deg, rgba(0,0,0,0.20) 0px, rgba(0,0,0,0) 1px, rgba(255,255,255,0.16) 2px, rgba(255,255,255,0) 3px, rgba(0,0,0,0.20) 4px);
+            opacity: 0.70;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+        }
+        
+        /* Filament helix pattern (diagonal lines) */
+        .spool-front-helix {
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(168deg, rgba(255,255,255,0.16) 0px, rgba(255,255,255,0) 2px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0) 6px);
+            opacity: 0.32;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+        }
+        
+        /* Filament sheen (glossy vertical highlight) */
+        .spool-front-sheen {
+            position: absolute;
+            top: 0;
+            left: 28%;
+            width: 44%;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.22) 40%, rgba(255,255,255,0.22) 60%, rgba(255,255,255,0) 100%);
+            opacity: 0.62;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+        }
+        
+        /* Volume (inner glow for depth) */
+        .spool-front-volume {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(55% 80% at 50% 50%, rgba(255,255,255,0.10), transparent 70%);
+            mix-blend-mode: overlay;
+            pointer-events: none;
+        }
+        
+        /* Volume shadow (soft inner shadows on left/right) */
+        .spool-front-volume-shadow {
+            position: absolute;
+            inset: 0;
+            box-shadow: inset 6px 0 16px rgba(0,0,0,0.35), inset -6px 0 16px rgba(0,0,0,0.35);
+            pointer-events: none;
+        }
+        
+        /* Specular highlight (bright spot at top) */
+        .spool-front-specular {
+            position: absolute;
+            top: 0;
+            left: 18%;
+            width: 64%;
+            height: 22%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.26), transparent 60%);
+            border-radius: 0 0 50% 50%;
+            opacity: 0.72;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+        }
+        
+        /* Ambient occlusion top (darkening at top edge) */
+        .spool-front-ao-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 18px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.38), transparent);
+            border-radius: 4px 4px 0 0;
+            pointer-events: none;
+        }
+        /* Ambient occlusion bottom */
+        .spool-front-ao-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 22px;
+            background: linear-gradient(0deg, rgba(0,0,0,0.52), transparent);
+            border-radius: 0 0 4px 4px;
+            pointer-events: none;
+        }
+        /* Ambient occlusion corners (bottom left/right darkening) */
+        .spool-front-ao-corners {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 32px;
+            border-radius: 0 0 4px 4px;
+            background: radial-gradient(32px 18px at 8% 100%, rgba(0,0,0,0.55), transparent 70%), radial-gradient(32px 18px at 92% 100%, rgba(0,0,0,0.55), transparent 70%);
+            pointer-events: none;
+        }
+        
+        /* Filament lead (drops down from active slot) - stays within slot */
+        .filament-lead {
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 25px;
+            border-radius: 0 0 4px 4px;
+            z-index: 5;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        
+        /* Labels inside the filament (type + weight) */
+        .spool-front-label {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            text-align: center;
+            pointer-events: none;
+        }
+        .spool-front-label-type {
+            font-size: 10px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.95);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+            line-height: 1.1;
+        }
+        .spool-front-label-weight {
+            font-size: 9px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+            line-height: 1;
+        }
+        /* Dark filament needs inverted text color for visibility */
+        .spool-front-filament.dark-filament .spool-front-label-type,
+        .spool-front-filament.dark-filament .spool-front-label-weight {
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 0 6px rgba(255,255,255,0.4), 0 1px 4px rgba(255,255,255,0.3);
+        }
+        
+        /* Front view does not use remaining-badge (shown inside filament) */
+        .ams-slot.front-view .remaining-badge {
+            display: none;
+        }
+        /* ========== END FRONT VIEW Styles ========== */
         
         /* Filament Popup */
         .filament-popup-overlay {
@@ -5429,9 +5692,9 @@ class PrismBambuCard extends HTMLElement {
         </div>
 
         ${data.amsData.length > 0 ? `
-        <div class="ams-grid ${data.amsData.length <= 3 ? 'slots-' + data.amsData.length : ''}">
+        <div class="ams-grid ${data.amsData.length <= 3 ? 'slots-' + data.amsData.length : ''} ${data.spoolView === 'front' ? 'front-view' : ''}">
             ${data.amsData.map(slot => `
-                <div class="ams-slot ${slot.active ? 'active' : ''} ${!slot.empty ? 'clickable' : ''} ${slot.transparent ? 'transparent' : ''}"
+                <div class="ams-slot ${slot.active ? 'active' : ''} ${!slot.empty ? 'clickable' : ''} ${slot.transparent ? 'transparent' : ''} ${data.spoolView === 'front' ? 'front-view' : ''}"
                      ${!slot.empty ? `data-slot-id="${slot.id}"
                      data-full-name="${(slot.fullName || '').replace(/"/g, '&quot;')}"
                      data-type="${slot.type}"
@@ -5442,6 +5705,38 @@ class PrismBambuCard extends HTMLElement {
                      data-temp-max="${slot.nozzleTempMax || ''}"
                      data-transparent="${slot.transparent || false}"
                      data-entity-id="${slot.entityId || ''}"` : ''}>
+                    ${data.spoolView === 'front' ? `
+                    <!-- Front View (AMS-Style vertical spools) -->
+                    ${!slot.empty ? `
+                    <div class="spool-front-container">
+                        <div class="spool-front-wrapper">
+                            <div class="spool-front-flange left"></div>
+                            <div class="spool-front-flange right"></div>
+                            <div class="spool-front-filament ${slot.color === '#000000' || slot.color === '#111111' ? 'dark-filament' : ''}" style="background-color: ${slot.color};">
+                                <div class="spool-front-ridges"></div>
+                                <div class="spool-front-helix"></div>
+                                <div class="spool-front-sheen"></div>
+                                <div class="spool-front-volume"></div>
+                                <div class="spool-front-volume-shadow"></div>
+                                <div class="spool-front-specular"></div>
+                                <div class="spool-front-ao-top"></div>
+                                <div class="spool-front-ao-bottom"></div>
+                                <div class="spool-front-ao-corners"></div>
+                                <!-- Labels inside filament -->
+                                <div class="spool-front-label">
+                                    <span class="spool-front-label-type">${slot.type}</span>
+                                    ${slot.remaining >= 0 ? `<span class="spool-front-label-weight">${slot.remaining}%</span>` : ''}
+                                </div>
+                            </div>
+                            ${slot.active ? `<div class="filament-lead" style="background: linear-gradient(180deg, ${slot.color}, rgba(0,0,0,0.45));"></div>` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+                    <div class="ams-info">
+                        <div class="ams-type">${slot.empty ? 'Empty' : slot.type}</div>
+                    </div>
+                    ` : `
+                    <!-- Side View (circular spool - default) -->
                     <div class="spool-visual">
                         ${!slot.empty ? `
                             <div class="filament" style="background-color: ${slot.color}"></div>
@@ -5452,6 +5747,7 @@ class PrismBambuCard extends HTMLElement {
                     <div class="ams-info">
                         <div class="ams-type">${slot.empty ? 'Empty' : slot.type}</div>
                     </div>
+                    `}
                 </div>
             `).join('')}
         </div>

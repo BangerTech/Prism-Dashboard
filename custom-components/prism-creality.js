@@ -57,6 +57,11 @@ class PrismCrealityCard extends HTMLElement {
     this.hasRendered = false;
     this._deviceEntities = {}; // Cache for device entities
     this._lastStatus = null; // Track status for re-render decisions
+    this._lastPrintStatus = null; // Track last status for notifications
+    // Spoolman tracking
+    this._printStartUsage = null; // Filament usage at print start (for tracking)
+    this._spoolmanPopupOpen = false; // Track if spoolman select popup is open
+    this._lastSpoolmanStatus = null; // Track status for spoolman usage tracking
   }
 
   static getStubConfig() {
@@ -234,6 +239,55 @@ class PrismCrealityCard extends HTMLElement {
               label: 'Show External Spool (if available)',
               default: true,
               selector: { boolean: {} }
+            },
+            {
+              name: 'spool_view',
+              label: 'Spool Display Style (Side = circular, Front = AMS-style vertical)',
+              default: 'side',
+              selector: { 
+                select: { 
+                  options: [
+                    { value: 'side', label: 'Side (Circular - Default)' },
+                    { value: 'front', label: 'Front (AMS-Style)' }
+                  ]
+                } 
+              }
+            }
+          ]
+        },
+        // Spoolman Integration section (for printers without CFS)
+        {
+          type: 'expandable',
+          name: '',
+          title: 'Spoolman Integration',
+          schema: [
+            {
+              name: 'enable_spoolman',
+              label: 'Enable Spoolman spool selection (for printers without CFS)',
+              selector: { boolean: {} }
+            },
+            {
+              name: 'filament_usage_entity',
+              label: 'Filament Usage Entity (measures used filament, e.g. sensor.xxx_used_material_length)',
+              selector: { entity: { domain: 'sensor' } }
+            },
+            {
+              name: 'enable_spoolman_tracking',
+              label: 'Auto-track filament usage to Spoolman after print completes',
+              selector: { boolean: {} }
+            },
+            {
+              name: 'spool_view',
+              label: 'Spool Display Style (Side = circular, Front = AMS-style vertical)',
+              default: 'side',
+              selector: { 
+                select: { 
+                  options: [
+                    { value: 'side', label: 'Side (Circular - Default)' },
+                    { value: 'front', label: 'Front (AMS-Style)' }
+                  ]
+                } 
+              }
             }
           ]
         },
@@ -292,6 +346,50 @@ class PrismCrealityCard extends HTMLElement {
               name: 'multi_name_4',
               label: 'Printer 4 Name (optional)',
               selector: { text: {} }
+            }
+          ]
+        },
+        // Notifications section
+        {
+          type: 'expandable',
+          name: '',
+          title: 'Notifications',
+          schema: [
+            {
+              name: 'enable_notifications',
+              label: 'Enable status change notifications',
+              selector: { boolean: {} }
+            },
+            {
+              name: 'notification_target',
+              label: 'Notification target (select devices)',
+              selector: { 
+                target: {
+                  device: {
+                    integration: 'mobile_app'
+                  }
+                }
+              }
+            },
+            {
+              name: 'notify_on_complete',
+              label: 'Notify when print completes',
+              selector: { boolean: {} }
+            },
+            {
+              name: 'notify_on_pause',
+              label: 'Notify when print pauses',
+              selector: { boolean: {} }
+            },
+            {
+              name: 'notify_on_failed',
+              label: 'Notify when print fails',
+              selector: { boolean: {} }
+            },
+            {
+              name: 'notify_on_filament_change',
+              label: 'Notify on filament change',
+              selector: { boolean: {} }
             }
           ]
         }
@@ -834,7 +932,15 @@ class PrismCrealityCard extends HTMLElement {
 
   setConfig(config) {
     // Don't throw error if printer is empty - show preview instead
-    this.config = { ...config };
+    this.config = { 
+      ...config,
+      // Default notification settings
+      enable_notifications: config.enable_notifications ?? false,
+      notify_on_complete: config.notify_on_complete ?? true,
+      notify_on_pause: config.notify_on_pause ?? true,
+      notify_on_failed: config.notify_on_failed ?? true,
+      notify_on_filament_change: config.notify_on_filament_change ?? true
+    };
     this._deviceEntities = {}; // Reset cache
     if (!this.hasRendered) {
       this.render();
@@ -866,6 +972,22 @@ class PrismCrealityCard extends HTMLElement {
     } else {
       // Only update dynamic values
       this.updateValues();
+    }
+    
+    // Spoolman filament tracking (track usage when print ends)
+    if (this.config?.enable_spoolman_tracking) {
+      const statusKey = data.isPrinting ? 'printing' : data.isPaused ? 'paused' : data.isIdle ? 'idle' : data.stateStr;
+      const oldStatusKey = this._lastSpoolmanStatus;
+      this._lastSpoolmanStatus = statusKey;
+      
+      if (oldStatusKey && oldStatusKey !== statusKey) {
+        this._trackSpoolmanUsage(statusKey, oldStatusKey);
+      }
+    }
+    
+    // Check for status changes and send notifications
+    if (this.config?.enable_notifications) {
+      this.checkStatusChangeNotification(data.stateStr, data.name);
     }
   }
 
@@ -1024,6 +1146,67 @@ class PrismCrealityCard extends HTMLElement {
         coverImageProgress.src = data.coverImageUrl;
       }
     }
+    
+    // Update Spoolman slot values (live update without full re-render)
+    if (data.showSpoolman) {
+      const spoolmanSlot = this.shadowRoot.querySelector('.spoolman-slot');
+      if (spoolmanSlot) {
+        const spoolData = data.spoolmanData;
+        const color = spoolData?.color || '#666666';
+        
+        // Update filament color (side view)
+        const filament = spoolmanSlot.querySelector('.filament');
+        if (filament) {
+          filament.style.backgroundColor = color;
+        }
+        
+        // Update filament color (front view)
+        const frontFilament = spoolmanSlot.querySelector('.spool-front-filament');
+        if (frontFilament) {
+          frontFilament.style.backgroundColor = color;
+        }
+        
+        // Update filament lead color (front view)
+        const filamentLead = spoolmanSlot.querySelector('.filament-lead');
+        if (filamentLead && spoolData) {
+          filamentLead.style.background = `linear-gradient(180deg, ${color}, rgba(0,0,0,0.45))`;
+        }
+        
+        // Update remaining badge
+        let remainingBadge = spoolmanSlot.querySelector('.remaining-badge');
+        if (spoolData) {
+          if (remainingBadge) {
+            remainingBadge.textContent = `${Math.round(spoolData.remaining)}g`;
+          } else {
+            // Badge doesn't exist yet, need to create it
+            const spoolVisual = spoolmanSlot.querySelector('.spool-visual') || spoolmanSlot.querySelector('.spool-front-container');
+            if (spoolVisual) {
+              remainingBadge = document.createElement('div');
+              remainingBadge.className = 'remaining-badge';
+              remainingBadge.textContent = `${Math.round(spoolData.remaining)}g`;
+              spoolVisual.appendChild(remainingBadge);
+            }
+          }
+        } else if (remainingBadge) {
+          remainingBadge.remove();
+        }
+        
+        // Update type text
+        const cfsType = spoolmanSlot.querySelector('.cfs-type');
+        if (cfsType) {
+          cfsType.textContent = spoolData?.type || 'Select';
+        }
+        
+        // Update active class
+        if (spoolData) {
+          spoolmanSlot.classList.add('active');
+          spoolmanSlot.classList.remove('empty');
+        } else {
+          spoolmanSlot.classList.remove('active');
+          spoolmanSlot.classList.add('empty');
+        }
+      }
+    }
   }
 
   connectedCallback() {
@@ -1158,7 +1341,12 @@ class PrismCrealityCard extends HTMLElement {
     if (cfsSlots) {
       cfsSlots.forEach(slot => {
         addTapListener(slot, () => {
-          this.openFilamentPopup(slot);
+          // Check if this is a Spoolman slot
+          if (slot.dataset.action === 'spoolman-select') {
+            this._openSpoolmanSelectPopup();
+          } else {
+            this.openFilamentPopup(slot);
+          }
         });
       });
     }
@@ -1220,6 +1408,471 @@ class PrismCrealityCard extends HTMLElement {
       overlay.style.display = 'none';
     }
   }
+  
+  // ==================== SPOOLMAN INTEGRATION ====================
+  
+  // Get localStorage key for this printer's selected spool
+  _getSpoolmanStorageKey() {
+    return `prism-creality-spoolman-${this.config?.printer || 'default'}`;
+  }
+  
+  // Get the currently selected spool entity ID from localStorage
+  _getSelectedSpoolEntityId() {
+    return localStorage.getItem(this._getSpoolmanStorageKey());
+  }
+  
+  // Save selected spool entity ID to localStorage
+  // Note: The active spool is stored locally. Filament usage is tracked via spoolman.use_spool_filament service.
+  _setSelectedSpoolEntityId(entityId) {
+    if (entityId) {
+      localStorage.setItem(this._getSpoolmanStorageKey(), entityId);
+    } else {
+      localStorage.removeItem(this._getSpoolmanStorageKey());
+    }
+    // Force re-render to show updated spool
+    this.render();
+    this.setupListeners();
+  }
+  
+  // Get all available Spoolman spools from Home Assistant
+  _getAllSpoolmanSpools() {
+    if (!this._hass) return [];
+    
+    const spools = [];
+    
+    // Regex to match only main spool sensors: sensor.spoolman_spool_123 (number only, no suffix)
+    const mainSpoolRegex = /^sensor\.spoolman_spool_\d+$/;
+    
+    // Find all sensor.spoolman_spool_* entities (main spool sensors only)
+    for (const [entityId, state] of Object.entries(this._hass.states)) {
+      // Match main spool sensors: sensor.spoolman_spool_X (only numbers, no sub-sensors)
+      if (mainSpoolRegex.test(entityId)) {
+        
+        const attrs = state.attributes || {};
+        const remaining = parseFloat(state.state) || 0;
+        const archived = attrs.archived === true;
+        
+        // Only include active spools with filament remaining (not archived, remaining > 0)
+        if (!archived && remaining > 0) {
+          // Try to get vendor from attributes first, then from separate sensor
+          let vendor = attrs.filament_vendor || attrs.vendor || '';
+          if (!vendor) {
+            // Try to get vendor from separate sensor entity
+            const vendorEntityId = entityId + '_vendor';
+            const vendorState = this._hass.states[vendorEntityId];
+            if (vendorState && vendorState.state && vendorState.state !== 'unknown' && vendorState.state !== 'unavailable') {
+              vendor = vendorState.state;
+            }
+          }
+          
+          spools.push({
+            entityId,
+            id: attrs.id,
+            name: attrs.filament_name || attrs.friendly_name || 'Unknown Spool',
+            type: attrs.filament_material || 'PLA',
+            color: attrs.filament_color_hex ? `#${attrs.filament_color_hex}` : '#666666',
+            remaining: remaining,
+            usedPercentage: attrs.used_percentage || 0,
+            vendor: vendor,
+            location: attrs.location || ''
+          });
+        }
+      }
+    }
+    
+    // Sort by vendor + name
+    return spools.sort((a, b) => {
+      const nameA = `${a.vendor} ${a.name}`.trim().toLowerCase();
+      const nameB = `${b.vendor} ${b.name}`.trim().toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }
+  
+  // Get data for the currently selected spool
+  _getSelectedSpoolData() {
+    const entityId = this._getSelectedSpoolEntityId();
+    if (!entityId || !this._hass) return null;
+    
+    const state = this._hass.states[entityId];
+    if (!state) return null;
+    
+    const attrs = state.attributes || {};
+    const remaining = parseFloat(state.state) || 0;
+    
+    // Check if spool is still valid (not archived, has remaining)
+    if (attrs.archived === true || remaining <= 0) {
+      // Spool is no longer valid, clear selection
+      this._setSelectedSpoolEntityId(null);
+      return null;
+    }
+    
+    // Try to get vendor from attributes first, then from separate sensor
+    let vendor = attrs.filament_vendor || attrs.vendor || '';
+    if (!vendor) {
+      // Try to get vendor from separate sensor entity
+      const vendorEntityId = entityId + '_vendor';
+      const vendorState = this._hass.states[vendorEntityId];
+      if (vendorState && vendorState.state && vendorState.state !== 'unknown' && vendorState.state !== 'unavailable') {
+        vendor = vendorState.state;
+      }
+    }
+    
+    return {
+      entityId,
+      id: attrs.id,
+      name: attrs.filament_name || attrs.friendly_name || 'Unknown',
+      type: attrs.filament_material || 'PLA',
+      color: attrs.filament_color_hex ? `#${attrs.filament_color_hex}` : '#666666',
+      remaining: remaining,
+      usedPercentage: attrs.used_percentage || 0,
+      vendor: vendor,
+      location: attrs.location || ''
+    };
+  }
+  
+  // Open Spoolman spool selection popup
+  _openSpoolmanSelectPopup() {
+    if (this._spoolmanPopupOpen) return;
+    this._spoolmanPopupOpen = true;
+    
+    const spools = this._getAllSpoolmanSpools();
+    const selectedEntityId = this._getSelectedSpoolEntityId();
+    
+    // Create popup element
+    const popup = document.createElement('div');
+    popup.className = 'spoolman-select-overlay';
+    popup.innerHTML = `
+      <div class="spoolman-select-popup">
+        <div class="spoolman-select-header">
+          <div class="spoolman-select-title">
+            <ha-icon icon="mdi:selection-ellipse"></ha-icon>
+            <span>Select Spool</span>
+          </div>
+          <button class="spoolman-select-close">
+            <ha-icon icon="mdi:close"></ha-icon>
+          </button>
+        </div>
+        <div class="spoolman-select-list">
+          ${spools.length === 0 ? `
+            <div class="spoolman-no-spools">
+              <ha-icon icon="mdi:alert-circle-outline"></ha-icon>
+              <span>No active spools found in Spoolman</span>
+            </div>
+          ` : spools.map(spool => `
+            <div class="spoolman-select-item ${spool.entityId === selectedEntityId ? 'selected' : ''}"
+                 data-entity-id="${spool.entityId}"
+                 data-spool-id="${spool.id}">
+              <div class="spoolman-spool-color" style="background-color: ${spool.color};"></div>
+              <div class="spoolman-spool-details">
+                <div class="spoolman-spool-name">${spool.name}</div>
+                <div class="spoolman-spool-meta">${spool.vendor ? spool.vendor + ' • ' : ''}${spool.type} • ${Math.round(spool.remaining)}g remaining</div>
+              </div>
+              ${spool.entityId === selectedEntityId ? '<ha-icon icon="mdi:check-circle" class="spoolman-selected-icon"></ha-icon>' : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    
+    // Add event listeners
+    const closeBtn = popup.querySelector('.spoolman-select-close');
+    closeBtn.onclick = () => this._closeSpoolmanSelectPopup();
+    
+    // Close on overlay click
+    popup.onclick = (e) => {
+      if (e.target === popup) this._closeSpoolmanSelectPopup();
+    };
+    
+    // Handle spool selection
+    const items = popup.querySelectorAll('.spoolman-select-item');
+    items.forEach(item => {
+      item.onclick = () => {
+        const entityId = item.dataset.entityId;
+        this._setSelectedSpoolEntityId(entityId);
+        this._closeSpoolmanSelectPopup();
+      };
+    });
+    
+    // Add to shadow DOM
+    this.shadowRoot.appendChild(popup);
+  }
+  
+  // Close Spoolman select popup
+  _closeSpoolmanSelectPopup() {
+    this._spoolmanPopupOpen = false;
+    const popup = this.shadowRoot?.querySelector('.spoolman-select-overlay');
+    if (popup) {
+      popup.remove();
+    }
+  }
+  
+  // Call Spoolman service to report filament usage
+  _callSpoolmanService(spoolId, usedLengthMm) {
+    if (!this._hass || !spoolId || usedLengthMm <= 0) return;
+    
+    this._hass.callService('spoolman', 'use_spool_filament', {
+      id: spoolId,
+      use_length: usedLengthMm
+    });
+    
+    console.log(`[Prism-Creality] Reported ${usedLengthMm.toFixed(1)}mm filament usage to Spoolman spool ${spoolId}`);
+  }
+  
+  // Track filament usage for Spoolman (called from set hass)
+  _trackSpoolmanUsage(newStatus, oldStatus) {
+    if (!this.config?.enable_spoolman_tracking || !this.config?.filament_usage_entity) return;
+    
+    const selectedSpool = this._getSelectedSpoolData();
+    if (!selectedSpool) return;
+    
+    const usageEntity = this._hass?.states[this.config.filament_usage_entity];
+    const currentUsage = parseFloat(usageEntity?.state) || 0;
+    
+    // Normalize status strings for comparison
+    const normalizeStatus = (s) => (s || '').toLowerCase().trim();
+    const newStatusNorm = normalizeStatus(newStatus);
+    const oldStatusNorm = normalizeStatus(oldStatus);
+    
+    const isPrinting = ['printing', 'running', 'busy'].includes(newStatusNorm);
+    const wasPrinting = ['printing', 'running', 'busy'].includes(oldStatusNorm);
+    const isFinished = ['completed', 'idle', 'standby', 'finished', 'ready'].includes(newStatusNorm);
+    
+    // Print started - remember current usage value
+    if (isPrinting && !wasPrinting) {
+      this._printStartUsage = currentUsage;
+      console.log(`[Prism-Creality] Print started. Tracking usage for Spoolman spool ${selectedSpool.id} (start: ${currentUsage})`);
+    }
+    
+    // Print ended - calculate and report usage
+    if (wasPrinting && isFinished && this._printStartUsage !== null) {
+      const usedCm = currentUsage - this._printStartUsage;
+      const usedMm = usedCm * 10; // Convert cm to mm
+      
+      if (usedMm > 0) {
+        this._callSpoolmanService(selectedSpool.id, usedMm);
+      }
+      
+      this._printStartUsage = null; // Reset for next print
+    }
+  }
+  
+  // ==================== END SPOOLMAN INTEGRATION ====================
+  
+  // ==================== NOTIFICATIONS ====================
+  
+  // Get list of available mobile_app notify services
+  getAvailableNotifyServices() {
+    if (!this._hass?.services?.notify) return [];
+    
+    return Object.keys(this._hass.services.notify)
+      .filter(service => service.startsWith('mobile_app_'))
+      .sort();
+  }
+  
+  // Convert device_id to mobile_app service name
+  _deviceIdToNotifyService(deviceId) {
+    // Get all available mobile_app notify services
+    const availableServices = Object.keys(this._hass.services?.notify || {})
+      .filter(s => s.startsWith('mobile_app_'));
+    
+    // Try to find device info
+    const device = this._hass.devices?.[deviceId];
+    if (!device) {
+      // Fallback: maybe it's already a service name
+      if (availableServices.includes(deviceId)) {
+        return deviceId;
+      }
+      // Try with mobile_app_ prefix
+      if (availableServices.includes('mobile_app_' + deviceId)) {
+        return 'mobile_app_' + deviceId;
+      }
+      return null;
+    }
+    
+    // Try different name variations
+    const namesToTry = [
+      device.name_by_user,
+      device.name,
+      device.model
+    ].filter(Boolean);
+    
+    for (const name of namesToTry) {
+      // Convert to service name format (lowercase, replace non-alphanumeric with _)
+      const serviceName = 'mobile_app_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+      
+      if (availableServices.includes(serviceName)) {
+        return serviceName;
+      }
+    }
+    
+    // Try identifiers
+    const identifiers = device.identifiers || [];
+    for (const identifier of identifiers) {
+      if (Array.isArray(identifier) && identifier.length >= 2) {
+        const [domain, id] = identifier;
+        if (domain === 'mobile_app') {
+          const serviceName = 'mobile_app_' + id.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+          if (availableServices.includes(serviceName)) {
+            return serviceName;
+          }
+        }
+      }
+    }
+    
+    // Last resort: fuzzy match by partial name
+    const deviceNameLower = (device.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    for (const service of availableServices) {
+      const serviceNamePart = service.replace('mobile_app_', '').replace(/_/g, '');
+      if (deviceNameLower.includes(serviceNamePart) || serviceNamePart.includes(deviceNameLower)) {
+        return service;
+      }
+    }
+    
+    return null;
+  }
+  
+  // Send notification via Home Assistant notify service
+  sendNotification(message, title, data = {}) {
+    if (!this.config?.enable_notifications) {
+      return;
+    }
+    
+    // Collect all notification targets
+    let serviceNames = [];
+    
+    // New target selector format (device picker)
+    const target = this.config.notification_target;
+    if (target) {
+      // Target can have device_id array
+      if (target.device_id) {
+        const deviceIds = Array.isArray(target.device_id) ? target.device_id : [target.device_id];
+        deviceIds.forEach(deviceId => {
+          const serviceName = this._deviceIdToNotifyService(deviceId);
+          if (serviceName && !serviceNames.includes(serviceName)) {
+            serviceNames.push(serviceName);
+          }
+        });
+      }
+    }
+    
+    // Legacy: comma-separated string or array
+    const legacyDevices = this.config.notification_devices || this.config.notification_service;
+    if (legacyDevices) {
+      let devices = [];
+      if (typeof legacyDevices === 'string') {
+        devices = legacyDevices.split(',').map(d => d.trim()).filter(d => d);
+      } else if (Array.isArray(legacyDevices)) {
+        devices = legacyDevices;
+      }
+      
+      devices.forEach(device => {
+        let serviceName = device.trim();
+        if (serviceName.startsWith('device_tracker.')) {
+          serviceName = 'mobile_app_' + serviceName.replace('device_tracker.', '');
+        }
+        if (serviceName.startsWith('notify.')) {
+          serviceName = serviceName.replace('notify.', '');
+        }
+        if (serviceName && !serviceNames.includes(serviceName)) {
+          serviceNames.push(serviceName);
+        }
+      });
+    }
+    
+    if (serviceNames.length === 0) {
+      return;
+    }
+    
+    const printerName = this.config.name || 'Creality Printer';
+    const notificationData = {
+      message: message,
+      title: title || printerName,
+      data: {
+        ...data,
+        tag: `creality_${this.config.printer}`,
+        group: 'creality_printer_notifications'
+      }
+    };
+    
+    // Send to each device
+    serviceNames.forEach(serviceName => {
+      // Verify service exists before calling
+      if (!this._hass.services?.notify?.[serviceName]) {
+        console.warn(`[Prism Creality] Notify service '${serviceName}' not found.`);
+        return;
+      }
+      
+      try {
+        this._hass.callService('notify', serviceName, notificationData);
+        console.log(`[Prism Creality] Notification sent to ${serviceName}: ${title} - ${message}`);
+      } catch (error) {
+        console.error('[Prism Creality] Failed to send notification to', serviceName, ':', error);
+      }
+    });
+  }
+  
+  // Check for status changes and send notifications
+  checkStatusChangeNotification(currentStatus, printerName) {
+    if (!this.config?.enable_notifications) return;
+    
+    // First time or no change
+    if (!this._lastPrintStatus || this._lastPrintStatus === currentStatus) {
+      this._lastPrintStatus = currentStatus;
+      return;
+    }
+    
+    const oldStatus = this._lastPrintStatus.toLowerCase();
+    const newStatus = currentStatus.toLowerCase();
+    const name = printerName || this.config.name || 'Printer';
+    
+    // Notify on completion
+    if (this.config.notify_on_complete && 
+        (newStatus === 'finish' || newStatus === 'finished' || newStatus === 'complete' || 
+         newStatus === 'completed' || newStatus === 'idle' && oldStatus === 'printing')) {
+      this.sendNotification(
+        `${name} has finished printing! 🎉`,
+        'Print Complete',
+        { priority: 'high', notification_icon: 'mdi:printer-3d-nozzle-check' }
+      );
+    }
+    
+    // Notify on pause
+    else if (this.config.notify_on_pause && 
+             (newStatus === 'pause' || newStatus === 'paused' || newStatus === 'paused_user')) {
+      this.sendNotification(
+        `${name} has paused printing. ⏸️`,
+        'Print Paused',
+        { priority: 'default', notification_icon: 'mdi:pause-circle' }
+      );
+    }
+    
+    // Notify on failed
+    else if (this.config.notify_on_failed && 
+             (newStatus === 'failed' || newStatus === 'error' || newStatus === 'cancelled')) {
+      this.sendNotification(
+        `${name} print failed! ❌`,
+        'Print Failed',
+        { priority: 'high', notification_icon: 'mdi:alert-circle' }
+      );
+    }
+    
+    // Notify on filament change
+    else if (this.config.notify_on_filament_change && 
+             (newStatus === 'changing_filament' || newStatus === 'filament_loading' || 
+              newStatus === 'filament_unloading' || newStatus === 'paused_filament_runout' ||
+              newStatus === 'filament_runout')) {
+      this.sendNotification(
+        `${name} requires filament change. 🔄`,
+        'Filament Change',
+        { priority: 'high', notification_icon: 'mdi:swap-vertical' }
+      );
+    }
+    
+    // Update last status
+    this._lastPrintStatus = currentStatus;
+  }
+  
+  // ==================== END NOTIFICATIONS ====================
   
   handlePowerToggle() {
     if (!this._hass || !this.config.power_switch) return;
@@ -3857,7 +4510,13 @@ class PrismCrealityCard extends HTMLElement {
       cfsHumidity,
       externalSpoolData,
       showCfs: this.config.show_cfs !== false && (cfsData.length > 0 || externalSpoolData),
-      showCfsInfo: this.config.show_cfs_info !== false
+      showCfsInfo: this.config.show_cfs_info !== false,
+      // Spoolman data (for printers without CFS)
+      spoolmanEnabled: this.config.enable_spoolman === true,
+      spoolmanData: this.config.enable_spoolman === true ? this._getSelectedSpoolData() : null,
+      showSpoolman: this.config.enable_spoolman === true && !(this.config.show_cfs !== false && (cfsData.length > 0 || externalSpoolData)),
+      // Spool view mode: 'side' (circular, default) or 'front' (AMS-style vertical)
+      spoolView: this.config.spool_view || 'side'
     };
     
     return returnData;
@@ -3908,7 +4567,13 @@ class PrismCrealityCard extends HTMLElement {
       cfsHumidity: 42,
       externalSpoolData: null,
       showCfs: true,
-      showCfsInfo: true
+      showCfsInfo: true,
+      // Spoolman preview data
+      spoolmanEnabled: false,
+      spoolmanData: null,
+      showSpoolman: false,
+      // Spool view mode
+      spoolView: this.config?.spool_view || 'side'
     };
   }
 
@@ -4816,19 +5481,19 @@ class PrismCrealityCard extends HTMLElement {
         .spool-visual {
             position: relative;
             width: 100%;
-            aspect-ratio: 1;
+            height: 0;
+            padding-bottom: 100%; /* Forces square aspect ratio */
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             background-color: rgba(0, 0, 0, 0.4);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
         }
         .filament {
+            position: absolute;
+            top: 15%;
+            left: 15%;
             width: 70%;
             height: 70%;
             border-radius: 50%;
-            position: relative;
             overflow: hidden;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
         }
@@ -4848,6 +5513,9 @@ class PrismCrealityCard extends HTMLElement {
         }
         .spool-center {
             position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             width: 20%;
             height: 20%;
             border-radius: 50%;
@@ -4859,6 +5527,8 @@ class PrismCrealityCard extends HTMLElement {
         .remaining-badge {
             position: absolute;
             bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
             background-color: rgba(0, 0, 0, 0.8);
             font-size: 9px;
             font-family: monospace;
@@ -4868,6 +5538,243 @@ class PrismCrealityCard extends HTMLElement {
             border: 1px solid rgba(255, 255, 255, 0.1);
             z-index: 10;
         }
+        
+        /* ========== FRONT VIEW (AMS-Style) Styles ========== */
+        .cfs-grid.front-view {
+            gap: 12px;
+        }
+        .cfs-slot.front-view {
+            /* Same aspect-ratio as side view (3/4) for consistent sizing */
+            aspect-ratio: 3/4;
+            padding: 12px;
+            background: linear-gradient(180deg, rgba(30, 32, 38, 0.95), rgba(20, 22, 26, 0.98));
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+        }
+        .cfs-slot.front-view.active {
+            border-bottom: 2px solid #0096FF;
+        }
+        
+        /* Hide the external cfs-info for front view - we show it inside the filament */
+        .cfs-slot.front-view > .cfs-info {
+            display: none;
+        }
+        
+        /* Front view spool container - vertically centered */
+        .spool-front-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* The main filament column wrapper with flanges */
+        .spool-front-wrapper {
+            position: relative;
+            width: 45%;
+            height: 75%;
+        }
+        
+        /* Side flanges (left/right edges of spool) - same height top and bottom */
+        .spool-front-flange {
+            position: absolute;
+            top: -4px;
+            bottom: -4px;
+            width: 4px;
+            border-radius: 3px;
+            background: linear-gradient(180deg, rgba(70,75,85,0.95), rgba(50,55,65,0.98) 50%, rgba(35,40,50,0.95));
+            box-shadow: inset 1px 0 0 rgba(255,255,255,0.1), inset -1px 0 0 rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.4);
+            z-index: 15;
+        }
+        .spool-front-flange.left {
+            left: -3px;
+        }
+        .spool-front-flange.right {
+            right: -3px;
+        }
+        
+        /* Bottom flare extension of flanges - HIDDEN, not needed */
+        .spool-front-flange-bottom {
+            display: none;
+        }
+        
+        /* Inner core shadow (cardboard core hint) - very subtle, not visible */
+        .spool-front-core {
+            display: none;
+        }
+        
+        /* The filament column */
+        .spool-front-filament {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 4px 4px 0 0;
+            box-shadow: inset 0 12px 12px rgba(255,255,255,0.12), inset 0 -16px 18px rgba(0,0,0,0.65), 0 12px 18px rgba(0,0,0,0.4);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Filament ridges (winding pattern) - vertical lines */
+        .spool-front-ridges {
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(90deg, rgba(0,0,0,0.20) 0px, rgba(0,0,0,0) 1px, rgba(255,255,255,0.16) 2px, rgba(255,255,255,0) 3px, rgba(0,0,0,0.20) 4px);
+            opacity: 0.70;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+        }
+        
+        /* Filament helix pattern (diagonal lines) */
+        .spool-front-helix {
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(168deg, rgba(255,255,255,0.16) 0px, rgba(255,255,255,0) 2px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0) 6px);
+            opacity: 0.32;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+        }
+        .spool-front-filament.dark-filament .spool-front-helix {
+            opacity: 0.62;
+        }
+        
+        /* Filament sheen (cylindrical highlight) */
+        .spool-front-sheen {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0) 22%, rgba(255,255,255,0.22) 46%, rgba(0,0,0,0) 72%, rgba(0,0,0,0.40) 100%);
+            opacity: 0.55;
+            mix-blend-mode: soft-light;
+            pointer-events: none;
+        }
+        
+        /* Cylindrical volume effect */
+        .spool-front-volume {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(60px 120px at 50% 45%, rgba(255,255,255,0.34), rgba(255,255,255,0) 58%);
+            opacity: 0.62;
+            pointer-events: none;
+        }
+        .spool-front-volume-shadow {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(50px 160px at 50% 60%, rgba(0,0,0,0.30), rgba(0,0,0,0) 62%);
+            opacity: 0.70;
+            pointer-events: none;
+        }
+        
+        /* Specular highlight (left side) */
+        .spool-front-specular {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 24%;
+            width: 3px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0));
+            opacity: 0.08;
+            filter: blur(1.2px);
+            pointer-events: none;
+        }
+        
+        /* Ambient occlusion - top */
+        .spool-front-ao-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 18px;
+            border-radius: 4px 4px 0 0;
+            background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0));
+            pointer-events: none;
+        }
+        
+        /* Ambient occlusion - bottom */
+        .spool-front-ao-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 18px;
+            border-radius: 0 0 4px 4px;
+            background: linear-gradient(0deg, rgba(0,0,0,0.55), rgba(0,0,0,0));
+            pointer-events: none;
+        }
+        
+        /* Corner shadows */
+        .spool-front-ao-corners {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 24px;
+            border-radius: 0 0 4px 4px;
+            background: radial-gradient(24px 12px at 12% 100%, rgba(0,0,0,0.65), rgba(0,0,0,0) 72%), radial-gradient(24px 12px at 88% 100%, rgba(0,0,0,0.65), rgba(0,0,0,0) 72%);
+            pointer-events: none;
+        }
+        
+        /* Filament lead (drops down from active slot) - stays within slot */
+        .filament-lead {
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 25px;
+            border-radius: 0 0 4px 4px;
+            z-index: 5;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        
+        /* Labels inside the filament (type + weight) */
+        .spool-front-label {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            text-align: center;
+            pointer-events: none;
+        }
+        .spool-front-label-type {
+            font-size: 10px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.95);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7);
+            letter-spacing: 0.5px;
+            line-height: 1;
+        }
+        .spool-front-label-weight {
+            font-size: 9px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+            line-height: 1;
+        }
+        /* Dark filament needs inverted text color for visibility */
+        .spool-front-filament.dark-filament .spool-front-label-type,
+        .spool-front-filament.dark-filament .spool-front-label-weight {
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 0 6px rgba(255,255,255,0.4), 0 1px 4px rgba(255,255,255,0.3);
+        }
+        
+        /* Front view does not use remaining-badge (shown inside filament) */
+        .cfs-slot.front-view .remaining-badge {
+            display: none;
+        }
+        /* ========== END FRONT VIEW Styles ========== */
+        
         .cfs-info {
             text-align: center;
             width: 100%;
@@ -5030,6 +5937,155 @@ class PrismCrealityCard extends HTMLElement {
             font-weight: 600;
             font-size: 13px;
         }
+        
+        /* Spoolman Slot - Uses CSS Grid with single column matching CFS slot width */
+        /* CFS uses: grid-template-columns: repeat(4, 1fr) with gap: 12px */
+        /* Single column width = (100% - 3*12px) / 4 = (100% - 36px) / 4 */
+        .spoolman-grid-centered {
+            display: grid;
+            grid-template-columns: calc((100% - 36px) / 4);
+            justify-content: center; /* Centers the single column in the container */
+            margin-bottom: 24px;
+            z-index: 20;
+        }
+        .spoolman-slot {
+            cursor: pointer;
+        }
+        .spoolman-slot.empty {
+            opacity: 0.5;
+        }
+        
+        /* Spoolman Select Popup */
+        .spoolman-select-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .spoolman-select-popup {
+            background: linear-gradient(145deg, #2d3038, #22252b);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            width: 90%;
+            max-width: 380px;
+            max-height: 70vh;
+            overflow: hidden;
+            animation: slideUp 0.3s ease;
+        }
+        .spoolman-select-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .spoolman-select-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .spoolman-select-title ha-icon {
+            color: #0096FF;
+        }
+        .spoolman-select-close {
+            background: linear-gradient(145deg, #2d3038, #22252b);
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.6);
+            box-shadow: 
+                3px 3px 6px rgba(0, 0, 0, 0.4),
+                -2px -2px 4px rgba(255, 255, 255, 0.03);
+            transition: all 0.2s;
+        }
+        .spoolman-select-close:hover {
+            color: #f87171;
+        }
+        .spoolman-select-close:hover ha-icon {
+            filter: drop-shadow(0 0 4px rgba(248, 113, 113, 0.5));
+        }
+        .spoolman-select-list {
+            overflow-y: auto;
+            max-height: calc(70vh - 70px);
+            padding: 8px 0;
+        }
+        .spoolman-select-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .spoolman-select-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .spoolman-select-item.selected {
+            background: rgba(0, 150, 255, 0.15);
+        }
+        .spoolman-spool-color {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            border-radius: 50%;
+            box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.3), inset -1px -1px 2px rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .spoolman-spool-details {
+            flex: 1;
+            min-width: 0;
+        }
+        .spoolman-spool-name {
+            font-weight: 500;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .spoolman-spool-meta {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 2px;
+        }
+        .spoolman-selected-icon {
+            color: #4ade80;
+            filter: drop-shadow(0 0 4px rgba(74, 222, 128, 0.5));
+        }
+        .spoolman-no-spools {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 40px 20px;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+        }
+        .spoolman-no-spools ha-icon {
+            --mdc-icon-size: 48px;
+            opacity: 0.3;
+        }
+        
       </style>
       
       <div class="card">
@@ -5063,15 +6119,47 @@ class PrismCrealityCard extends HTMLElement {
         </div>
 
         ${data.showCfs && data.cfsData.length > 0 ? `
-        <div class="cfs-grid ${data.cfsData.length <= 3 ? 'slots-' + data.cfsData.length : ''}">
+        <div class="cfs-grid ${data.cfsData.length <= 3 ? 'slots-' + data.cfsData.length : ''} ${data.spoolView === 'front' ? 'front-view' : ''}">
             ${data.cfsData.map(slot => `
-                <div class="cfs-slot ${slot.active ? 'active' : ''} ${!slot.empty ? 'clickable' : ''} ${slot.transparent ? 'transparent' : ''}"
+                <div class="cfs-slot ${slot.active ? 'active' : ''} ${!slot.empty ? 'clickable' : ''} ${slot.transparent ? 'transparent' : ''} ${data.spoolView === 'front' ? 'front-view' : ''}"
                      ${!slot.empty ? `data-slot-id="${slot.id}"
                      data-full-name="${(slot.fullName || '').replace(/"/g, '&quot;')}"
                      data-type="${slot.type}"
                      data-color="${slot.color}"
                      data-remaining="${slot.remaining}"
                      data-filament-type="${slot.filamentType || ''}"` : ''}>
+                    ${data.spoolView === 'front' ? `
+                    <!-- Front View (AMS-Style vertical spools) -->
+                    ${!slot.empty ? `
+                    <div class="spool-front-container">
+                        <div class="spool-front-wrapper">
+                            <div class="spool-front-flange left"></div>
+                            <div class="spool-front-flange right"></div>
+                            <div class="spool-front-filament ${slot.color === '#000000' ? 'dark-filament' : ''}" style="background-color: ${slot.color};">
+                                <div class="spool-front-ridges"></div>
+                                <div class="spool-front-helix"></div>
+                                <div class="spool-front-sheen"></div>
+                                <div class="spool-front-volume"></div>
+                                <div class="spool-front-volume-shadow"></div>
+                                <div class="spool-front-specular"></div>
+                                <div class="spool-front-ao-top"></div>
+                                <div class="spool-front-ao-bottom"></div>
+                                <div class="spool-front-ao-corners"></div>
+                                <!-- Labels inside filament -->
+                                <div class="spool-front-label">
+                                    <span class="spool-front-label-type">${slot.type}</span>
+                                    ${slot.remaining >= 0 ? `<span class="spool-front-label-weight">${slot.remaining}%</span>` : ''}
+                                </div>
+                            </div>
+                            ${slot.active ? `<div class="filament-lead" style="background: linear-gradient(180deg, ${slot.color}, rgba(0,0,0,0.45));"></div>` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+                    <div class="cfs-info">
+                        <div class="cfs-type">${slot.empty ? 'Empty' : slot.type}</div>
+                    </div>
+                    ` : `
+                    <!-- Side View (circular spool - default) -->
                     <div class="spool-visual">
                         <div class="filament" style="background-color: ${slot.color};"></div>
                         <div class="spool-center"></div>
@@ -5080,6 +6168,7 @@ class PrismCrealityCard extends HTMLElement {
                     <div class="cfs-info">
                         <div class="cfs-type">${slot.empty ? 'Empty' : slot.type}</div>
                     </div>
+                    `}
                 </div>
             `).join('')}
         </div>
@@ -5130,6 +6219,57 @@ class PrismCrealityCard extends HTMLElement {
                         <span class="filament-popup-stat-value filament-stat-slot">--</span>
                     </div>
                 </div>
+            </div>
+        </div>
+        ` : ''}
+
+        ${data.showSpoolman ? `
+        <!-- Spoolman Spool Slot (for printers without CFS) - same style as AMS/CFS slots -->
+        <div class="spoolman-grid-centered ${data.spoolView === 'front' ? 'front-view' : ''}">
+            <div class="cfs-slot spoolman-slot clickable ${data.spoolmanData ? 'active' : 'empty'} ${data.spoolView === 'front' ? 'front-view' : ''}"
+                 data-action="spoolman-select">
+                ${data.spoolView === 'front' ? `
+                <!-- Front View (AMS-Style vertical spools) -->
+                <div class="spool-front-container">
+                    <div class="spool-front-wrapper">
+                        <div class="spool-front-flange left"></div>
+                        <div class="spool-front-flange right"></div>
+                        <div class="spool-front-flange-bottom left"></div>
+                        <div class="spool-front-flange-bottom right"></div>
+                        <div class="spool-front-core"></div>
+                        <div class="spool-front-filament ${(data.spoolmanData?.color || '#666666') === '#000000' ? 'dark-filament' : ''}" style="background-color: ${data.spoolmanData?.color || '#666666'};">
+                            <div class="spool-front-ridges"></div>
+                            <div class="spool-front-helix"></div>
+                            <div class="spool-front-sheen"></div>
+                            <div class="spool-front-volume"></div>
+                            <div class="spool-front-volume-shadow"></div>
+                            <div class="spool-front-specular"></div>
+                            <div class="spool-front-ao-top"></div>
+                            <div class="spool-front-ao-bottom"></div>
+                            <div class="spool-front-ao-corners"></div>
+                            <!-- Labels inside filament -->
+                            <div class="spool-front-label">
+                                <span class="spool-front-label-type">${data.spoolmanData?.type || 'Select'}</span>
+                                ${data.spoolmanData ? `<span class="spool-front-label-weight">${Math.round(data.spoolmanData.remaining)}g</span>` : ''}
+                            </div>
+                        </div>
+                        ${data.spoolmanData ? `<div class="filament-lead" style="background: linear-gradient(180deg, ${data.spoolmanData.color}, rgba(0,0,0,0.45));"></div>` : ''}
+                    </div>
+                </div>
+                <div class="cfs-info">
+                    <div class="cfs-type">${data.spoolmanData?.type || 'Select'}</div>
+                </div>
+                ` : `
+                <!-- Side View (circular spool - default) -->
+                <div class="spool-visual">
+                    <div class="filament" style="background-color: ${data.spoolmanData?.color || '#666666'};"></div>
+                    <div class="spool-center"></div>
+                    ${data.spoolmanData ? `<div class="remaining-badge">${Math.round(data.spoolmanData.remaining)}g</div>` : ''}
+                </div>
+                <div class="cfs-info">
+                    <div class="cfs-type">${data.spoolmanData?.type || 'Select'}</div>
+                </div>
+                `}
             </div>
         </div>
         ` : ''}

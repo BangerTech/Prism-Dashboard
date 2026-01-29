@@ -492,6 +492,7 @@ class PrismButtonCard extends HTMLElement {
           min-width: 320px;
           max-width: 500px;
           width: 90vw;
+          max-height: 90vh; /* WICHTIG: Maximale Höhe begrenzen für Skalierung */
           background: linear-gradient(180deg, rgba(35, 38, 45, 0.98), rgba(25, 27, 32, 0.98));
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
@@ -585,10 +586,15 @@ class PrismButtonCard extends HTMLElement {
           align-items: flex-start;
           justify-content: center;
         }
-        /* Wrapper for scaled content - same as prism-sidebar */
+        /* Wrapper for scaled content - starts invisible until scaling is done */
         .prism-popup-scale-wrapper {
           transform-origin: top center;
           width: 100%;
+          opacity: 0;
+          transition: opacity 0.15s ease;
+        }
+        .prism-popup-scale-wrapper.ready {
+          opacity: 1;
         }
         .prism-popup-loading {
           display: flex;
@@ -829,26 +835,42 @@ class PrismButtonCard extends HTMLElement {
     this._scalePopupContent(container, scaleWrapper);
   }
   
-  // Scale popup content to fit available height (copied from prism-sidebar)
+  // Scale popup content to fit available space (height AND width)
   _scalePopupContent(container, scaleWrapper) {
-    // Wait for cards to render
+    // Wait for cards to render (shorter timeout, content is hidden anyway)
     setTimeout(() => {
       if (!scaleWrapper || !container) return;
+      
+      // WICHTIG: Temporär overflow entfernen um echte Größe zu messen
+      const popup = container.closest('.prism-popup');
+      
+      if (popup) popup.style.overflow = 'visible';
+      container.style.overflow = 'visible';
+      scaleWrapper.style.overflow = 'visible';
       
       // Get computed padding
       const computedStyle = window.getComputedStyle(container);
       const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
       const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+      const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
+      const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
       
-      // Get available height (content area minus padding)
-      const availableHeight = container.clientHeight - paddingTop - paddingBottom;
-      
-      // Get natural height of cards
+      // Get natural dimensions of cards (jetzt korrekt weil overflow: visible)
       const naturalHeight = scaleWrapper.scrollHeight;
+      const naturalWidth = scaleWrapper.scrollWidth;
       
-      if (naturalHeight > 0 && availableHeight > 0) {
-        // Calculate scale to fit
-        let scale = availableHeight / naturalHeight;
+      // Berechne verfügbare Höhe basierend auf Viewport
+      const viewportHeight = window.innerHeight;
+      const headerHeight = popup ? popup.querySelector('.prism-popup-header')?.offsetHeight || 60 : 60;
+      const popupPadding = 40; // 20px oben + 20px unten vom Overlay
+      const availableHeight = (viewportHeight * 0.9) - headerHeight - paddingTop - paddingBottom - popupPadding;
+      const availableWidth = container.clientWidth - paddingLeft - paddingRight;
+      
+      if (naturalHeight > 0 && availableHeight > 0 && naturalWidth > 0 && availableWidth > 0) {
+        // Calculate scale to fit BOTH dimensions (use smaller scale)
+        const scaleHeight = availableHeight / naturalHeight;
+        const scaleWidth = availableWidth / naturalWidth;
+        let scale = Math.min(scaleHeight, scaleWidth);
         
         // Cap scale at 1 (don't upscale) and minimum 0.3 (readable)
         scale = Math.min(scale, 1);
@@ -856,12 +878,23 @@ class PrismButtonCard extends HTMLElement {
         
         // Apply scale
         scaleWrapper.style.transform = `scale(${scale})`;
+        scaleWrapper.style.transformOrigin = 'top center';
         
-        // Adjust container to remove empty space
+        // Set fixed height based on scaled content
+        const scaledHeight = naturalHeight * scale;
         scaleWrapper.style.height = `${naturalHeight}px`;
-        scaleWrapper.style.marginBottom = `-${naturalHeight * (1 - scale)}px`;
+        container.style.height = `${scaledHeight}px`;
+        container.style.minHeight = `${scaledHeight}px`;
+        container.style.maxHeight = `${scaledHeight}px`;
       }
-    }, 200);
+      
+      // Overflow wieder auf hidden setzen
+      if (popup) popup.style.overflow = 'hidden';
+      container.style.overflow = 'hidden';
+      
+      // Content sichtbar machen (sanfter Fade-In)
+      scaleWrapper.classList.add('ready');
+    }, 150);
   }
 
   // ==================== END POPUP METHODS ====================
