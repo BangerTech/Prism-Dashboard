@@ -864,15 +864,7 @@ class PrismEnergyCard extends HTMLElement {
       // Get entity value
       const { value, unit } = this._getCustomPillValue(entity);
       const unitLower = unit.toLowerCase();
-      
-      // Use _getStateInWatts and _formatPower for power sensors (W or kW)
-      let displayValue;
-      if (unitLower === 'w' || unitLower === 'kw') {
-        const powerInWatts = this._getStateInWatts(entity, 0);
-        displayValue = this._formatPower(powerInWatts);
-      } else {
-        displayValue = value + (unit ? ' ' + unit : '');
-      }
+      const displayValue = value + (unit ? ' ' + unit : '');
       
       html += `
           <div class="pill pill-custom-${i}" style="top: ${top}%; left: ${left}%; --pill-scale: ${scale};" data-entity="${entity}">
