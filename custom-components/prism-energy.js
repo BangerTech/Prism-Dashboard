@@ -863,7 +863,6 @@ class PrismEnergyCard extends HTMLElement {
       
       // Get entity value
       const { value, unit } = this._getCustomPillValue(entity);
-      const unitLower = unit.toLowerCase();
       const displayValue = value + (unit ? ' ' + unit : '');
       
       html += `
