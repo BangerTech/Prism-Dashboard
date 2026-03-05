@@ -1978,8 +1978,8 @@ class PrismEnergyHorizontalCard extends HTMLElement {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 10px;
-          padding: 16px;
+          gap: 0px;
+          padding: 10px 12px;
           background: rgba(20, 20, 20, 0.6);
           border-radius: 16px;
           box-shadow: inset 2px 2px 5px rgba(0,0,0,0.5), inset -1px -1px 2px rgba(255,255,255,0.03);
@@ -1990,21 +1990,21 @@ class PrismEnergyHorizontalCard extends HTMLElement {
         
         .battery-icon-container {
           position: relative;
-          width: clamp(50px, 5vw, 70px);
-          height: clamp(70px, 7vw, 95px);
+          width: clamp(40px, 4vw, 55px);
+          height: clamp(40px, 4vw, 55px);
           display: flex;
           align-items: center;
           justify-content: center;
         }
         
         .battery-icon-container ha-icon {
-          --mdc-icon-size: clamp(48px, 5vw, 72px);
+          --mdc-icon-size: clamp(38px, 4vw, 56px);
           color: ${colors.battery};
           filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.4));
         }
         
         .battery-soc {
-          font-size: clamp(1.2rem, 1.5vw, 1.8rem);
+          font-size: clamp(1.1rem, 1.3vw, 1.5rem);
           font-weight: 700;
           color: ${colors.battery};
           font-family: "SF Mono", "Monaco", "Inconsolata", monospace;

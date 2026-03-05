@@ -4,10 +4,13 @@ class PrismSidebarLightCard extends HTMLElement {
         this.attachShadow({ mode: 'open' });
         this.timer = null;
         this.cameraTimer = null;
+        this.cameraRefreshTimer = null;
+        this._cameraStreamElement = null;
+        this._currentStreamEntity = null;
         this.hasRendered = false;
         this.currentCameraIndex = 0;
         this.cameraEntities = [];
-        this.forecastSubscriber = null; // For weather forecast subscription
+        this.forecastSubscriber = null;
         this._popupCards = []; // Store references to custom cards in popup for hass updates
     }
 
@@ -49,6 +52,58 @@ class PrismSidebarLightCard extends HTMLElement {
                     label: "Sidebar width (optional, e.g. 350px)",
                     selector: { text: {} }
                 },
+                // Clock Section
+                {
+                    type: 'expandable',
+                    name: '',
+                    title: '🕐 Clock',
+                    schema: [
+                        {
+                            name: "hide_clock",
+                            label: "Hide clock (time and date)",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "hide_time",
+                            label: "Hide time (show date only)",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "hide_date",
+                            label: "Hide date (show time only)",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "time_format",
+                            label: "Time format",
+                            selector: { 
+                                select: { 
+                                    options: [
+                                        { value: "24h", label: "24 hour (14:30)" },
+                                        { value: "12h", label: "12 hour (2:30 PM)" }
+                                    ]
+                                } 
+                            },
+                            default: "24h"
+                        },
+                        {
+                            name: "date_format",
+                            label: "Date format",
+                            selector: { 
+                                select: { 
+                                    options: [
+                                        { value: "full", label: "Wednesday, 5. Mar" },
+                                        { value: "short", label: "Wed, 5. Mar" },
+                                        { value: "numeric", label: "05.03.2026" },
+                                        { value: "numeric_us", label: "03/05/2026" },
+                                        { value: "iso", label: "2026-03-05" }
+                                    ]
+                                } 
+                            },
+                            default: "full"
+                        }
+                    ]
+                },
                 // Camera Section
                 {
                     type: 'expandable',
@@ -75,6 +130,17 @@ class PrismSidebarLightCard extends HTMLElement {
                             label: "Rotation interval",
                             selector: { number: { min: 3, max: 60, step: 1, unit_of_measurement: "s" } },
                             default: 10
+                        },
+                        {
+                            name: "camera_live_stream",
+                            label: "Use live stream (instead of snapshot)",
+                            selector: { boolean: {} }
+                        },
+                        {
+                            name: "camera_refresh_interval",
+                            label: "Snapshot refresh interval (only for snapshot mode)",
+                            selector: { number: { min: 1, max: 30, step: 1, unit_of_measurement: "s" } },
+                            default: 5
                         }
                     ]
                 },
@@ -241,7 +307,20 @@ class PrismSidebarLightCard extends HTMLElement {
         
         // Custom width (optional)
         this.sidebarWidth = this.config.width || null;
-        
+
+        // Clock visibility and format
+        this.hideClock = this.config.hide_clock || false;
+        this.hideTime = this.config.hide_time || false;
+        this.hideDate = this.config.hide_date || false;
+        this.timeFormat = this.config.time_format || '24h';
+        this.dateFormat = this.config.date_format || 'full';
+
+        // Camera settings
+        this.cameraLiveStream = this.config.camera_live_stream || false;
+        this.cameraRefreshInterval = (this.config.camera_refresh_interval && this.config.camera_refresh_interval >= 1)
+            ? this.config.camera_refresh_interval * 1000
+            : 5000; // Default 5 seconds
+
         // Build camera entities array (only include non-empty entities)
         this.cameraEntities = [];
         if (this.config.camera_entity) {
@@ -287,6 +366,11 @@ class PrismSidebarLightCard extends HTMLElement {
                 this.temperatureHistory = [];
                 this.historyLoading = false;
             }
+            // Reset forecast subscription so it re-subscribes
+            if (this.forecastSubscriber) {
+                try { this.forecastSubscriber(); } catch(e) {}
+                this.forecastSubscriber = null;
+            }
             this.hasRendered = false;
             this.render();
             this.hasRendered = true;
@@ -294,6 +378,7 @@ class PrismSidebarLightCard extends HTMLElement {
             this.startCameraRotation();
             if (this._hass) {
                 this.updateValues();
+                setTimeout(() => this.updateForecastGrid(), 100);
             }
         } else if (this.hasRendered) {
             // Minor changes, just update values
@@ -312,16 +397,25 @@ class PrismSidebarLightCard extends HTMLElement {
     }
 
     set hass(hass) {
+        const isFirstHass = !this._hass;
         this._hass = hass;
         if (!this.hasRendered) {
             this.render();
             this.hasRendered = true;
             this.startClock();
             this.startCameraRotation();
-            // Initial forecast update
-            setTimeout(() => this.updateForecastGrid(), 100);
+            setTimeout(() => {
+                this.updateForecastGrid();
+                this.updateCamera();
+            }, 100);
         } else {
             this.updateValues();
+            if (isFirstHass) {
+                setTimeout(() => {
+                    this.updateForecastGrid();
+                    this.updateCamera();
+                }, 100);
+            }
         }
         
         // Update custom card hass
@@ -563,6 +657,12 @@ class PrismSidebarLightCard extends HTMLElement {
     disconnectedCallback() {
         if (this.timer) clearInterval(this.timer);
         if (this.cameraTimer) clearInterval(this.cameraTimer);
+        if (this.cameraRefreshTimer) clearInterval(this.cameraRefreshTimer);
+        if (this._cameraStreamElement) {
+            this._cameraStreamElement.remove();
+            this._cameraStreamElement = null;
+            this._currentStreamEntity = null;
+        }
         // Unsubscribe from forecast
         if (this.forecastSubscriber) {
             this.forecastSubscriber().catch(() => {});
@@ -585,6 +685,38 @@ class PrismSidebarLightCard extends HTMLElement {
                 this.updateCamera();
             }, this.rotationInterval);
         }
+        
+        // Start snapshot refresh timer (only for snapshot mode, not live stream)
+        this.startCameraSnapshotRefresh();
+    }
+    
+    startCameraSnapshotRefresh() {
+        // Clear existing timer
+        if (this.cameraRefreshTimer) clearInterval(this.cameraRefreshTimer);
+        
+        // Only refresh if NOT using live stream mode
+        if (!this.cameraLiveStream) {
+            this.cameraRefreshTimer = setInterval(() => {
+                this.refreshCameraSnapshot();
+            }, this.cameraRefreshInterval);
+        }
+    }
+    
+    refreshCameraSnapshot() {
+        if (!this._hass) return;
+        
+        const cameraEntity = this.getCurrentCameraEntity();
+        const cameraState = this._hass.states[cameraEntity];
+        const camImgEl = this.shadowRoot?.getElementById('camera-img');
+        
+        if (camImgEl && cameraState) {
+            const entityPicture = cameraState.attributes.entity_picture;
+            if (entityPicture) {
+                // Add timestamp to force refresh (bypass browser cache)
+                const separator = entityPicture.includes('?') ? '&' : '?';
+                camImgEl.src = `${entityPicture}${separator}_t=${Date.now()}`;
+            }
+        }
     }
 
     getCurrentCameraEntity() {
@@ -598,18 +730,41 @@ class PrismSidebarLightCard extends HTMLElement {
         const cameraEntity = this.getCurrentCameraEntity();
         const cameraState = this._hass.states[cameraEntity];
         
-        const camImgEl = this.shadowRoot?.querySelector('.camera-img');
+        const camImgEl = this.shadowRoot?.getElementById('camera-img');
+        const streamContainer = this.shadowRoot?.getElementById('camera-stream-container');
         const camNameEl = this.shadowRoot?.getElementById('cam-name');
-        const cameraBox = this.shadowRoot?.getElementById('camera-box');
         
-        if (camImgEl && cameraState) {
+        // Update snapshot image (only in snapshot mode)
+        if (camImgEl && cameraState && !this.cameraLiveStream) {
             const entityPicture = cameraState.attributes.entity_picture;
             if (entityPicture) {
-                camImgEl.src = entityPicture;
+                const separator = entityPicture.includes('?') ? '&' : '?';
+                camImgEl.src = `${entityPicture}${separator}_t=${Date.now()}`;
             }
-        } else if (camImgEl) {
-            // Fallback to default image
+        } else if (camImgEl && !this.cameraLiveStream) {
             camImgEl.src = 'https://images.unsplash.com/photo-1558435186-d31d1eb6fa3c?q=80&w=600&auto=format&fit=crop';
+        }
+        
+        // Initialize ha-camera-stream programmatically for live mode
+        if (streamContainer && cameraState && this.cameraLiveStream) {
+            if (!this._cameraStreamElement || this._currentStreamEntity !== cameraEntity) {
+                if (this._cameraStreamElement) {
+                    this._cameraStreamElement.remove();
+                }
+                const el = document.createElement('ha-camera-stream');
+                el.muted = true;
+                el.controls = false;
+                el.allowExoPlayer = true;
+                el.hass = this._hass;
+                el.stateObj = cameraState;
+                streamContainer.appendChild(el);
+                this._cameraStreamElement = el;
+                this._currentStreamEntity = cameraEntity;
+                console.log('[Prism Sidebar Light] Created ha-camera-stream for', cameraEntity);
+            } else {
+                this._cameraStreamElement.hass = this._hass;
+                this._cameraStreamElement.stateObj = cameraState;
+            }
         }
 
         if (camNameEl && cameraState) {
@@ -617,24 +772,44 @@ class PrismSidebarLightCard extends HTMLElement {
         } else if (camNameEl) {
             camNameEl.textContent = cameraEntity.split('.')[1] || 'Camera';
         }
-
-        // Update click handler
-        if (cameraBox) {
-            // Remove old listener and add new one
-            const newBox = cameraBox.cloneNode(true);
-            cameraBox.parentNode.replaceChild(newBox, cameraBox);
-            newBox.addEventListener('click', () => this._handleCameraClick());
-        }
     }
 
     updateClock() {
         const now = new Date();
-        const timeStr = now.toLocaleTimeString(this._getLocale(), { hour: '2-digit', minute: '2-digit' });
-        const dateStr = now.toLocaleDateString(this._getLocale(), { weekday: 'long', day: 'numeric', month: 'short' });
+        const locale = this._getLocale();
         
+        // Format time based on setting
+        let timeStr;
+        if (this.timeFormat === '12h') {
+            timeStr = now.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', hour12: true });
+        } else {
+            timeStr = now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+        
+        // Format date based on setting
+        let dateStr;
+        switch (this.dateFormat) {
+            case 'short':
+                dateStr = now.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
+                break;
+            case 'numeric':
+                dateStr = now.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
+                break;
+            case 'numeric_us':
+                dateStr = now.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+                break;
+            case 'iso':
+                dateStr = now.toISOString().split('T')[0];
+                break;
+            case 'full':
+            default:
+                dateStr = now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' });
+                break;
+        }
+
         const timeEl = this.shadowRoot?.getElementById('clock-time');
         const dateEl = this.shadowRoot?.getElementById('clock-date');
-        
+
         if (timeEl) timeEl.textContent = timeStr;
         if (dateEl) dateEl.textContent = dateStr;
     }
@@ -677,11 +852,16 @@ class PrismSidebarLightCard extends HTMLElement {
             tempEl.textContent = temperatureState.state || '0';
         }
 
-        if (camImgEl && cameraState) {
+        if (camImgEl && cameraState && !this.cameraLiveStream) {
             const entityPicture = cameraState.attributes.entity_picture;
             if (entityPicture) {
                 camImgEl.src = entityPicture;
             }
+        }
+        
+        // Keep live stream's hass updated
+        if (this._cameraStreamElement && this.cameraLiveStream) {
+            this._cameraStreamElement.hass = this._hass;
         }
 
         if (camNameEl && cameraState) {
@@ -723,12 +903,58 @@ class PrismSidebarLightCard extends HTMLElement {
         const weatherState = this._hass.states[this.weatherEntity];
         if (!weatherState || !weatherState.attributes) return true;
         
-        // WeatherEntityFeature.FORECAST_DAILY = 1, FORECAST_HOURLY = 2
+        // WeatherEntityFeature.FORECAST_DAILY = 1, FORECAST_HOURLY = 2, FORECAST_TWICE_DAILY = 4
         const supportedFeatures = weatherState.attributes.supported_features || 0;
         const supportsDaily = (supportedFeatures & 1) !== 0;
         const supportsHourly = (supportedFeatures & 2) !== 0;
+        const supportsTwiceDaily = (supportedFeatures & 4) !== 0;
         
-        return !supportsDaily && !supportsHourly;
+        return !supportsDaily && !supportsHourly && !supportsTwiceDaily;
+    }
+    
+    // Get the best forecast type to use based on supported features
+    getBestForecastType() {
+        if (!this._hass || !this.weatherEntity) return 'daily';
+        const weatherState = this._hass.states[this.weatherEntity];
+        if (!weatherState || !weatherState.attributes) return 'daily';
+        
+        const supportedFeatures = weatherState.attributes.supported_features || 0;
+        const supportsDaily = (supportedFeatures & 1) !== 0;
+        const supportsHourly = (supportedFeatures & 2) !== 0;
+        const supportsTwiceDaily = (supportedFeatures & 4) !== 0;
+        
+        // Prefer daily, then twice_daily, then hourly
+        if (supportsDaily) return 'daily';
+        if (supportsTwiceDaily) return 'twice_daily';
+        if (supportsHourly) return 'hourly';
+        return 'daily'; // fallback
+    }
+    
+    // Convert hourly forecast to daily by grouping
+    convertHourlyToDaily(hourlyForecast) {
+        const dailyMap = new Map();
+        
+        hourlyForecast.forEach(item => {
+            const date = new Date(item.datetime);
+            const dayKey = date.toDateString();
+            
+            if (!dailyMap.has(dayKey)) {
+                dailyMap.set(dayKey, {
+                    datetime: item.datetime,
+                    condition: item.condition,
+                    temperature: item.temperature,
+                    templow: item.temperature,
+                    temps: [item.temperature]
+                });
+            } else {
+                const existing = dailyMap.get(dayKey);
+                existing.temps.push(item.temperature);
+                existing.temperature = Math.max(...existing.temps);
+                existing.templow = Math.min(...existing.temps);
+            }
+        });
+        
+        return Array.from(dailyMap.values()).slice(0, 7);
     }
 
     async updateForecastGrid() {
@@ -741,64 +967,104 @@ class PrismSidebarLightCard extends HTMLElement {
         const forecastGridEl = this.shadowRoot?.querySelector('.forecast-grid');
         
         if (!forecastGridEl || !weatherState) {
+            console.log('[Prism Sidebar Light] Forecast: No grid element or weather state', { 
+                hasGrid: !!forecastGridEl, 
+                hasWeather: !!weatherState,
+                weatherEntity: this.weatherEntity 
+            });
             return;
         }
+        
+        // Debug: Log weather entity info
+        const supportedFeatures = weatherState.attributes.supported_features || 0;
+        console.log('[Prism Sidebar Light] Weather entity:', this.weatherEntity, {
+            state: weatherState.state,
+            supported_features: supportedFeatures,
+            supportsDaily: (supportedFeatures & 1) !== 0,
+            supportsHourly: (supportedFeatures & 2) !== 0,
+            supportsTwiceDaily: (supportedFeatures & 4) !== 0,
+            hasLegacyForecast: !!weatherState.attributes.forecast,
+            legacyForecastLength: weatherState.attributes.forecast?.length || 0
+        });
         
         let forecast = [];
         
         // Check if legacy weather (has forecast in attributes) - like clock-weather-card does
         if (this.isLegacyWeather()) {
+            console.log('[Prism Sidebar Light] Using legacy forecast from attributes');
             // Legacy: Get forecast from attributes
             if (weatherState.attributes.forecast && weatherState.attributes.forecast.length > 0) {
                 forecast = weatherState.attributes.forecast;
             }
         } else {
             // Modern: Use subscribeMessage (like clock-weather-card does)
+            const forecastType = this.getBestForecastType();
+            console.log('[Prism Sidebar Light] Using modern forecast subscription, type:', forecastType);
+            
             try {
                 // Subscribe to forecast updates
                 const callback = (event) => {
+                    console.log('[Prism Sidebar Light] Forecast callback received:', event);
                     if (event && event.forecast && Array.isArray(event.forecast)) {
-                        forecast = event.forecast;
+                        let forecastData = event.forecast;
+                        console.log('[Prism Sidebar Light] Forecast data received:', forecastData.length, 'items');
+                        // Convert hourly to daily if needed
+                        if (forecastType === 'hourly' && forecastData.length > 0) {
+                            forecastData = this.convertHourlyToDaily(forecastData);
+                        }
+                        forecast = forecastData;
                         this.renderForecastGrid(forecast, forecastGridEl);
                     }
                 };
                 
                 const message = {
                     type: 'weather/subscribe_forecast',
-                    forecast_type: 'daily',
+                    forecast_type: forecastType,
                     entity_id: this.weatherEntity
                 };
                 
+                console.log('[Prism Sidebar Light] Subscribing to forecast:', message);
                 this.forecastSubscriber = await this._hass.connection.subscribeMessage(callback, message, { resubscribe: false });
+                console.log('[Prism Sidebar Light] Subscription successful');
                 
                 // Wait a bit for the first callback
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
             } catch (error) {
+                console.warn('[Prism Sidebar Light] Forecast subscription failed:', error);
                 // Fallback to attributes if subscription fails
                 if (weatherState.attributes.forecast && weatherState.attributes.forecast.length > 0) {
                     forecast = weatherState.attributes.forecast;
+                    console.log('[Prism Sidebar Light] Falling back to legacy forecast, items:', forecast.length);
                 }
             }
         }
         
         // Render forecast (either from attributes or from subscription)
         if (forecast && forecast.length > 0) {
+            console.log('[Prism Sidebar Light] Rendering forecast with', forecast.length, 'items');
             this.renderForecastGrid(forecast, forecastGridEl);
         } else {
-            // Show placeholder if no forecast available
-            if (forecastGridEl) {
-                forecastGridEl.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; color: rgba(0,0,0,0.5); padding: 20px;">
-                        <div style="font-size: 12px; margin-bottom: 8px;">Forecast nicht verfügbar</div>
-                        <div style="font-size: 10px; color: rgba(0,0,0,0.3);">
-                            ${this.weatherEntity}<br>
-                            <small>Bitte verwende eine Weather-Integration, die Forecast unterstützt<br>
-                            (z.B. Open-Meteo, Met.no, oder aktualisiere OpenWeatherMap)</small>
+            console.log('[Prism Sidebar Light] No forecast data yet, waiting for subscription callback...');
+            // Show placeholder if no forecast available after timeout
+            // The subscription callback might still populate it
+            setTimeout(() => {
+                const currentContent = forecastGridEl.innerHTML;
+                // Only show error if still showing loading spinner
+                if (currentContent.includes('mdi:loading')) {
+                    console.log('[Prism Sidebar Light] Forecast timeout - still no data');
+                    forecastGridEl.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; color: rgba(0,0,0,0.5); padding: 20px;">
+                            <div style="font-size: 12px; margin-bottom: 8px;">Forecast not available</div>
+                            <div style="font-size: 10px; color: rgba(0,0,0,0.3);">
+                                ${this.weatherEntity}<br>
+                                <small>Please use a weather integration that supports forecast<br>
+                                (e.g. Open-Meteo, Met.no, or update OpenWeatherMap)</small>
+                            </div>
                         </div>
-                    </div>
-                `;
-            }
+                    `;
+                }
+            }, 3000);
         }
     }
 
@@ -969,6 +1235,16 @@ class PrismSidebarLightCard extends HTMLElement {
             .camera-box:hover { transform: scale(1.02); }
             .camera-img {
                 width: 100%; height: 100%; object-fit: cover;
+            }
+            .camera-stream-container {
+                width: 100%; height: 100%;
+                position: relative;
+                overflow: hidden;
+            }
+            .camera-stream-container ha-camera-stream {
+                display: block;
+                width: 100%; height: 100%;
+                --video-object-fit: cover;
             }
             .camera-overlay {
                 position: absolute; inset: 0;
@@ -1249,6 +1525,11 @@ class PrismSidebarLightCard extends HTMLElement {
                 0% { opacity: 1; }
                 50% { opacity: 0.5; }
                 100% { opacity: 1; }
+            }
+            
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
             }
 
             /* Responsive Spacing - Tablet */
@@ -1917,21 +2198,29 @@ class PrismSidebarLightCard extends HTMLElement {
             <!-- Camera -->
             ${showCamera ? `
             <div class="camera-box" id="camera-box">
-                <img src="${cameraImage}" class="camera-img" />
+                ${this.cameraLiveStream ? `
+                <div class="camera-stream-container" id="camera-stream-container"></div>
+                ` : `
+                <img src="${cameraImage}" class="camera-img" id="camera-img" />
+                `}
                 <div class="camera-overlay"></div>
+                ${this.cameraLiveStream ? `
                 <div class="live-badge">
                     <div class="pulse"></div> LIVE
                 </div>
+                ` : ''}
                 <div class="cam-name" id="cam-name">${cameraName}</div>
             </div>
             ` : ''}
 
-            <!-- Clock - ALWAYS visible -->
+            <!-- Clock -->
+            ${!this.hideClock ? `
             <div class="clock-box">
                 <div class="clock-glow"></div>
-                <div class="clock-time" id="clock-time">08:12</div>
-                <div class="clock-date" id="clock-date">Wednesday, 24. Dec</div>
+                ${!this.hideTime ? `<div class="clock-time" id="clock-time">08:12</div>` : ''}
+                ${!this.hideDate ? `<div class="clock-date" id="clock-date">Wednesday, 24. Dec</div>` : ''}
             </div>
+            ` : ''}
 
             <!-- Calendar Inlet -->
             ${showCalendar ? `
@@ -1956,45 +2245,9 @@ class PrismSidebarLightCard extends HTMLElement {
 
                 ${showForecast ? `
                 <div class="forecast-grid">
-                    ${forecast.map((day, i) => {
-                        const date = day.datetime ? new Date(day.datetime) : new Date();
-                        const dayName = date.toLocaleDateString(this._getLocale(), { weekday: 'short' });
-                        const iconMap = {
-                            'sunny': 'mdi:weather-sunny',
-                            'partlycloudy': 'mdi:weather-partly-cloudy',
-                            'cloudy': 'mdi:cloud',
-                            'rainy': 'mdi:weather-rainy',
-                            'snowy': 'mdi:weather-snowy'
-                        };
-                        const icon = iconMap[day.condition?.toLowerCase()] || 'mdi:weather-cloudy';
-                        return `
-                            <div class="forecast-item">
-                                <span class="day-name" id="day-name-${i}">${dayName}</span>
-                                <ha-icon icon="${icon}" id="day-icon-${i}" style="color: ${icon === 'mdi:weather-sunny' ? '#f59e0b' : 'rgba(0,0,0,0.6)'}; width: 20px;"></ha-icon>
-                                <span class="day-temp" id="day-temp-${i}">${day.temperature !== undefined ? day.temperature : (day.templow !== undefined ? day.templow : '0')}°</span>
-                                <span class="day-low" id="day-low-${i}">${day.templow !== undefined ? day.templow : (day.temperature !== undefined ? day.temperature : '0')}°</span>
-                            </div>
-                        `;
-                    }).join('') || `
-                        <div class="forecast-item">
-                            <span class="day-name">Mi</span>
-                            <ha-icon icon="mdi:weather-rainy" style="color: rgba(0,0,0,0.6); width: 20px;"></ha-icon>
-                            <span class="day-temp">0,4°</span>
-                            <span class="day-low">-1,4°</span>
-                        </div>
-                        <div class="forecast-item">
-                            <span class="day-name">Do</span>
-                            <ha-icon icon="mdi:cloud" style="color: rgba(0,0,0,0.6); width: 20px;"></ha-icon>
-                            <span class="day-temp">2,6°</span>
-                            <span class="day-low">-1,6°</span>
-                        </div>
-                        <div class="forecast-item">
-                            <span class="day-name">Fr</span>
-                            <ha-icon icon="mdi:weather-sunny" style="color: #f59e0b; width: 20px;"></ha-icon>
-                            <span class="day-temp">4,1°</span>
-                            <span class="day-low">-1,7°</span>
-                        </div>
-                    `}
+                    <div style="grid-column: 1 / -1; text-align: center; color: rgba(0,0,0,0.4); padding: 12px 0; font-size: 12px;">
+                        <ha-icon icon="mdi:loading" style="width: 20px; height: 20px; opacity: 0.5; animation: spin 1s linear infinite;"></ha-icon>
+                    </div>
                 </div>
                 ` : ''}
             </div>
@@ -2058,6 +2311,8 @@ class PrismSidebarLightCard extends HTMLElement {
         if (cameraBox) {
             cameraBox.addEventListener('click', () => this._handleCameraClick());
         }
+        
+        
         if (calendarInlet) {
             calendarInlet.addEventListener('click', () => this._handleCalendarClick());
         }
@@ -2494,6 +2749,8 @@ class PrismSidebarLightCard extends HTMLElement {
             }
         } else {
             // Modern: Use subscribeMessage to get forecast
+            const forecastType = this.getBestForecastType();
+            
             try {
                 const forecastData = await new Promise((resolve, reject) => {
                     let resolved = false;
@@ -2514,7 +2771,7 @@ class PrismSidebarLightCard extends HTMLElement {
                         },
                         {
                             type: 'weather/subscribe_forecast',
-                            forecast_type: 'daily',
+                            forecast_type: forecastType,
                             entity_id: this.weatherEntity
                         },
                         { resubscribe: false }
@@ -2527,7 +2784,12 @@ class PrismSidebarLightCard extends HTMLElement {
                     });
                 });
                 
-                forecast = forecastData.slice(0, 7);
+                // Convert hourly to daily if needed
+                let processedForecast = forecastData;
+                if (forecastType === 'hourly' && forecastData.length > 0) {
+                    processedForecast = this.convertHourlyToDaily(forecastData);
+                }
+                forecast = processedForecast.slice(0, 7);
             } catch (error) {
                 console.warn('Weather forecast subscription error:', error);
                 // Fallback to attributes if subscription fails
