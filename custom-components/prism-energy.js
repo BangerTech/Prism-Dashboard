@@ -9,7 +9,7 @@
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.2.6
+ * @version 1.2.7
  * @author BangerTech
  */
 
@@ -76,6 +76,7 @@ class PrismEnergyCard extends HTMLElement {
       custom_pill_1_top: 85,
       custom_pill_1_left: 35,
       custom_pill_1_scale: 1.0,
+      custom_pill_1_min_value: 0,
       custom_pill_2_entity: "",
       custom_pill_2_icon: "mdi:weather-windy",
       custom_pill_2_label: "",
@@ -84,6 +85,7 @@ class PrismEnergyCard extends HTMLElement {
       custom_pill_2_top: 85,
       custom_pill_2_left: 50,
       custom_pill_2_scale: 1.0,
+      custom_pill_2_min_value: 0,
       custom_pill_3_entity: "",
       custom_pill_3_icon: "mdi:water-percent",
       custom_pill_3_label: "",
@@ -91,7 +93,8 @@ class PrismEnergyCard extends HTMLElement {
       custom_pill_3_show_label: true,
       custom_pill_3_top: 85,
       custom_pill_3_left: 65,
-      custom_pill_3_scale: 1.0
+      custom_pill_3_scale: 1.0,
+      custom_pill_3_min_value: 0
     };
   }
 
@@ -435,6 +438,11 @@ class PrismEnergyCard extends HTMLElement {
                       name: "custom_pill_1_scale",
                       label: "Size",
                       selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_1_min_value",
+                      label: "Min value",
+                      selector: { number: { min: 0, max: 999999, step: 1, mode: "box" } }
                     }
                   ]
                 }
@@ -488,6 +496,11 @@ class PrismEnergyCard extends HTMLElement {
                       name: "custom_pill_2_scale",
                       label: "Size",
                       selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_2_min_value",
+                      label: "Min value",
+                      selector: { number: { min: 0, max: 999999, step: 1, mode: "box" } }
                     }
                   ]
                 }
@@ -541,6 +554,11 @@ class PrismEnergyCard extends HTMLElement {
                       name: "custom_pill_3_scale",
                       label: "Size",
                       selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_3_min_value",
+                      label: "Min value",
+                      selector: { number: { min: 0, max: 999999, step: 1, mode: "box" } }
                     }
                   ]
                 }
@@ -608,6 +626,7 @@ class PrismEnergyCard extends HTMLElement {
       custom_pill_1_top: config.custom_pill_1_top ?? 85,
       custom_pill_1_left: config.custom_pill_1_left ?? 35,
       custom_pill_1_scale: config.custom_pill_1_scale ?? 1.0,
+      custom_pill_1_min_value: config.custom_pill_1_min_value ?? 0,
       custom_pill_2_entity: config.custom_pill_2_entity || "",
       custom_pill_2_icon: config.custom_pill_2_icon || "mdi:weather-windy",
       custom_pill_2_label: config.custom_pill_2_label || "",
@@ -616,6 +635,7 @@ class PrismEnergyCard extends HTMLElement {
       custom_pill_2_top: config.custom_pill_2_top ?? 85,
       custom_pill_2_left: config.custom_pill_2_left ?? 50,
       custom_pill_2_scale: config.custom_pill_2_scale ?? 1.0,
+      custom_pill_2_min_value: config.custom_pill_2_min_value ?? 0,
       custom_pill_3_entity: config.custom_pill_3_entity || "",
       custom_pill_3_icon: config.custom_pill_3_icon || "mdi:water-percent",
       custom_pill_3_label: config.custom_pill_3_label || "",
@@ -623,7 +643,8 @@ class PrismEnergyCard extends HTMLElement {
       custom_pill_3_show_label: config.custom_pill_3_show_label !== false,
       custom_pill_3_top: config.custom_pill_3_top ?? 85,
       custom_pill_3_left: config.custom_pill_3_left ?? 65,
-      custom_pill_3_scale: config.custom_pill_3_scale ?? 1.0
+      custom_pill_3_scale: config.custom_pill_3_scale ?? 1.0,
+      custom_pill_3_min_value: config.custom_pill_3_min_value ?? 0
     };
   }
 
@@ -774,9 +795,20 @@ class PrismEnergyCard extends HTMLElement {
       if (entity) {
         const stateObj = this._hass.states[entity];
         if (stateObj) {
-          const value = stateObj.state;
           const unit = stateObj.attributes?.unit_of_measurement || '';
-          this._updateElement(`.pill-custom-${i} .pill-val`, `${value}${unit ? ' ' + unit : ''}`);
+          const unitLower = unit.toLowerCase();
+          
+          // Use _getStateInWatts and _formatPower for power sensors (W or kW)
+          if (unitLower === 'w' || unitLower === 'kw') {
+            const powerInWatts = this._getStateInWatts(entity, 0);
+            const stateValue = parseFloat(stateObj.state) || 0;
+            const minValue = parseFloat(this._config[`custom_pill_${i}_min_value`]) || 0;
+            const text = stateValue >= minValue ? this._formatPower(powerInWatts) : this._t('idle');
+            this._updateElement(`.pill-custom-${i} .pill-val`, text);
+          } else {
+            const value = stateObj.state;
+            this._updateElement(`.pill-custom-${i} .pill-val`, `${value}${unit ? ' ' + unit : ''}`);
+          }
         }
       }
     }
@@ -2870,7 +2902,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.2.6 %c Responsive Details Section `,
+  `%c PRISM-ENERGY %c v1.2.7 %c Responsive Details Section `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
