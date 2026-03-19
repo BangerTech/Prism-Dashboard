@@ -71,6 +71,60 @@ class PrismButtonCard extends HTMLElement {
         {
           type: "expandable",
           name: "",
+          title: "👆 Tap & Hold Actions",
+          schema: [
+            {
+              name: "tap_action",
+              label: "Tap Action (default: toggle)",
+              selector: {
+                select: {
+                  options: [
+                    { value: "toggle", label: "Toggle" },
+                    { value: "more-info", label: "More Info" },
+                    { value: "navigate", label: "Navigate" },
+                    { value: "call-service", label: "Call Service" },
+                    { value: "none", label: "None" }
+                  ],
+                  mode: "dropdown"
+                }
+              }
+            },
+            {
+              name: "hold_action",
+              label: "Hold Action (default: more-info)",
+              selector: {
+                select: {
+                  options: [
+                    { value: "toggle", label: "Toggle" },
+                    { value: "more-info", label: "More Info" },
+                    { value: "navigate", label: "Navigate" },
+                    { value: "call-service", label: "Call Service" },
+                    { value: "none", label: "None" }
+                  ],
+                  mode: "dropdown"
+                }
+              }
+            },
+            {
+              name: "navigation_path",
+              label: "Navigation Path (e.g. /lovelace/living-room)",
+              selector: { text: {} }
+            },
+            {
+              name: "service",
+              label: "Service (e.g. scene.turn_on, script.turn_on)",
+              selector: { text: {} }
+            },
+            {
+              name: "service_data",
+              label: "Service Data (YAML object with service parameters)",
+              selector: { object: {} }
+            }
+          ]
+        },
+        {
+          type: "expandable",
+          name: "",
           title: "🪟 Popup Mode",
           schema: [
             {
@@ -133,6 +187,13 @@ class PrismButtonCard extends HTMLElement {
     // Normalize active_color (convert RGB arrays to hex if needed)
     if (this._config.active_color) {
       this._config.active_color = this._normalizeColor(this._config.active_color);
+    }
+    // Tap & Hold action defaults (backward-compatible)
+    if (!this._config.tap_action) {
+      this._config.tap_action = 'toggle';
+    }
+    if (!this._config.hold_action) {
+      this._config.hold_action = 'more-info';
     }
     // Popup configuration
     this._config.use_as_popup = config.use_as_popup || false;
@@ -378,54 +439,88 @@ class PrismButtonCard extends HTMLElement {
       return;
     }
     
-    // For non-popup mode, entity is required
+    this._executeAction(this._config.tap_action || 'toggle');
+  }
+
+  _handleHold() {
+    this._executeAction(this._config.hold_action || 'more-info');
+  }
+
+  _executeAction(action) {
+    if (!this._hass) return;
+    if (action === 'toggle') {
+      this._performToggle();
+    } else if (action === 'more-info') {
+      this._performMoreInfo();
+    } else if (action === 'navigate') {
+      this._performNavigate();
+    } else if (action === 'call-service') {
+      this._performCallService();
+    }
+  }
+
+  _performToggle() {
     if (!this._config.entity) return;
     
     const domain = this._config.entity.split('.')[0];
     const entity = this._hass.states[this._config.entity];
     const state = entity ? entity.state : 'off';
     
-    // Handle different entity types
     if (domain === 'lock') {
-      // Locks use lock/unlock services
       const service = state === 'locked' ? 'unlock' : 'lock';
       this._hass.callService('lock', service, {
         entity_id: this._config.entity
       });
     } else if (domain === 'cover') {
-      // Covers use open_cover/close_cover or toggle
       const service = state === 'open' ? 'close_cover' : 'open_cover';
       this._hass.callService('cover', service, {
         entity_id: this._config.entity
       });
     } else if (domain === 'scene') {
-      // Scenes use turn_on
       this._hass.callService('scene', 'turn_on', {
         entity_id: this._config.entity
       });
     } else if (domain === 'script') {
-      // Scripts use turn_on
       this._hass.callService('script', 'turn_on', {
         entity_id: this._config.entity
       });
     } else {
-      // Default: use toggle
       this._hass.callService(domain, 'toggle', {
         entity_id: this._config.entity
       });
     }
   }
 
-  _handleHold() {
-    // In popup mode with status_entity, show more-info for that entity
+  _performMoreInfo() {
     const entityId = this._getDisplayEntityId();
-    if (!this._hass || !entityId) return;
+    if (!entityId) return;
     const event = new CustomEvent('hass-more-info', {
       bubbles: true,
       composed: true,
       detail: { entityId: entityId }
     });
     this.dispatchEvent(event);
+  }
+
+  _performNavigate() {
+    const path = this._config.navigation_path;
+    if (!path) return;
+    const event = new CustomEvent('hass-navigate', {
+      bubbles: true,
+      composed: true,
+      detail: { path: path }
+    });
+    this.dispatchEvent(event);
+    history.pushState(null, '', path);
+    window.dispatchEvent(new Event('location-changed'));
+  }
+
+  _performCallService() {
+    const serviceConfig = this._config.service;
+    if (!serviceConfig) return;
+    const [domain, service] = serviceConfig.split('.');
+    if (!domain || !service) return;
+    this._hass.callService(domain, service, this._config.service_data || {});
   }
 
   // ==================== POPUP METHODS ====================

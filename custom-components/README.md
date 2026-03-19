@@ -172,7 +172,7 @@ A glassmorphism-styled entity button card with neumorphism effects, glowing icon
 - ✅ **Glowing Icon Circle**: Color glow when entity is active
 - ✅ **Horizontal/Vertical Layout**: Choose between horizontal or vertical layout
 - ✅ **Brightness Slider**: Optional background slider for lights with brightness control
-- ✅ **Tap/Hold Actions**: Tap to toggle, hold for more-info
+- ✅ **Configurable Tap/Hold Actions**: Choose what happens on tap and long-press
 - ✅ **Separate Slider Entity**: Optional separate entity for slider control
 
 **Usage:**
@@ -185,6 +185,69 @@ A glassmorphism-styled entity button card with neumorphism effects, glowing icon
   active_color: "#ffc864"
   show_brightness_slider: true  # Default: true for lights
   slider_entity: light.other_lamp  # Optional: Separate entity for slider
+```
+
+**Configuration Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `entity` | string | **required** | Entity ID (e.g. `light.living_room`) |
+| `name` | string | - | Display name |
+| `icon` | string | `mdi:lightbulb` | Icon (e.g. `mdi:ceiling-light`) |
+| `layout` | string | `horizontal` | `horizontal` or `vertical` |
+| `active_color` | string | - | Color when active (e.g. `"#ffc864"`) |
+| `show_state` | boolean | `true` | Show state text (on/off/%) below name |
+| `show_brightness_slider` | boolean | `true` | Show brightness slider for lights |
+| `slider_entity` | string | - | Separate entity for the brightness slider |
+| `tap_action` | string | `toggle` | Action on tap (see below) |
+| `hold_action` | string | `more-info` | Action on long-press / right-click (see below) |
+| `navigation_path` | string | - | Path for `navigate` action (e.g. `/lovelace/living-room`) |
+| `service` | string | - | Service for `call-service` action (e.g. `scene.turn_on`) |
+| `service_data` | object | - | Data for `call-service` action |
+
+**Tap & Hold Actions:**
+
+Both `tap_action` and `hold_action` accept these values:
+
+| Action | Description | Extra config needed |
+|--------|-------------|-------------------|
+| `toggle` | Toggle entity on/off (default for tap) | - |
+| `more-info` | Open the More Info dialog (default for hold) | - |
+| `navigate` | Navigate to a Home Assistant view | `navigation_path` |
+| `call-service` | Call any Home Assistant service | `service`, `service_data` |
+| `none` | Do nothing | - |
+
+**Examples:**
+
+Swap tap and hold (tap opens more-info, hold toggles):
+```yaml
+- type: custom:prism-button
+  entity: light.living_room_light
+  name: Living Room
+  tap_action: more-info
+  hold_action: toggle
+```
+
+Navigate to a view on tap:
+```yaml
+- type: custom:prism-button
+  entity: light.kitchen
+  name: Kitchen
+  icon: mdi:countertop
+  tap_action: navigate
+  navigation_path: /lovelace/kitchen
+```
+
+Call a service on tap (e.g. activate a scene):
+```yaml
+- type: custom:prism-button
+  entity: light.living_room
+  name: Movie Mode
+  icon: mdi:movie
+  tap_action: call-service
+  service: scene.turn_on
+  service_data:
+    entity_id: scene.movie_night
 ```
 
 ---
