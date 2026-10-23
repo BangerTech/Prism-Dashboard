@@ -1518,6 +1518,9 @@ class PrismButtonCard extends HTMLElement {
         // IMPORTANT: Only process if touchStart is valid (> 0) to avoid false hold triggers
         const duration = this._touchStart > 0 ? (Date.now() - this._touchStart) : 0;
         if (!this._hasMoved && duration > 0 && duration < 500) {
+          // On touch devices the browser follows touchend with emulated mousedown/mouseup/click
+          // events, which would run this tap a second time (double toggle = no visible change).
+          if (e.type === 'touchend' && e.cancelable) e.preventDefault();
           this._handleTap();
           this._hasHandledInteraction = true;
         } else if (!this._hasMoved && duration >= 500) {
@@ -3126,6 +3129,9 @@ class PrismButtonLightCard extends HTMLElement {
         
         const duration = Date.now() - touchStart;
         if (!hasMoved && duration < 500) {
+          // On touch devices the browser follows touchend with emulated mousedown/mouseup/click
+          // events, which would run this tap a second time (double toggle = no visible change).
+          if (e.type === 'touchend' && e.cancelable) e.preventDefault();
           this._handleTap();
           hasHandledInteraction = true;
         } else if (!hasMoved && duration >= 500) {

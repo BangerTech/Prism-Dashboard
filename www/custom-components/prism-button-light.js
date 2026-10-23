@@ -1467,6 +1467,9 @@ class PrismButtonLightCard extends HTMLElement {
         
         const duration = Date.now() - touchStart;
         if (!hasMoved && duration < 500) {
+          // On touch devices the browser follows touchend with emulated mousedown/mouseup/click
+          // events, which would run this tap a second time (double toggle = no visible change).
+          if (e.type === 'touchend' && e.cancelable) e.preventDefault();
           this._handleTap();
           hasHandledInteraction = true;
         } else if (!hasMoved && duration >= 500) {
