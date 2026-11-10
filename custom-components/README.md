@@ -469,8 +469,9 @@ A Bambu Lab 3D printer card with AMS (Automatic Material System) support, glassm
 - ✅ **Real-Time 3D Model Build-Up**: Model preview builds up from bottom to top during printing with transparent ghost image in background
 - ✅ **Smart Status Detection**: Intelligently combines `print_status` and `stage` entities for accurate status (e.g., "Filament Change", "Pause", "Printing")
 - ✅ **Push Notifications**: Configurable notifications for print complete, pause, failed, and filament change events (multi-device support)
-- ✅ **Multi-AMS Support**: Up to 4 AMS units (AMS, AMS Lite, AMS 2 Pro, AMS HT, External Spool) with tabs or stacked display
+- ✅ **Multi-AMS Support**: Up to 4 AMS units (AMS, AMS Lite, AMS 2 Pro, AMS HT, AMS 3H, External Spool) with tabs or stacked display
 - ✅ **AMS Support**: Shows all 4 AMS slots per unit with color visualization
+- ✅ **H3C + AMS 3H** (requires ha-bambulab v2.4.0-beta1 or newer): The 9 AMS 3H slots are shown in two rows (5 + 4). The info bar shows temperature and humidity per drying zone (Z1 / Z2) plus the remaining drying time while a zone is drying, and slots of a drying zone are marked. The active Swaptek PrintTool is shown as an overlay pill (e.g. `T3 · 0.4`, hide with `show_active_tool: false`)
 - ✅ **AMS Humidity Display**: Supports both numeric values (newer systems) and A-E levels (older systems without real sensors)
 - ✅ **Filament Type Detection**: Supports PCTG, PETG, PLA, ABS, TPU, ASA, PA-CF, PA, PC, PVA, HIPS, PP
 - ✅ **Transparent Filament Display**: Detects transparent filaments via alpha channel or keywords (e.g., "clear", "transparent") with chessboard pattern
@@ -532,9 +533,12 @@ The card reads AMS data from tray entities (`sensor.*_slot_1`, `sensor.*_slot_2`
 **Upload Image:**
 
 **Images:**
-- The default printer image (`printer-blank.jpg`) is automatically installed with HACS
-- Default path: `/hacsfiles/Prism-Dashboard/images/printer-blank.jpg`
-- You can specify a custom image path in the `image` field if needed
+- Printer images are shipped with HACS (in `/hacsfiles/Prism-Dashboard/images/`) and survive updates, so you no longer need to upload them yourself
+- If `image` is empty (or set to `printer-blank.jpg`), the card picks the image from the printer model automatically:
+  - prism-bambu: `printer-bambu-h3c.png` (H3C), `printer-bambu-h2d.png` (H2D / H2D Pro / H2S / H2C), `printer-bambu-x1.png` (X1 / X1C / X1E)
+  - prism-creality: `printer-creality-k1.jpg` (K1 series), `printer-creality-k2.jpg` (K2 series)
+  - All other models use `printer-blank.jpg`
+- You can specify a custom image path in the `image` field if needed. Store your own images outside the HACS folder (e.g. `/local/...`), because HACS replaces its folder on every update
 - The card supports both `.png` and `.jpg` formats
 4. As a last fallback, a printer icon is displayed
 

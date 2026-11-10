@@ -68,9 +68,20 @@ class PrismCrealityCard extends HTMLElement {
     return {
       printer: '',
       name: 'Creality Printer',
-      camera_entity: '',
-      image: '/local/community/Prism-Dashboard/images/printer-blank.jpg'
+      camera_entity: ''
     };
+  }
+
+  // Bundled model images (shipped via HACS in dist/images); a configured printer-blank.jpg counts as "not set"
+  _getPrinterImage() {
+    const base = '/local/community/Prism-Dashboard/images/';
+    const configured = this.config?.image;
+    if (configured && !/printer-blank\.jpg$/i.test(configured)) return configured;
+
+    const model = (this._hass?.devices?.[this.config?.printer]?.model || '').toUpperCase().replace(/[\s_-]/g, '');
+    if (model.includes('K1')) return base + 'printer-creality-k1.jpg';
+    if (model.includes('K2')) return base + 'printer-creality-k2.jpg';
+    return base + 'printer-blank.jpg';
   }
 
   static getConfigForm() {
@@ -4357,7 +4368,7 @@ class PrismCrealityCard extends HTMLElement {
     const cameraImage = cameraState?.attributes?.entity_picture || null;
     
     // Image path
-    const printerImg = this.config.image || '/local/community/Prism-Dashboard/images/printer-blank.jpg';
+    const printerImg = this._getPrinterImage();
     
     // Get print filename
     const fileName = this.getEntityStateById(fileNameEntity) || '';
@@ -4643,7 +4654,7 @@ class PrismCrealityCard extends HTMLElement {
       name: this.config?.name || 'Creality Printer',
       cameraEntity: null,
       cameraImage: null,
-      printerImg: this.config?.image || '/local/community/Prism-Dashboard/images/printer-blank.jpg',
+      printerImg: this._getPrinterImage(),
       fileName: 'benchy.gcode',
       isPrinting: true,
       isPaused: false,

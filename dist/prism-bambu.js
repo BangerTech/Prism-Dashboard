@@ -6,6 +6,8 @@ const BAMBU_PRINTER_MODELS = [
   'A1', 'A1 MINI', 'A1 Mini', 'A1MINI', 'A1Mini', 'A1mini',
   // H-Series (newer desktop printers)
   'H2C', 'H2D', 'H2DPRO', 'H2S',
+  // H3C (Swaptek tool changer with 9 PrintTools, ha-bambulab >= v2.4.0)
+  'H3C',
   // P-Series
   'P1P', 'P1S', 'P2S',
   // X-Series (professional, dual-extruder flagship X2D added Apr 2026)
@@ -18,6 +20,7 @@ const BAMBU_AMS_MODELS = [
   'AMS Lite',      // AMS Lite (4 slots, for A1)
   'AMS 2 Pro',     // AMS 2 Pro (newer, for H2D etc.)
   'AMS HT',        // AMS High Temperature
+  'AMS 3H',        // AMS 3H (9 slots, two drying zones, for H3C)
   'External Spool' // External spool holder
 ];
 
@@ -61,9 +64,21 @@ class PrismBambuCard extends HTMLElement {
     return {
       printer: '',
       name: 'Bambu Lab Printer',
-      camera_entity: '',
-      image: '/local/community/Prism-Dashboard/images/printer-blank.jpg'
+      camera_entity: ''
     };
+  }
+
+  // Bundled model images (shipped via HACS in dist/images); a configured printer-blank.jpg counts as "not set"
+  _getPrinterImage() {
+    const base = '/local/community/Prism-Dashboard/images/';
+    const configured = this.config?.image;
+    if (configured && !/printer-blank\.jpg$/i.test(configured)) return configured;
+
+    const model = (this._hass?.devices?.[this.config?.printer]?.model || '').toUpperCase().replace(/[\s_-]/g, '');
+    if (model.startsWith('H3C')) return base + 'printer-bambu-h3c.png';
+    if (model.startsWith('H2')) return base + 'printer-bambu-h2d.png';
+    if (model.startsWith('X1')) return base + 'printer-bambu-x1.png';
+    return base + 'printer-blank.jpg';
   }
 
   static getConfigForm() {
@@ -324,6 +339,12 @@ class PrismBambuCard extends HTMLElement {
             {
               name: 'show_ams_info',
               label: 'Show AMS Temperature & Humidity (if available)',
+              default: true,
+              selector: { boolean: {} }
+            },
+            {
+              name: 'show_active_tool',
+              label: 'Show active PrintTool (H3C Swaptek, if available)',
               default: true,
               selector: { boolean: {} }
             }
@@ -795,7 +816,8 @@ class PrismBambuCard extends HTMLElement {
   _performUpdate(firstTime, oldStatus) {
     // Get current status to detect changes
     const data = this.getPrinterData();
-    const newStatus = `${data.isIdle}-${data.isPrinting}-${data.isPaused}-${!!data.chamberLightEntity}-${!!data.cameraEntity}-${!!data.powerSwitch}-${data.isPowerOn}`;
+    const dryingZones = (data.amsUnits || []).map(u => (u.zones || []).map(z => (z.dryTime > 0 ? 1 : 0)).join('')).join('|');
+    const newStatus = `${data.isIdle}-${data.isPrinting}-${data.isPaused}-${!!data.chamberLightEntity}-${!!data.cameraEntity}-${!!data.powerSwitch}-${data.isPowerOn}-${dryingZones}-${!!data.activeTool}`;
     
     // Check for status changes and send notifications
     if (!firstTime) {
@@ -864,6 +886,11 @@ class PrismBambuCard extends HTMLElement {
     
     updatePill('part-fan', `${data.partFanSpeed}%`);
     updatePill('aux-fan', `${data.auxFanSpeed}%`);
+    if (data.activeTool) {
+      updatePill('active-tool', this._formatActiveTool(data.activeTool));
+      const toolIcon = this.shadowRoot.querySelector('[data-pill="active-tool"] .pill-icon-container ha-icon');
+      if (toolIcon) toolIcon.style.color = data.activeTool.color || '#a78bfa';
+    }
     if (data.chamberFanSpeed !== null && data.chamberFanSpeed !== undefined) {
       updatePill('chamber-fan', `${data.chamberFanSpeed}%`);
     }
@@ -903,6 +930,10 @@ class PrismBambuCard extends HTMLElement {
         const idx = parseInt(bar.dataset.amsUnit);
         const unit = data.amsUnits[idx];
         if (!unit) return;
+        if (unit.zones && unit.zones.length > 0) {
+          this._updateAmsZonePills(bar, unit.zones);
+          return;
+        }
         const tempEl = bar.querySelector('[data-pill="ams-temp"] .ams-pill-value');
         if (tempEl && unit.temperature !== null) tempEl.textContent = `${Math.round(unit.temperature)}°C`;
         const humEl = bar.querySelector('[data-pill="ams-humidity"] .ams-pill-value');
@@ -910,6 +941,8 @@ class PrismBambuCard extends HTMLElement {
           humEl.textContent = typeof unit.humidity === 'number' ? `${Math.round(unit.humidity)}%` : unit.humidity;
         }
       });
+    } else if (data.amsZones && data.amsZones.length > 0) {
+      this._updateAmsZonePills(this.shadowRoot.querySelector('.ams-info-bar.zones'), data.amsZones);
     } else {
       if (data.amsTemperature !== null) {
         const amsTempPill = this.shadowRoot.querySelector('[data-pill="ams-temp"] .ams-pill-content .ams-pill-value');
@@ -3739,6 +3772,8 @@ class PrismBambuCard extends HTMLElement {
 
     const isExternalSpool = amsModel.toLowerCase().includes('external spool') ||
                             amsName.toLowerCase().includes('externalspool');
+    const isAms3h = amsModel.toUpperCase().replace(/[\s_]/g, '') === 'AMS3H';
+    const minSlots = isAms3h ? 9 : 4;
 
     PrismBambuCard.log(`AMS unit ${unitIndex + 1}:`, amsName, 'model:', amsModel, 'isExternalSpool:', isExternalSpool);
 
@@ -3787,7 +3822,7 @@ class PrismBambuCard extends HTMLElement {
     });
 
     const amsData = [];
-    const targetSlots = isExternalSpool ? Math.max(1, trayEntities.length) : (trayEntities.length > 0 ? Math.max(4, trayEntities.length) : 0);
+    const targetSlots = isExternalSpool ? Math.max(1, trayEntities.length) : (trayEntities.length > 0 ? Math.max(minSlots, trayEntities.length) : 0);
 
     for (let i = 0; i < targetSlots; i++) {
       const trayEntity = trayEntities[i];
@@ -3864,7 +3899,7 @@ class PrismBambuCard extends HTMLElement {
           nozzleTempMax: attr.nozzle_temp_max || attr.max_nozzle_temp || null,
           entityId: trayEntity.entityId
         });
-      } else if (!isExternalSpool && i < 4) {
+      } else if (!isExternalSpool && i < minSlots) {
         amsData.push({
           id: i + 1, type: '', color: '#666666', remaining: 0,
           active: false, empty: true, transparent: false,
@@ -3879,6 +3914,7 @@ class PrismBambuCard extends HTMLElement {
     // Scan for temperature and humidity sensors on this AMS device
     let temperature = null;
     let humidity = null;
+    const zoneMap = {};
 
     for (const entityId in this._hass.entities) {
       const entityInfo = this._hass.entities[entityId];
@@ -3887,6 +3923,23 @@ class PrismBambuCard extends HTMLElement {
       const state = this._hass.states[entityId];
       const eidLower = entityId.toLowerCase();
       const tk = entityInfo.translation_key?.toLowerCase() || '';
+
+      // AMS 3H: measurements are reported per drying zone, never for the whole unit
+      const zoneField = this._getAmsZoneField(tk, eidLower);
+      if (zoneField) {
+        const attr = state?.attributes || {};
+        const zoneMatch = eidLower.match(/zone_(\d+)/);
+        const zoneNum = parseInt(attr.zone ?? (attr.zone_id !== undefined ? attr.zone_id + 1 : zoneMatch?.[1]));
+        if (isNaN(zoneNum)) continue;
+        const zone = zoneMap[zoneNum] || (zoneMap[zoneNum] = {
+          zone: zoneNum, slots: [], temperature: null, humidity: null, dryTime: null, entityIds: {}
+        });
+        if (Array.isArray(attr.slots) && attr.slots.length) zone.slots = attr.slots.map(Number);
+        zone.entityIds[zoneField] = entityId;
+        const v = parseFloat(state?.state);
+        if (!isNaN(v)) zone[zoneField] = v;
+        continue;
+      }
 
       if ((eidLower.includes('temperature') || tk.includes('temperature') ||
            eidLower.includes('temp') || tk.includes('temp')) &&
@@ -3917,14 +3970,36 @@ class PrismBambuCard extends HTMLElement {
       }
     }
 
-    return { name: displayName, deviceId: amsDeviceId, amsData, isExternalSpool, temperature, humidity };
+    const zones = Object.values(zoneMap).sort((a, b) => a.zone - b.zone);
+    zones.forEach(zone => {
+      amsData.forEach(slot => {
+        if (zone.slots.includes(slot.id)) {
+          slot.zone = zone.zone;
+          slot.drying = zone.dryTime > 0;
+        }
+      });
+    });
+
+    return { name: displayName, deviceId: amsDeviceId, amsData, isExternalSpool, isAms3h, zones, temperature, humidity };
+  }
+
+  _getAmsZoneField(translationKey, entityIdLower) {
+    if (translationKey === 'zone_temperature') return 'temperature';
+    if (translationKey === 'zone_humidity') return 'humidity';
+    if (translationKey === 'zone_remaining_drying_time') return 'dryTime';
+    if (translationKey || !/zone_\d+_/.test(entityIdLower)) return null;
+    if (entityIdLower.includes('dry')) return 'dryTime';
+    if (entityIdLower.includes('humid')) return 'humidity';
+    if (entityIdLower.includes('temp')) return 'temperature';
+    return null;
   }
 
   _renderAmsSlotsHtml(slots, spoolView, amsName) {
     return `
-        <div class="ams-grid ${slots.length <= 3 ? 'slots-' + slots.length : ''} ${spoolView === 'front' ? 'front-view' : ''}">
+        <div class="ams-grid ${slots.length <= 3 ? 'slots-' + slots.length : ''} ${slots.length > 4 ? 'slots-9' : ''} ${spoolView === 'front' ? 'front-view' : ''}">
             ${slots.map(slot => `
-                <div class="ams-slot ${slot.active ? 'active' : ''} ${!slot.empty ? 'clickable' : ''} ${slot.transparent ? 'transparent' : ''} ${spoolView === 'front' ? 'front-view' : ''}"
+                <div class="ams-slot ${slot.active ? 'active' : ''} ${!slot.empty ? 'clickable' : ''} ${slot.transparent ? 'transparent' : ''} ${slot.drying ? 'drying' : ''} ${spoolView === 'front' ? 'front-view' : ''}"
+                     ${slot.zone ? `data-zone="${slot.zone}"` : ''}
                      ${!slot.empty ? `data-slot-id="${slot.id}"
                      data-full-name="${(slot.fullName || '').replace(/"/g, '&quot;')}"
                      data-type="${slot.type}"
@@ -3936,6 +4011,7 @@ class PrismBambuCard extends HTMLElement {
                      data-transparent="${slot.transparent || false}"
                      data-entity-id="${slot.entityId || ''}"
                      data-ams-name="${(amsName || '').replace(/"/g, '&quot;')}"` : ''}>
+                    ${slot.drying ? `<span class="ams-zone-badge" title="Zone ${slot.zone} drying">Z${slot.zone}</span>` : ''}
                     ${spoolView === 'front' ? `
                     ${!slot.empty ? `
                     <div class="spool-front-container">
@@ -3981,8 +4057,10 @@ class PrismBambuCard extends HTMLElement {
         </div>`;
   }
 
-  _renderAmsInfoBarHtml(temperature, humidity, showAmsInfo, unitIdx) {
-    if (!showAmsInfo || (temperature === null && humidity === null)) return '';
+  _renderAmsInfoBarHtml(temperature, humidity, showAmsInfo, unitIdx, zones = []) {
+    if (!showAmsInfo) return '';
+    if (zones && zones.length > 0) return this._renderAmsZoneInfoBarHtml(zones, unitIdx);
+    if (temperature === null && humidity === null) return '';
     return `
         <div class="ams-info-bar" ${unitIdx !== '' ? `data-ams-unit="${unitIdx}"` : ''}>
             ${temperature !== null ? `
@@ -4004,6 +4082,98 @@ class PrismBambuCard extends HTMLElement {
             </div>
             ` : ''}
         </div>`;
+  }
+
+  _renderAmsZoneInfoBarHtml(zones, unitIdx) {
+    return `
+        <div class="ams-info-bar zones" ${unitIdx !== '' ? `data-ams-unit="${unitIdx}"` : ''}>
+            ${zones.map(zone => {
+              const label = `Z${zone.zone}`;
+              const title = zone.slots.length ? `Zone ${zone.zone}: Slot ${zone.slots.join(', ')}` : `Zone ${zone.zone}`;
+              return `
+            <div class="ams-zone-group" title="${title}">
+                ${zone.temperature !== null ? `
+                <div class="ams-info-pill temp" data-pill="ams-zone-${zone.zone}-temp">
+                    <div class="ams-pill-icon"><ha-icon icon="mdi:thermometer"></ha-icon></div>
+                    <div class="ams-pill-content">
+                        <span class="ams-pill-value">${Math.round(zone.temperature)}°C</span>
+                        <span class="ams-pill-label">${label}</span>
+                    </div>
+                </div>
+                ` : ''}
+                ${zone.humidity !== null ? `
+                <div class="ams-info-pill humidity" data-pill="ams-zone-${zone.zone}-humidity">
+                    <div class="ams-pill-icon"><ha-icon icon="mdi:water-percent"></ha-icon></div>
+                    <div class="ams-pill-content">
+                        <span class="ams-pill-value">${Math.round(zone.humidity)}%</span>
+                        <span class="ams-pill-label">${label}</span>
+                    </div>
+                </div>
+                ` : ''}
+                <div class="ams-info-pill drying" data-pill="ams-zone-${zone.zone}-dry" style="${zone.dryTime > 0 ? '' : 'display: none;'}">
+                    <div class="ams-pill-icon"><ha-icon icon="mdi:heat-wave"></ha-icon></div>
+                    <div class="ams-pill-content">
+                        <span class="ams-pill-value">${Math.round(zone.dryTime || 0)} min</span>
+                        <span class="ams-pill-label">${label}</span>
+                    </div>
+                </div>
+            </div>`;
+            }).join('')}
+        </div>`;
+  }
+
+  _updateAmsZonePills(root, zones) {
+    if (!root || !zones) return;
+    zones.forEach(zone => {
+      const tempEl = root.querySelector(`[data-pill="ams-zone-${zone.zone}-temp"] .ams-pill-value`);
+      if (tempEl && zone.temperature !== null) tempEl.textContent = `${Math.round(zone.temperature)}°C`;
+      const humEl = root.querySelector(`[data-pill="ams-zone-${zone.zone}-humidity"] .ams-pill-value`);
+      if (humEl && zone.humidity !== null) humEl.textContent = `${Math.round(zone.humidity)}%`;
+      const dryPill = root.querySelector(`[data-pill="ams-zone-${zone.zone}-dry"]`);
+      if (dryPill) {
+        const drying = zone.dryTime > 0;
+        dryPill.style.display = drying ? '' : 'none';
+        const dryEl = dryPill.querySelector('.ams-pill-value');
+        if (dryEl && drying) dryEl.textContent = `${Math.round(zone.dryTime)} min`;
+      }
+    });
+  }
+
+  // H3C Swaptek: sensors "PrintTool N" have no translation_key, so match by entity_id / friendly_name
+  _getActivePrintTool() {
+    if (!this._hass || !this.config?.printer) return null;
+    const toolPattern = /_printtool_(\d+)$/i;
+    const namePattern = /printtool (\d+)$/i;
+
+    for (const entityId in this._hass.entities) {
+      const entityInfo = this._hass.entities[entityId];
+      if (entityInfo.device_id !== this.config.printer || !entityId.startsWith('sensor.')) continue;
+      const state = this._hass.states[entityId];
+      const match = entityId.match(toolPattern) || (state?.attributes?.friendly_name || '').match(namePattern);
+      if (!match || state?.state !== 'mounted') continue;
+
+      const attr = state.attributes || {};
+      const readNumber = (id) => {
+        const v = parseFloat(this._hass.states[id]?.state);
+        return isNaN(v) ? null : v;
+      };
+      const color = typeof attr.color === 'string' && /^#[0-9a-f]{6}/i.test(attr.color) ? attr.color.substring(0, 7) : null;
+
+      return {
+        number: parseInt(attr.tool ?? match[1]),
+        entityId,
+        nozzleDiameter: attr.nozzle_diameter ?? null,
+        nozzleType: attr.nozzle_type || '',
+        color,
+        temperature: readNumber(`${entityId}_temperature`),
+        targetTemperature: readNumber(`${entityId}_target_temperature`)
+      };
+    }
+    return null;
+  }
+
+  _formatActiveTool(tool) {
+    return tool.nozzleDiameter ? `T${tool.number} · ${tool.nozzleDiameter}` : `T${tool.number}`;
   }
 
   _getAllAmsUnits() {
@@ -4275,7 +4445,7 @@ class PrismBambuCard extends HTMLElement {
     
     // Image path - use configured image or default
     // Supports both .png and .jpg formats
-    const printerImg = this.config.image || '/local/community/Prism-Dashboard/images/printer-blank.jpg';
+    const printerImg = this._getPrinterImage();
 
     // AMS Data - collect from all configured AMS devices
     const amsUnits = this._getAllAmsUnits();
@@ -4286,6 +4456,9 @@ class PrismBambuCard extends HTMLElement {
     const isExternalSpool = amsUnits.length === 1 ? firstUnit.isExternalSpool : false;
     const amsTemperature = firstUnit?.temperature ?? null;
     const amsHumidity = firstUnit?.humidity ?? null;
+    const amsZones = amsUnits.length === 1 ? (firstUnit.zones || []) : [];
+
+    const activeTool = this._getActivePrintTool();
 
     const returnData = {
       stateStr,
@@ -4333,6 +4506,8 @@ class PrismBambuCard extends HTMLElement {
       // AMS sensors
       amsTemperature,
       amsHumidity,
+      amsZones,
+      activeTool,
       // Visibility settings (default to true if not set)
       showPartFan: this.config.show_part_fan !== false,
       showAuxFan: this.config.show_aux_fan !== false,
@@ -4345,6 +4520,7 @@ class PrismBambuCard extends HTMLElement {
       showCustomTemp: this.config.show_custom_temp !== false,
       showCustomFan: this.config.show_custom_fan !== false,
       showAmsInfo: this.config.show_ams_info !== false,
+      showActiveTool: this.config.show_active_tool !== false,
       // Spool view mode: 'side' (circular, default) or 'front' (AMS-style vertical)
       spoolView: this.config.spool_view || 'side'
     };
@@ -4376,7 +4552,7 @@ class PrismBambuCard extends HTMLElement {
       name: this.config?.name || 'Bambu Lab Printer',
       cameraEntity: null,
       cameraImage: null,
-      printerImg: this.config?.image || '/local/community/Prism-Dashboard/images/printer-blank.jpg',
+      printerImg: this._getPrinterImage(),
       coverImageEntity: null,
       coverImageUrl: null,
       showCoverImage: false,
@@ -4685,6 +4861,48 @@ class PrismBambuCard extends HTMLElement {
         .ams-grid.hidden {
             display: none;
         }
+        /* AMS 3H: 9 slots as two rows (5 + 4); each slot spans 2 of 10 columns so row 2 is centered */
+        .ams-grid.slots-9 {
+            grid-template-columns: repeat(10, 1fr);
+            gap: 8px 6px;
+        }
+        .ams-grid.slots-9 .ams-slot {
+            grid-column: span 2;
+            padding: 6px;
+            border-radius: 12px;
+        }
+        .ams-grid.slots-9 .ams-slot:nth-child(6) {
+            grid-column: 2 / span 2;
+        }
+        .ams-grid.slots-9 .ams-type {
+            font-size: 9px;
+        }
+        .ams-grid.slots-9 .remaining-badge {
+            font-size: 8px;
+            padding: 1px 4px;
+        }
+        .ams-grid.slots-9 .spool-front-label-type {
+            font-size: 8px;
+        }
+        .ams-grid.slots-9 .spool-front-label-weight {
+            font-size: 7px;
+        }
+        .ams-slot.drying {
+            box-shadow: inset 0 0 0 1px rgba(251, 146, 60, 0.45), 0 0 10px rgba(251, 146, 60, 0.15);
+        }
+        .ams-zone-badge {
+            position: absolute;
+            top: 3px;
+            right: 4px;
+            font-size: 8px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 2px 4px;
+            border-radius: 999px;
+            color: #fb923c;
+            background: rgba(251, 146, 60, 0.15);
+            z-index: 20;
+        }
 
         /* Multi-AMS Tab Bar */
         .ams-tab-bar {
@@ -4798,6 +5016,24 @@ class PrismBambuCard extends HTMLElement {
         }
         .ams-info-pill.humidity .ams-pill-icon ha-icon {
             color: #60a5fa;
+        }
+        .ams-info-pill.drying .ams-pill-icon ha-icon {
+            color: #f97316;
+        }
+        .ams-info-bar.zones {
+            flex-wrap: wrap;
+            gap: 8px 16px;
+        }
+        .ams-zone-group {
+            display: flex;
+            gap: 6px;
+        }
+        .ams-info-bar.zones .ams-info-pill {
+            padding: 4px 10px 4px 6px;
+            gap: 6px;
+        }
+        .ams-info-bar.zones .ams-pill-value {
+            font-size: 12px;
         }
         
         .ams-slot {
@@ -5922,13 +6158,13 @@ class PrismBambuCard extends HTMLElement {
         ${data.amsData.length > 0 ? `
         ${data.amsUnits.length <= 1 ? `
         ${this._renderAmsSlotsHtml(data.amsData, data.spoolView, '')}
-        ${this._renderAmsInfoBarHtml(data.amsTemperature, data.amsHumidity, data.showAmsInfo, '')}
+        ${this._renderAmsInfoBarHtml(data.amsTemperature, data.amsHumidity, data.showAmsInfo, '', data.amsZones)}
         ` : data.amsView === 'stacked' ? `
         ${data.amsUnits.map((unit, idx) => `
         <div class="ams-unit" data-ams-unit="${idx}">
             <div class="ams-unit-label">${unit.name}</div>
             ${this._renderAmsSlotsHtml(unit.amsData, data.spoolView, unit.name)}
-            ${this._renderAmsInfoBarHtml(unit.temperature, unit.humidity, data.showAmsInfo, idx)}
+            ${this._renderAmsInfoBarHtml(unit.temperature, unit.humidity, data.showAmsInfo, idx, unit.zones)}
         </div>
         `).join('')}
         ` : `
@@ -5940,7 +6176,7 @@ class PrismBambuCard extends HTMLElement {
         ${data.amsUnits.map((unit, idx) => `
         <div class="ams-tab-content ${idx === this._activeAmsUnit ? '' : 'hidden'}" data-ams-tab-content="${idx}">
             ${this._renderAmsSlotsHtml(unit.amsData, data.spoolView, unit.name)}
-            ${this._renderAmsInfoBarHtml(unit.temperature, unit.humidity, data.showAmsInfo, idx)}
+            ${this._renderAmsInfoBarHtml(unit.temperature, unit.humidity, data.showAmsInfo, idx, unit.zones)}
         </div>
         `).join('')}
         `}
@@ -6068,6 +6304,15 @@ class PrismBambuCard extends HTMLElement {
                 </div>
                 
                 <div class="overlay-right">
+                    ${data.showActiveTool && data.activeTool ? `
+                    <div class="overlay-pill right" data-pill="active-tool" title="${data.activeTool.nozzleType ? `PrintTool ${data.activeTool.number}: ${data.activeTool.nozzleType}` : `PrintTool ${data.activeTool.number}`}">
+                        <div class="pill-icon-container"><ha-icon icon="mdi:printer-3d-nozzle" style="color: ${data.activeTool.color || '#a78bfa'};"></ha-icon></div>
+                        <div class="pill-content">
+                            <span class="pill-value">${this._formatActiveTool(data.activeTool)}</span>
+                            <span class="pill-label">Tool</span>
+                        </div>
+                    </div>
+                    ` : ''}
                     ${data.showNozzleTemp ? `
                     <div class="overlay-pill right" data-pill="nozzle-temp">
                         <div class="pill-icon-container"><ha-icon icon="mdi:thermometer" style="color: #F87171;"></ha-icon></div>
