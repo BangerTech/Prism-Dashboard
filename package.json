@@ -1,6 +1,6 @@
 {
   "name": "prism-dashboard",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "Custom cards for Home Assistant with Glassmorphism design",
   "main": "dist/prism-dashboard.js",
   "repository": {

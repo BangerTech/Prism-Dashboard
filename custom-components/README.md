@@ -471,7 +471,7 @@ A Bambu Lab 3D printer card with AMS (Automatic Material System) support, glassm
 - ✅ **Push Notifications**: Configurable notifications for print complete, pause, failed, and filament change events (multi-device support)
 - ✅ **Multi-AMS Support**: Up to 4 AMS units (AMS, AMS Lite, AMS 2 Pro, AMS HT, AMS 3H, External Spool) with tabs or stacked display
 - ✅ **AMS Support**: Shows all 4 AMS slots per unit with color visualization
-- ✅ **H3C + AMS 3H** (requires ha-bambulab v2.4.0-beta1 or newer): The 9 AMS 3H slots are shown in two rows (5 + 4). The info bar shows temperature and humidity per drying zone (Z1 / Z2) plus the remaining drying time while a zone is drying, and slots of a drying zone are marked. The active Swaptek PrintTool is shown as an overlay pill (e.g. `T3 · 0.4`, hide with `show_active_tool: false`)
+- ✅ **H3C + AMS 3H** (requires ha-bambulab v2.4.0-beta1 or newer): The 9 AMS 3H slots are laid out like the unit: back row 2 / 4 / 6 / 8 on top, front row 1 / 3 / 5 / 7 / 9 below. The dry box (slots 6 and 8) gets an outline with its temperature and humidity on the top edge, plus the remaining time while drying (the outline turns orange). The info bar shows temperature and humidity of the rest of the AMS. The active Swaptek PrintTool is shown as an overlay pill (e.g. `T3 · 0.4`, hide with `show_active_tool: false`)
 - ✅ **AMS Humidity Display**: Supports both numeric values (newer systems) and A-E levels (older systems without real sensors)
 - ✅ **Filament Type Detection**: Supports PCTG, PETG, PLA, ABS, TPU, ASA, PA-CF, PA, PC, PVA, HIPS, PP
 - ✅ **Transparent Filament Display**: Detects transparent filaments via alpha channel or keywords (e.g., "clear", "transparent") with chessboard pattern

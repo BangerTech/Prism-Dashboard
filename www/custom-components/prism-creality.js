@@ -2,6 +2,7 @@
 // Supports: ha_creality_ws (WebSocket), Moonraker/Klipper integrations
 // For Creality printers: Use ha_creality_ws integration (recommended)
 // For generic Klipper printers: Use prism-3dprinter.js instead
+const PRINTER_IMAGE_BASE = '/local/community/Prism-Dashboard/images/';
 const SUPPORTED_MANUFACTURERS = [
   'Creality',
   'Moonraker', 
@@ -74,7 +75,7 @@ class PrismCrealityCard extends HTMLElement {
 
   // Bundled model images (shipped via HACS in dist/images); a configured printer-blank.jpg counts as "not set"
   _getPrinterImage() {
-    const base = '/local/community/Prism-Dashboard/images/';
+    const base = PRINTER_IMAGE_BASE;
     const configured = this.config?.image;
     if (configured && !/printer-blank\.jpg$/i.test(configured)) return configured;
 
@@ -4915,7 +4916,8 @@ class PrismCrealityCard extends HTMLElement {
         .main-visual-inner {
             position: relative;
             width: 100%;
-            height: 100%;
+            /* height: 100% doesn't resolve inside .main-visual (min-height only); stretch fills it instead */
+            align-self: stretch;
             border-radius: 24px;
             overflow: hidden;
             display: flex;
@@ -5109,6 +5111,11 @@ class PrismCrealityCard extends HTMLElement {
         }
         .printer-img.dimmed {
             filter: drop-shadow(0 0 10px rgba(0,0,0,0.3)) brightness(0.4);
+        }
+        /* Bundled images have a dark backdrop: fill the area edge to edge in the same color, no frame */
+        .printer-img.bundled {
+            padding: 0;
+            background-color: #090d10;
         }
         .printer-fallback-icon {
             width: 100%;
@@ -6401,7 +6408,7 @@ class PrismCrealityCard extends HTMLElement {
             ${data.cameraEntity && this.showCamera ? `
                 <div class="camera-container" data-entity="${data.cameraEntity}"></div>
             ` : `
-                <img src="${data.printerImg}" class="printer-img ${!data.isLightOn ? 'dimmed' : ''}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                <img src="${data.printerImg}" class="printer-img ${data.printerImg.startsWith(PRINTER_IMAGE_BASE) ? 'bundled' : ''} ${!data.isLightOn ? 'dimmed' : ''}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
                 <div class="printer-fallback-icon" style="display: none;">
                   <ha-icon icon="mdi:printer-3d"></ha-icon>
                 </div>
