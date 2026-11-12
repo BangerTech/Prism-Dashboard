@@ -3,6 +3,7 @@
 // For Creality printers: Use ha_creality_ws integration (recommended)
 // For generic Klipper printers: Use prism-3dprinter.js instead
 const PRINTER_IMAGE_BASE = '/local/community/Prism-Dashboard/images/';
+const BUNDLED_PRINTER_IMAGES = ['printer-creality-k1.jpg', 'printer-creality-k2.jpg'];
 const SUPPORTED_MANUFACTURERS = [
   'Creality',
   'Moonraker', 
@@ -77,7 +78,11 @@ class PrismCrealityCard extends HTMLElement {
   _getPrinterImage() {
     const base = PRINTER_IMAGE_BASE;
     const configured = this.config?.image;
-    if (configured && !/printer-blank\.jpg$/i.test(configured)) return configured;
+    if (configured && !/printer-blank\.jpg$/i.test(configured)) {
+      // Older setups point to a manually uploaded copy of a bundled image; use the shipped one instead
+      const file = configured.split('/').pop().split('?')[0].toLowerCase();
+      return BUNDLED_PRINTER_IMAGES.includes(file) ? base + file : configured;
+    }
 
     const model = (this._hass?.devices?.[this.config?.printer]?.model || '').toUpperCase().replace(/[\s_-]/g, '');
     if (model.includes('K1')) return base + 'printer-creality-k1.jpg';

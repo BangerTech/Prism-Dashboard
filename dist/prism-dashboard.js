@@ -2,8 +2,8 @@
  * Prism Dashboard - Custom Cards Collection
  * https://github.com/BangerTech/Prism-Dashboard
  * 
- * Version: 1.10.1
- * Build Date: 2026-11-12T10:40:01.503Z
+ * Version: 1.10.2
+ * Build Date: 2026-11-12T11:05:41.162Z
  * 
  * This file contains all Prism custom cards bundled together.
  * Just add this single file as a resource in Lovelace:
@@ -11,7 +11,7 @@
  */
 
 console.info(
-  '%c PRISM-DASHBOARD %c v1.10.1 ',
+  '%c PRISM-DASHBOARD %c v1.10.2 ',
   'color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: bold; padding: 4px 8px; border-radius: 4px 0 0 4px;',
   'color: #667eea; background: #e8e8e8; font-weight: bold; padding: 4px 8px; border-radius: 0 4px 4px 0;'
 );
@@ -33947,6 +33947,8 @@ window.customCards.push({
 // Synchronized with ha-bambulab-cards repository (https://github.com/greghesp/ha-bambulab-cards)
 const BAMBU_MANUFACTURER = 'Bambu Lab';
 const PRINTER_IMAGE_BASE = '/local/community/Prism-Dashboard/images/';
+const BUNDLED_PRINTER_IMAGES = ['printer-bambu-h2d.png', 'printer-bambu-h3c.png', 'printer-bambu-x1.png'];
+const HOTEND_RACK_MODEL = 'Hotend Rack';
 const BAMBU_PRINTER_MODELS = [
   // A-Series
   'A1', 'A1 MINI', 'A1 Mini', 'A1MINI', 'A1Mini', 'A1mini',
@@ -33988,6 +33990,7 @@ class PrismBambuCard extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     this.showCamera = false;
+    this._showToolRack = false;
     this.hasRendered = false;
     this._deviceEntities = {}; // Cache for device entities
     this._lastPrintStatus = null; // Track last status for notifications
@@ -34018,7 +34021,11 @@ class PrismBambuCard extends HTMLElement {
   _getPrinterImage() {
     const base = PRINTER_IMAGE_BASE;
     const configured = this.config?.image;
-    if (configured && !/printer-blank\.jpg$/i.test(configured)) return configured;
+    if (configured && !/printer-blank\.jpg$/i.test(configured)) {
+      // Older setups point to a manually uploaded copy of a bundled image; use the shipped one instead
+      const file = configured.split('/').pop().split('?')[0].toLowerCase();
+      return BUNDLED_PRINTER_IMAGES.includes(file) ? base + file : configured;
+    }
 
     const model = (this._hass?.devices?.[this.config?.printer]?.model || '').toUpperCase().replace(/[\s_-]/g, '');
     if (model.startsWith('H3C')) return base + 'printer-bambu-h3c.png';
@@ -34098,6 +34105,11 @@ class PrismBambuCard extends HTMLElement {
               name: 'ams_device_4_name',
               label: 'AMS Unit 4 custom name (optional)',
               selector: { text: {} }
+            },
+            {
+              name: 'hotend_rack_device',
+              label: 'Hotend Rack (H3C / H2C, optional - auto-detected)',
+              selector: { device: { filter: [{ manufacturer: BAMBU_MANUFACTURER, model: HOTEND_RACK_MODEL }] } }
             },
             {
               name: 'spool_view',
@@ -34290,7 +34302,7 @@ class PrismBambuCard extends HTMLElement {
             },
             {
               name: 'show_active_tool',
-              label: 'Show active PrintTool (H3C Swaptek, if available)',
+              label: 'Show active PrintTool (H3C / H2C hotend rack, if available)',
               default: true,
               selector: { boolean: {} }
             }
@@ -34763,7 +34775,8 @@ class PrismBambuCard extends HTMLElement {
     // Get current status to detect changes
     const data = this.getPrinterData();
     const dryingZones = (data.amsUnits || []).map(u => (u.zones || []).map(z => (z.dryTime > 0 ? 1 : 0)).join('')).join('|');
-    const newStatus = `${data.isIdle}-${data.isPrinting}-${data.isPaused}-${!!data.chamberLightEntity}-${!!data.cameraEntity}-${!!data.powerSwitch}-${data.isPowerOn}-${dryingZones}-${!!data.activeTool}`;
+    const toolStates = (data.rackTools || []).map(t => `${t.number}:${t.state}`).join(',');
+    const newStatus = `${data.isIdle}-${data.isPrinting}-${data.isPaused}-${!!data.chamberLightEntity}-${!!data.cameraEntity}-${!!data.powerSwitch}-${data.isPowerOn}-${dryingZones}-${!!data.activeTool}-${toolStates}-${this._showToolRack}`;
     
     // Check for status changes and send notifications
     if (!firstTime) {
@@ -34837,6 +34850,7 @@ class PrismBambuCard extends HTMLElement {
       const toolIcon = this.shadowRoot.querySelector('[data-pill="active-tool"] .pill-icon-container ha-icon');
       if (toolIcon) toolIcon.style.color = data.activeTool.color || '#a78bfa';
     }
+    if (this._showToolRack) this._updateToolRack(data.rackTools);
     if (data.chamberFanSpeed !== null && data.chamberFanSpeed !== undefined) {
       updatePill('chamber-fan', `${data.chamberFanSpeed}%`);
     }
@@ -35111,6 +35125,15 @@ class PrismBambuCard extends HTMLElement {
       };
     }
     
+    const toolsBtn = this.shadowRoot?.querySelector('.btn-tools');
+    if (toolsBtn) {
+      toolsBtn.onclick = (e) => {
+        e.stopPropagation();
+        this._showToolRack = !this._showToolRack;
+        this.render();
+      };
+    }
+
     // Header camera button - toggle camera view (separate from light!)
     const cameraBtn = this.shadowRoot?.querySelector('.btn-camera');
     if (cameraBtn) {
@@ -35236,7 +35259,14 @@ class PrismBambuCard extends HTMLElement {
       });
     }
     
-    // Filament popup close handlers
+    this.shadowRoot?.querySelectorAll('.rack-tool.clickable-tool').forEach(slot => {
+      slot.onclick = (e) => {
+        e.stopPropagation();
+        this.openToolPopup(parseInt(slot.dataset.tool));
+      };
+    });
+
+    // Filament popup close handlers (also the tool popup, which shares .filament-popup-overlay)
     const popupOverlay = this.shadowRoot?.querySelector('.filament-popup-overlay');
     const popupClose = this.shadowRoot?.querySelector('.filament-popup-close');
     
@@ -38079,41 +38109,218 @@ class PrismBambuCard extends HTMLElement {
         </div>`;
   }
 
-  // H3C Swaptek: sensors "PrintTool N" have no translation_key, so match by entity_id / friendly_name
-  _getActivePrintTool() {
-    if (!this._hass || !this.config?.printer) return null;
+  // PrintTools (H3C Swaptek) and hotends (H2C Vortek) live on a separate "Hotend Rack" device
+  _getHotendRackDeviceId() {
+    if (!this._hass) return null;
+    if (this.config?.hotend_rack_device) return this.config.hotend_rack_device;
+    const devices = this._hass.devices || {};
+    const racks = Object.keys(devices).filter(id => devices[id]?.model === HOTEND_RACK_MODEL);
+    if (racks.length <= 1) return racks[0] || null;
+
+    const printer = devices[this.config?.printer];
+    const serial = (printer?.identifiers || []).map(i => i?.[1]).find(Boolean) || printer?.serial_number;
+    if (serial) {
+      const bySerial = racks.find(id =>
+        (devices[id].identifiers || []).some(i => i?.[1] === `${serial}_HotendRack`) ||
+        (devices[id].name || '').includes(serial));
+      if (bySerial) return bySerial;
+    }
+    const printerName = printer?.name || '';
+    return racks.find(id => printerName && (devices[id].name || '').startsWith(printerName)) || racks[0];
+  }
+
+  // H3C "PrintTool N" sensors have no translation_key (match by entity_id / friendly_name);
+  // H2C hotends use translation_key hotend_rack_hotend
+  _getHotendRackTools() {
+    const rackId = this._getHotendRackDeviceId();
+    if (!rackId) return [];
     const toolPattern = /_printtool_(\d+)$/i;
     const namePattern = /printtool (\d+)$/i;
+    const readNumber = (id) => {
+      const v = parseFloat(this._hass.states[id]?.state);
+      return isNaN(v) ? null : v;
+    };
+    const tools = [];
 
     for (const entityId in this._hass.entities) {
       const entityInfo = this._hass.entities[entityId];
-      if (entityInfo.device_id !== this.config.printer || !entityId.startsWith('sensor.')) continue;
+      if (entityInfo.device_id !== rackId || !entityId.startsWith('sensor.')) continue;
       const state = this._hass.states[entityId];
-      const match = entityId.match(toolPattern) || (state?.attributes?.friendly_name || '').match(namePattern);
-      if (!match || state?.state !== 'mounted') continue;
-
+      if (!state) continue;
       const attr = state.attributes || {};
-      const readNumber = (id) => {
-        const v = parseFloat(this._hass.states[id]?.state);
-        return isNaN(v) ? null : v;
-      };
+      const isH2c = entityInfo.translation_key === 'hotend_rack_hotend';
+      const match = isH2c ? null : (entityId.match(toolPattern) || (attr.friendly_name || '').match(namePattern));
+      if (!isH2c && !match) continue;
+
+      const number = parseInt(isH2c ? attr.slot : (attr.tool ?? match[1]));
+      if (isNaN(number)) continue;
       const color = typeof attr.color === 'string' && /^#[0-9a-f]{6}/i.test(attr.color) ? attr.color.substring(0, 7) : null;
 
-      return {
-        number: parseInt(attr.tool ?? match[1]),
+      tools.push({
+        number,
         entityId,
+        state: state.state,
         nozzleDiameter: attr.nozzle_diameter ?? null,
         nozzleType: attr.nozzle_type || '',
+        maxTemp: attr.max_temperature ?? attr.max_temp ?? null,
+        wear: attr.wear ?? null,
+        serial: attr.serial || '',
         color,
-        temperature: readNumber(`${entityId}_temperature`),
-        targetTemperature: readNumber(`${entityId}_target_temperature`)
-      };
+        filamentName: attr.filament_name || '',
+        filamentType: attr.filament_type || '',
+        remaining: attr.remaining_percent ?? null,
+        amsSlot: attr.ams_slot ?? null,
+        temperature: isH2c ? null : readNumber(`${entityId}_temperature`),
+        targetTemperature: isH2c ? null : readNumber(`${entityId}_target_temperature`),
+        usedTime: readNumber(`${entityId}_used_time`)
+      });
     }
-    return null;
+    return tools.sort((a, b) => a.number - b.number);
   }
 
+  _getActivePrintTool(tools = this._getHotendRackTools()) {
+    return tools.find(t => t.state === 'mounted') || null;
+  }
+
+  // No temperature here: the nozzle pill below already shows the mounted tool's temperature
   _formatActiveTool(tool) {
     return tool.nozzleDiameter ? `T${tool.number} · ${tool.nozzleDiameter}` : `T${tool.number}`;
+  }
+
+  _isToolHot(tool) {
+    return (tool.targetTemperature || 0) > 0 || (tool.temperature || 0) > 50;
+  }
+
+  _toolRackLabel(tool) {
+    if (tool.state !== 'empty' && tool.temperature !== null && this._isToolHot(tool)) return `${Math.round(tool.temperature)}°`;
+    return tool.state === 'empty' ? '' : (tool.nozzleDiameter ? String(tool.nozzleDiameter) : '');
+  }
+
+  // Hotend rack drawn like the real unit: filament tubes arcing into the docks, numbered LEDs, tool heads below
+  _renderToolRackHtml(tools) {
+    const W = 360, H = 190, pad = 14;
+    const uid = this._rackUid || (this._rackUid = Math.random().toString(36).slice(2, 8));
+    const colW = (W - 2 * pad) / Math.max(tools.length, 1);
+    const dockW = Math.min(colW * 0.62, 26);
+    const toolW = Math.min(colW * 0.7, 26);
+
+    const columns = tools.map((tool, i) => {
+      const cx = pad + colW * (i + 0.5);
+      const empty = tool.state === 'empty';
+      const mounted = tool.state === 'mounted';
+      const hot = !empty && this._isToolHot(tool);
+      const color = tool.color || '#3f3f46';
+      const sx = W / 2 + (cx - W / 2) * 0.22;
+      const tube = `M ${cx} 66 C ${cx} 22, ${sx + (cx - sx) * 0.45} 6, ${sx} 6`;
+      const ledClass = empty ? '' : hot ? 'hot' : mounted ? 'mounted' : 'docked';
+
+      return `
+            <g class="rack-tool ${empty ? '' : 'clickable-tool'} ${mounted ? 'mounted' : ''}" data-tool="${tool.number}">
+                <rect class="rack-hit" x="${cx - colW / 2}" y="0" width="${colW}" height="${H}" rx="6"></rect>
+                ${empty
+                  ? `<path d="${tube}" fill="none" stroke="#2a2d33" stroke-width="1.5" stroke-dasharray="3 3"></path>`
+                  : `<path d="${tube}" fill="none" stroke="#0b0c0e" stroke-width="5" stroke-linecap="round"></path>
+                <path d="${tube}" fill="none" stroke="${color}" stroke-width="${mounted ? 2 : 1.4}" stroke-linecap="round" opacity="${mounted ? 1 : 0.85}"></path>`}
+                <rect x="${cx - dockW / 2}" y="72" width="${dockW}" height="30" rx="3" fill="#111317" stroke="#3a3e45" stroke-width="1"></rect>
+                ${tool.state === 'docked' ? `
+                <rect x="${cx - dockW / 2 + 3}" y="75" width="${dockW - 6}" height="24" rx="2" fill="none" stroke="#2a2e35" stroke-width="1"></rect>
+                <rect x="${cx - dockW * 0.22}" y="81" width="${dockW * 0.44}" height="5" rx="1" fill="#e07b2a" opacity="0.9"></rect>` : ''}
+                <text x="${cx}" y="121" class="rack-number">${tool.number}</text>
+                <rect class="rack-led ${ledClass}" data-tool-led="${tool.number}" x="${cx - 1.6}" y="125" width="3.2" height="9" rx="1.6"
+                      ${empty ? '' : `filter="url(#rackLedGlow-${uid})"`}></rect>
+                ${tool.state === 'docked' ? `
+                <rect x="${cx - toolW / 2}" y="141" width="${toolW}" height="5" rx="1.5" fill="url(#rackToolGrad-${uid})"></rect>
+                <rect x="${cx - toolW * 0.36}" y="146" width="${toolW * 0.72}" height="19" rx="2.5" fill="url(#rackToolGrad-${uid})" stroke="#52565e" stroke-width="0.6"></rect>
+                <line x1="${cx - toolW * 0.28}" y1="152" x2="${cx + toolW * 0.28}" y2="152" stroke="#2e3238" stroke-width="1"></line>
+                <line x1="${cx - toolW * 0.28}" y1="157" x2="${cx + toolW * 0.28}" y2="157" stroke="#2e3238" stroke-width="1"></line>
+                <polygon points="${cx - 3},165 ${cx + 3},165 ${cx + 1.3},173 ${cx - 1.3},173" fill="#a1a1aa"></polygon>` : ''}
+                ${mounted ? `
+                <rect x="${cx - toolW * 0.36}" y="146" width="${toolW * 0.72}" height="19" rx="2.5" fill="none" stroke="#22c55e" stroke-width="1" stroke-dasharray="2.5 2"></rect>
+                <path d="M ${cx - 4} 159 L ${cx} 154 L ${cx + 4} 159" fill="none" stroke="#22c55e" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>` : ''}
+                <text x="${cx}" y="186" class="rack-label ${hot ? 'hot' : ''}" data-tool-temp="${tool.number}">${this._toolRackLabel(tool)}</text>
+            </g>`;
+    }).join('');
+
+    return `
+        <div class="tool-rack">
+            <svg class="tool-rack-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="rackBarGrad-${uid}" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#2b2f36"></stop>
+                        <stop offset="1" stop-color="#14161a"></stop>
+                    </linearGradient>
+                    <linearGradient id="rackToolGrad-${uid}" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0" stop-color="#3f434a"></stop>
+                        <stop offset="0.5" stop-color="#8b9099"></stop>
+                        <stop offset="1" stop-color="#3a3d44"></stop>
+                    </linearGradient>
+                    <filter id="rackLedGlow-${uid}" x="-200%" y="-100%" width="500%" height="300%">
+                        <feGaussianBlur stdDeviation="1.8" result="blur"></feGaussianBlur>
+                        <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+                    </filter>
+                </defs>
+                <rect x="6" y="62" width="${W - 12}" height="50" rx="8" fill="url(#rackBarGrad-${uid})" stroke="#30343b" stroke-width="1"></rect>
+                <line x1="14" y1="62.8" x2="${W - 14}" y2="62.8" stroke="rgba(255,255,255,0.14)" stroke-width="1"></line>
+                <rect x="11" y="67" width="${W - 22}" height="40" rx="6" fill="#0a0b0d"></rect>
+                ${columns}
+            </svg>
+        </div>`;
+  }
+
+  _updateToolRack(tools) {
+    tools.forEach(tool => {
+      const label = this.shadowRoot.querySelector(`[data-tool-temp="${tool.number}"]`);
+      if (!label) return;
+      const hot = tool.state !== 'empty' && this._isToolHot(tool);
+      const text = this._toolRackLabel(tool);
+      if (label.textContent !== text) label.textContent = text;
+      label.classList.toggle('hot', hot);
+      const led = this.shadowRoot.querySelector(`[data-tool-led="${tool.number}"]`);
+      if (led && tool.state !== 'empty') {
+        led.classList.toggle('hot', hot);
+        led.classList.toggle('mounted', !hot && tool.state === 'mounted');
+        led.classList.toggle('docked', !hot && tool.state === 'docked');
+      }
+    });
+  }
+
+  openToolPopup(number) {
+    const overlay = this.shadowRoot?.querySelector('.tool-popup-overlay');
+    const tool = this._getHotendRackTools().find(t => t.number === number);
+    if (!overlay || !tool) return;
+
+    const colorEl = overlay.querySelector('.filament-popup-color');
+    if (colorEl) colorEl.style.backgroundColor = tool.color || '#3f3f46';
+    const title = overlay.querySelector('.filament-popup-title');
+    if (title) title.textContent = `PrintTool ${tool.number}`;
+
+    const states = { mounted: 'Mounted', docked: 'Docked', empty: 'Empty' };
+    const temp = tool.temperature !== null
+      ? `${Math.round(tool.temperature)}°${tool.targetTemperature ? ` / ${Math.round(tool.targetTemperature)}°` : ''}`
+      : null;
+    const filament = [tool.filamentName || tool.filamentType, tool.remaining !== null ? `${tool.remaining}%` : '']
+      .filter(Boolean).join(' · ');
+    const rows = [
+      ['State', states[tool.state] || tool.state],
+      ['Nozzle', [tool.nozzleType, tool.nozzleDiameter ? `Ø ${tool.nozzleDiameter} mm` : ''].filter(Boolean).join(' · ')],
+      ['Temperature', temp],
+      ['Max Temp', tool.maxTemp ? `${tool.maxTemp}°` : null],
+      ['Wear', tool.wear !== null ? `${tool.wear}%` : null],
+      ['Print Time', tool.usedTime !== null ? `${tool.usedTime.toFixed(1)} h` : null],
+      ['Filament', filament],
+      ['AMS Slot', tool.amsSlot ? `Slot ${tool.amsSlot}` : null],
+      ['Serial', tool.serial]
+    ].filter(([, value]) => value !== null && value !== undefined && value !== '');
+
+    const content = overlay.querySelector('.filament-popup-content');
+    if (content) {
+      content.innerHTML = rows.map(([label, value]) => `
+                    <div class="filament-popup-row">
+                        <span class="filament-popup-label">${label}</span>
+                        <span class="filament-popup-value">${String(value).replace(/</g, '&lt;')}</span>
+                    </div>`).join('');
+    }
+    overlay.style.display = 'flex';
   }
 
   _getAllAmsUnits() {
@@ -38398,7 +38605,9 @@ class PrismBambuCard extends HTMLElement {
     const amsHumidity = firstUnit?.humidity ?? null;
     const amsDryZone = amsUnits.length === 1 ? firstUnit.dryZone : null;
 
-    const activeTool = this._getActivePrintTool();
+    const rackTools = this._getHotendRackTools();
+    const activeTool = this._getActivePrintTool(rackTools);
+    if (!rackTools.length) this._showToolRack = false;
 
     const returnData = {
       stateStr,
@@ -38448,6 +38657,7 @@ class PrismBambuCard extends HTMLElement {
       amsHumidity,
       amsDryZone,
       activeTool,
+      rackTools,
       // Visibility settings (default to true if not set)
       showPartFan: this.config.show_part_fan !== false,
       showAuxFan: this.config.show_aux_fan !== false,
@@ -38517,6 +38727,7 @@ class PrismBambuCard extends HTMLElement {
         humidity: 45
       }],
       amsView: this.config?.ams_view || 'tabs',
+      rackTools: [],
       isPrinting: true,
       isPaused: false,
       isIdle: false,
@@ -38835,6 +39046,62 @@ class PrismBambuCard extends HTMLElement {
         .ams-grid.slots-9 .spool-front-label-weight {
             font-size: 7px;
         }
+        /* Hotend Rack view (SVG) */
+        .tool-rack {
+            margin-bottom: 16px;
+        }
+        .tool-rack-svg {
+            width: 100%;
+            display: block;
+            overflow: visible;
+        }
+        .rack-hit {
+            fill: transparent;
+            transition: fill 0.2s ease;
+        }
+        .rack-tool.clickable-tool {
+            cursor: pointer;
+        }
+        .rack-tool.clickable-tool:hover .rack-hit {
+            fill: rgba(255, 255, 255, 0.04);
+        }
+        .rack-number {
+            font-size: 8px;
+            font-weight: 600;
+            fill: rgba(255, 255, 255, 0.45);
+            text-anchor: middle;
+        }
+        .rack-led {
+            fill: #26292f;
+        }
+        .rack-led.docked {
+            fill: #f4f4f5;
+        }
+        .rack-led.mounted {
+            fill: #22c55e;
+            animation: rack-led-pulse 1.8s ease-in-out infinite;
+        }
+        .rack-led.hot {
+            fill: #fb923c;
+        }
+        @keyframes rack-led-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.45; }
+        }
+        .rack-label {
+            font-size: 9px;
+            font-weight: 700;
+            fill: rgba(255, 255, 255, 0.6);
+            text-anchor: middle;
+        }
+        .rack-tool.mounted .rack-label {
+            fill: rgba(255, 255, 255, 0.95);
+        }
+        .rack-label.hot,
+        .rack-tool.mounted .rack-label.hot {
+            fill: #fb923c;
+        }
+
         /* AMS 3H dry box: outline around its slots, readings as a label on the top edge */
         .ams-dry-box {
             position: relative;
@@ -40111,6 +40378,11 @@ class PrismBambuCard extends HTMLElement {
                     <ha-icon icon="mdi:lightbulb${data.isLightOn ? '' : '-outline'}"></ha-icon>
                 </button>
                 ` : ''}
+                ${data.rackTools.length ? `
+                <button class="header-icon-btn btn-tools ${this._showToolRack ? 'active' : ''}" title="${this._showToolRack ? 'Show AMS' : 'Show Hotend Rack'}">
+                    <ha-icon icon="mdi:printer-3d-nozzle${this._showToolRack ? '' : '-outline'}"></ha-icon>
+                </button>
+                ` : ''}
                 ${data.cameraEntity ? `
                 <button class="header-icon-btn btn-camera ${this.showCamera ? 'active' : ''}" title="Toggle Camera">
                     <ha-icon icon="mdi:camera${this.showCamera ? '' : '-outline'}"></ha-icon>
@@ -40119,7 +40391,21 @@ class PrismBambuCard extends HTMLElement {
             </div>
         </div>
 
-        ${data.amsData.length > 0 ? `
+        ${this._showToolRack ? `
+        ${this._renderToolRackHtml(data.rackTools)}
+
+        <!-- Hotend Rack Tool Popup -->
+        <div class="filament-popup-overlay tool-popup-overlay" style="display: none;">
+            <div class="filament-popup">
+                <div class="filament-popup-header">
+                    <div class="filament-popup-color"></div>
+                    <div class="filament-popup-title">PrintTool</div>
+                    <button class="filament-popup-close"><ha-icon icon="mdi:close"></ha-icon></button>
+                </div>
+                <div class="filament-popup-content"></div>
+            </div>
+        </div>
+        ` : data.amsData.length > 0 ? `
         ${data.amsUnits.length <= 1 ? `
         ${this._renderAmsSlotsHtml(data.amsData, data.spoolView, '', data.amsDryZone, data.showAmsInfo)}
         ${this._renderAmsInfoBarHtml(data.amsTemperature, data.amsHumidity, data.showAmsInfo, '')}
@@ -40381,6 +40667,7 @@ window.customCards.push({
 // For Creality printers: Use ha_creality_ws integration (recommended)
 // For generic Klipper printers: Use prism-3dprinter.js instead
 const PRINTER_IMAGE_BASE = '/local/community/Prism-Dashboard/images/';
+const BUNDLED_PRINTER_IMAGES = ['printer-creality-k1.jpg', 'printer-creality-k2.jpg'];
 const SUPPORTED_MANUFACTURERS = [
   'Creality',
   'Moonraker', 
@@ -40455,7 +40742,11 @@ class PrismCrealityCard extends HTMLElement {
   _getPrinterImage() {
     const base = PRINTER_IMAGE_BASE;
     const configured = this.config?.image;
-    if (configured && !/printer-blank\.jpg$/i.test(configured)) return configured;
+    if (configured && !/printer-blank\.jpg$/i.test(configured)) {
+      // Older setups point to a manually uploaded copy of a bundled image; use the shipped one instead
+      const file = configured.split('/').pop().split('?')[0].toLowerCase();
+      return BUNDLED_PRINTER_IMAGES.includes(file) ? base + file : configured;
+    }
 
     const model = (this._hass?.devices?.[this.config?.printer]?.model || '').toUpperCase().replace(/[\s_-]/g, '');
     if (model.includes('K1')) return base + 'printer-creality-k1.jpg';
