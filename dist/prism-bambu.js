@@ -4164,15 +4164,21 @@ class PrismBambuCard extends HTMLElement {
         </div>`;
   }
 
-  // PrintTools (H3C Swaptek) and hotends (H2C Vortek) live on a separate "Hotend Rack" device
+  // PrintTools (H3C Swaptek) and hotends (H2C Vortek) live on a separate "Hotend Rack" device.
+  // The rack must belong to THIS printer, otherwise every Bambu card would show it (H2D/X1 have none).
   _getHotendRackDeviceId() {
-    if (!this._hass) return null;
-    if (this.config?.hotend_rack_device) return this.config.hotend_rack_device;
+    if (!this._hass || !this.config?.printer) return null;
+    if (this.config.hotend_rack_device) return this.config.hotend_rack_device;
     const devices = this._hass.devices || {};
     const racks = Object.keys(devices).filter(id => devices[id]?.model === HOTEND_RACK_MODEL);
-    if (racks.length <= 1) return racks[0] || null;
+    if (!racks.length) return null;
 
-    const printer = devices[this.config?.printer];
+    // Primary: ha-bambulab links the rack to its printer via via_device
+    const byVia = racks.find(id => devices[id].via_device_id === this.config.printer);
+    if (byVia) return byVia;
+
+    // Fallback: rack identifier is `<serial>_HotendRack`, printer identifier is `<serial>`
+    const printer = devices[this.config.printer];
     const serial = (printer?.identifiers || []).map(i => i?.[1]).find(Boolean) || printer?.serial_number;
     if (serial) {
       const bySerial = racks.find(id =>
@@ -4180,8 +4186,14 @@ class PrismBambuCard extends HTMLElement {
         (devices[id].name || '').includes(serial));
       if (bySerial) return bySerial;
     }
+
+    // Last resort: name prefix, but only when there is exactly one rack and one printer here
     const printerName = printer?.name || '';
-    return racks.find(id => printerName && (devices[id].name || '').startsWith(printerName)) || racks[0];
+    if (printerName) {
+      const byName = racks.find(id => (devices[id].name || '').startsWith(printerName));
+      if (byName) return byName;
+    }
+    return null;
   }
 
   // H3C "PrintTool N" sensors have no translation_key (match by entity_id / friendly_name);
